@@ -17,72 +17,66 @@ function parseICalData(icalData: string): any[] {
   const events: any[] = [];
   const lines = icalData.split(/\r?\n/);
   let currentEvent: any = null;
-  let currentKey = '';
-  let currentValue = '';
+  
+  // First, unfold lines (lines starting with space/tab are continuations)
+  const unfoldedLines: string[] = [];
+  for (const line of lines) {
+    if ((line.startsWith(' ') || line.startsWith('\t')) && unfoldedLines.length > 0) {
+      unfoldedLines[unfoldedLines.length - 1] += line.slice(1);
+    } else {
+      unfoldedLines.push(line);
+    }
+  }
 
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    
-    // Handle line continuations (lines starting with space or tab)
-    if (line.startsWith(' ') || line.startsWith('\t')) {
-      currentValue += line.slice(1);
+  for (const line of unfoldedLines) {
+    if (line === 'BEGIN:VEVENT') {
+      currentEvent = {};
       continue;
     }
     
-    // Process previous key-value pair
-    if (currentKey && currentEvent) {
-      processKeyValue(currentEvent, currentKey, currentValue);
+    if (line === 'END:VEVENT' && currentEvent) {
+      events.push(currentEvent);
+      currentEvent = null;
+      continue;
     }
     
-    // Parse new line
+    if (!currentEvent) continue;
+    
+    // Parse key:value or key;params:value
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) continue;
     
-    currentKey = line.substring(0, colonIndex);
-    currentValue = line.substring(colonIndex + 1);
+    let key = line.substring(0, colonIndex);
+    const value = line.substring(colonIndex + 1);
     
-    // Handle special cases
-    if (currentKey.startsWith('DTSTART') || currentKey.startsWith('DTEND')) {
-      const baseKey = currentKey.split(';')[0];
-      currentKey = baseKey;
+    // Handle keys with parameters like DTSTART;TZID=Europe/Paris:20240115T090000
+    if (key.includes(';')) {
+      key = key.split(';')[0];
     }
-
-    if (line === 'BEGIN:VEVENT') {
-      currentEvent = {};
-      currentKey = '';
-      currentValue = '';
-    } else if (line === 'END:VEVENT' && currentEvent) {
-      events.push(currentEvent);
-      currentEvent = null;
-      currentKey = '';
-      currentValue = '';
+    
+    switch (key) {
+      case 'UID':
+        currentEvent.uid = value;
+        break;
+      case 'SUMMARY':
+        currentEvent.summary = value.replace(/\\,/g, ',').replace(/\\n/g, '\n').replace(/\\;/g, ';');
+        break;
+      case 'DESCRIPTION':
+        currentEvent.description = value.replace(/\\,/g, ',').replace(/\\n/g, '\n').replace(/\\;/g, ';');
+        break;
+      case 'LOCATION':
+        currentEvent.location = value.replace(/\\,/g, ',').replace(/\\;/g, ';');
+        break;
+      case 'DTSTART':
+        currentEvent.start = parseICalDate(value);
+        break;
+      case 'DTEND':
+        currentEvent.end = parseICalDate(value);
+        break;
     }
   }
 
   return events;
-}
-
-function processKeyValue(event: any, key: string, value: string) {
-  switch (key) {
-    case 'UID':
-      event.uid = value;
-      break;
-    case 'SUMMARY':
-      event.summary = value.replace(/\\,/g, ',').replace(/\\n/g, '\n');
-      break;
-    case 'DESCRIPTION':
-      event.description = value.replace(/\\,/g, ',').replace(/\\n/g, '\n');
-      break;
-    case 'LOCATION':
-      event.location = value.replace(/\\,/g, ',');
-      break;
-    case 'DTSTART':
-      event.start = parseICalDate(value);
-      break;
-    case 'DTEND':
-      event.end = parseICalDate(value);
-      break;
-  }
 }
 
 function parseICalDate(dateStr: string): Date | null {
@@ -269,9 +263,19 @@ serve(async (req) => {
         
         // Now upsert all events
         const eventsToInsert = [];
+        let skippedNoData = 0;
+        let skippedInvalidDates = 0;
+        
+        // Log first event for debugging
+        if (events.length > 0) {
+          console.log('Sample event:', JSON.stringify(events[0]));
+        }
         
         for (const event of events) {
-          if (!event.summary || !event.start || !event.end) continue;
+          if (!event.summary || !event.start || !event.end) {
+            skippedNoData++;
+            continue;
+          }
           
           const title = event.summary;
           const subjectName = extractSubjectName(title);
@@ -280,12 +284,13 @@ serve(async (req) => {
           const teacherName = extractTeacher(event.description);
           const subjectId = subjectMap.get(subjectName.toLowerCase()) || null;
           
-          const startDate = new Date(event.start);
-          const endDate = new Date(event.end);
+          // event.start and event.end are already Date objects from parseICalDate
+          const startDate = event.start instanceof Date ? event.start : new Date(event.start);
+          const endDate = event.end instanceof Date ? event.end : new Date(event.end);
           
           // Validate dates
-          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-            console.log(`Skipping event with invalid dates: ${title}`);
+          if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            skippedInvalidDates++;
             continue;
           }
           
@@ -305,6 +310,8 @@ serve(async (req) => {
             teacher_name: teacherName,
           });
         }
+        
+        console.log(`Skipped ${skippedNoData} events with missing data, ${skippedInvalidDates} with invalid dates`);
         
         console.log(`Prepared ${eventsToInsert.length} events for insertion`);
         
