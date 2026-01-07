@@ -268,6 +268,8 @@ serve(async (req) => {
         }
         
         // Now upsert all events
+        const eventsToInsert = [];
+        
         for (const event of events) {
           if (!event.summary || !event.start || !event.end) continue;
           
@@ -281,9 +283,17 @@ serve(async (req) => {
           const startDate = new Date(event.start);
           const endDate = new Date(event.end);
           
-          const eventData = {
+          // Validate dates
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            console.log(`Skipping event with invalid dates: ${title}`);
+            continue;
+          }
+          
+          const externalId = event.uid || `${title}-${startDate.toISOString()}`;
+          
+          eventsToInsert.push({
             user_id: user_id,
-            external_id: event.uid || `${title}-${startDate.toISOString()}`,
+            external_id: externalId,
             title: title,
             subject_id: subjectId,
             start_time: `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`,
@@ -293,18 +303,39 @@ serve(async (req) => {
             exam_date: isExam ? startDate.toISOString().split('T')[0] : null,
             room_number: roomNumber,
             teacher_name: teacherName,
-          };
-          
-          // Upsert event
-          const { error } = await supabase
-            .from('calendar_events')
-            .upsert(eventData, { 
-              onConflict: 'user_id,external_id',
-              ignoreDuplicates: false
-            });
-          
-          if (!error) syncedCount++;
+          });
         }
+        
+        console.log(`Prepared ${eventsToInsert.length} events for insertion`);
+        
+        // Delete existing events for this user and insert fresh
+        // This is more reliable than upsert with the partial unique index
+        const { error: deleteError } = await supabase
+          .from('calendar_events')
+          .delete()
+          .eq('user_id', user_id)
+          .not('external_id', 'is', null);
+        
+        if (deleteError) {
+          console.error('Error deleting old events:', deleteError);
+        }
+        
+        // Insert in batches of 100
+        const batchSize = 100;
+        for (let i = 0; i < eventsToInsert.length; i += batchSize) {
+          const batch = eventsToInsert.slice(i, i + batchSize);
+          const { error: insertError } = await supabase
+            .from('calendar_events')
+            .insert(batch);
+          
+          if (insertError) {
+            console.error(`Error inserting batch ${i / batchSize}:`, insertError);
+          } else {
+            syncedCount += batch.length;
+          }
+        }
+        
+        console.log(`Successfully synced ${syncedCount} events`);
         
         // Update last synced timestamp
         await supabase
