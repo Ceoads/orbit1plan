@@ -21,9 +21,12 @@ export type Database = {
           end_time: string
           event_type: Database["public"]["Enums"]["event_type"]
           exam_date: string | null
+          external_id: string | null
           id: string
+          room_number: string | null
           start_time: string
           subject_id: string | null
+          teacher_name: string | null
           title: string
           updated_at: string
           user_id: string
@@ -34,9 +37,12 @@ export type Database = {
           end_time: string
           event_type?: Database["public"]["Enums"]["event_type"]
           exam_date?: string | null
+          external_id?: string | null
           id?: string
+          room_number?: string | null
           start_time: string
           subject_id?: string | null
+          teacher_name?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -47,9 +53,12 @@ export type Database = {
           end_time?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           exam_date?: string | null
+          external_id?: string | null
           id?: string
+          room_number?: string | null
           start_time?: string
           subject_id?: string | null
+          teacher_name?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -247,6 +256,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          ical_url: string | null
+          id: string
+          last_synced_at: string | null
+          sync_enabled: boolean
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ical_url?: string | null
+          id?: string
+          last_synced_at?: string | null
+          sync_enabled?: boolean
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ical_url?: string | null
+          id?: string
+          last_synced_at?: string | null
+          sync_enabled?: boolean
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

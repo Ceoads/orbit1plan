@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,11 @@ const AppRoutes = () => {
         <PublicRoute>
           <AuthPage />
         </PublicRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <SettingsPage />
+        </ProtectedRoute>
       } />
       <Route path="/" element={
         <ProtectedRoute>

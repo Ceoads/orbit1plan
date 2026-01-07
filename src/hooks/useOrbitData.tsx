@@ -20,6 +20,9 @@ export interface CalendarEvent {
   day_of_week: number;
   event_type: 'class' | 'exam';
   exam_date: string | null;
+  room_number: string | null;
+  teacher_name: string | null;
+  external_id: string | null;
 }
 
 export interface Note {
