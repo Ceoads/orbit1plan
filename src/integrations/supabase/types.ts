@@ -14,7 +14,240 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      calendar_events: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          exam_date: string | null
+          id: string
+          start_time: string
+          subject_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          event_type?: Database["public"]["Enums"]["event_type"]
+          exam_date?: string | null
+          id?: string
+          start_time: string
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          event_type?: Database["public"]["Enums"]["event_type"]
+          exam_date?: string | null
+          id?: string
+          start_time?: string
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes_vault: {
+        Row: {
+          ai_summary: string | null
+          created_at: string
+          event_id: string | null
+          id: string
+          media_url: string | null
+          raw_text: string | null
+          subject_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          media_url?: string | null
+          raw_text?: string | null
+          subject_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_summary?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          media_url?: string | null
+          raw_text?: string | null
+          subject_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_vault_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_vault_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          preferences: Json | null
+          school_level: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          preferences?: Json | null
+          school_level?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          preferences?: Json | null
+          school_level?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          color_key: string
+          created_at: string
+          icon: string
+          id: string
+          name: string
+          teacher_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color_key?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name: string
+          teacher_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color_key?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name?: string
+          teacher_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          energy_level: Database["public"]["Enums"]["energy_level"]
+          id: string
+          is_subtask: boolean
+          linked_note_id: string | null
+          parent_task_id: string | null
+          priority_score: number
+          status: Database["public"]["Enums"]["task_status"]
+          subject_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          energy_level?: Database["public"]["Enums"]["energy_level"]
+          id?: string
+          is_subtask?: boolean
+          linked_note_id?: string | null
+          parent_task_id?: string | null
+          priority_score?: number
+          status?: Database["public"]["Enums"]["task_status"]
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          energy_level?: Database["public"]["Enums"]["energy_level"]
+          id?: string
+          is_subtask?: boolean
+          linked_note_id?: string | null
+          parent_task_id?: string | null
+          priority_score?: number
+          status?: Database["public"]["Enums"]["task_status"]
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_linked_note_id_fkey"
+            columns: ["linked_note_id"]
+            isOneToOne: false
+            referencedRelation: "notes_vault"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +256,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      energy_level: "low" | "medium" | "high"
+      event_type: "class" | "exam"
+      task_status: "todo" | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +385,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      energy_level: ["low", "medium", "high"],
+      event_type: ["class", "exam"],
+      task_status: ["todo", "done"],
+    },
   },
 } as const

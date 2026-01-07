@@ -1,85 +1,88 @@
 import { useState } from "react";
-import { mockTasks, Task } from "@/lib/mockData";
+import { useOrbitData } from "@/hooks/useOrbitData";
 import { TaskItem } from "@/components/TaskItem";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckSquare, Zap, Sun, Moon, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 type EnergyFilter = 'all' | 'high' | 'medium' | 'low';
 
 export const TasksPage = () => {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const { user } = useAuth();
+  const { tasks, toggleTask, getSubjectById, refetch } = useOrbitData();
   const [energyFilter, setEnergyFilter] = useState<EnergyFilter>('all');
 
   const filteredTasks = tasks.filter(t => 
-    !t.isSubtask && 
-    (energyFilter === 'all' || t.energyLevel === energyFilter)
+    !t.is_subtask && 
+    (energyFilter === 'all' || t.energy_level === energyFilter)
   );
 
   const todoTasks = filteredTasks.filter(t => t.status === 'todo');
   const doneTasks = filteredTasks.filter(t => t.status === 'done');
 
   const getSubtasks = (parentId: string) => 
-    tasks.filter(t => t.parentTaskId === parentId);
+    tasks.filter(t => t.parent_task_id === parentId);
 
-  const handleToggle = (taskId: string) => {
-    setTasks(prev => prev.map(t => 
-      t.id === taskId 
-        ? { ...t, status: t.status === 'done' ? 'todo' : 'done' }
-        : t
-    ));
-  };
-
-  const handleDecompose = (taskId: string) => {
+  const handleDecompose = async (taskId: string) => {
+    if (!user) return;
+    
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
     // Check if already has subtasks
-    if (tasks.some(t => t.parentTaskId === taskId)) {
+    if (tasks.some(t => t.parent_task_id === taskId)) {
       toast.info("Task already decomposed");
       return;
     }
 
-    // Generate 3 subtasks
-    const subtasks: Task[] = [
-      {
-        id: `${taskId}-sub1`,
-        title: `Review key concepts for ${task.title}`,
-        status: 'todo',
-        priorityScore: task.priorityScore - 5,
-        energyLevel: 'low',
-        dueDate: new Date(task.dueDate.getTime() - 2 * 24 * 60 * 60 * 1000),
-        parentTaskId: taskId,
-        isSubtask: true,
-        subjectId: task.subjectId,
-      },
-      {
-        id: `${taskId}-sub2`,
-        title: `Practice problems related to ${task.title}`,
-        status: 'todo',
-        priorityScore: task.priorityScore - 3,
-        energyLevel: 'medium',
-        dueDate: new Date(task.dueDate.getTime() - 1 * 24 * 60 * 60 * 1000),
-        parentTaskId: taskId,
-        isSubtask: true,
-        subjectId: task.subjectId,
-      },
-      {
-        id: `${taskId}-sub3`,
-        title: `Final review before ${task.title}`,
-        status: 'todo',
-        priorityScore: task.priorityScore,
-        energyLevel: 'high',
-        dueDate: task.dueDate,
-        parentTaskId: taskId,
-        isSubtask: true,
-        subjectId: task.subjectId,
-      },
-    ];
+    toast.loading("🧠 AI breaking down your task...", { id: "decompose" });
 
-    setTasks(prev => [...prev, ...subtasks]);
-    toast.success("✨ Task broken down into 3 smaller steps");
+    try {
+      const { data, error } = await supabase.functions.invoke("process-note", {
+        body: { imageBase64: task.title, action: "decompose" },
+      });
+
+      if (error) throw error;
+
+      const subtasks = data.subtasks || [];
+      
+      if (subtasks.length === 0) {
+        toast.dismiss("decompose");
+        toast.info("Couldn't break down this task");
+        return;
+      }
+
+      // Create subtasks in database
+      const subtaskPromises = subtasks.map(async (st: any, index: number) => {
+        const dueDate = task.due_date 
+          ? new Date(new Date(task.due_date).getTime() - (subtasks.length - index) * 12 * 60 * 60 * 1000)
+          : null;
+
+        return supabase.from("tasks").insert({
+          user_id: user.id,
+          title: st.title,
+          priority_score: task.priority_score - (index * 5),
+          energy_level: st.energyLevel || "medium",
+          due_date: dueDate?.toISOString(),
+          parent_task_id: taskId,
+          is_subtask: true,
+          subject_id: task.subject_id,
+        });
+      });
+
+      await Promise.all(subtaskPromises);
+      
+      toast.dismiss("decompose");
+      toast.success(`✨ Task broken down into ${subtasks.length} steps`);
+      refetch();
+    } catch (error: any) {
+      console.error("Decompose error:", error);
+      toast.dismiss("decompose");
+      toast.error("Failed to decompose task");
+    }
   };
 
   const energyFilters = [
@@ -127,10 +130,13 @@ export const TasksPage = () => {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">
-              Free period at 2pm detected
+              {todoTasks.length > 0 
+                ? `${todoTasks.length} tasks waiting for you`
+                : "All caught up! 🎉"
+              }
             </p>
             <p className="text-xs text-muted-foreground">
-              Perfect time for "Review Physics Notes"
+              Use ✨ to break big tasks into smaller steps
             </p>
           </div>
         </div>
@@ -154,12 +160,13 @@ export const TasksPage = () => {
             </div>
           ) : (
             todoTasks
-              .sort((a, b) => b.priorityScore - a.priorityScore)
+              .sort((a, b) => b.priority_score - a.priority_score)
               .map(task => (
                 <TaskItem
                   key={task.id}
                   task={task}
-                  onToggle={handleToggle}
+                  subject={task.subject_id ? getSubjectById(task.subject_id) : undefined}
+                  onToggle={toggleTask}
                   onDecompose={handleDecompose}
                   subtasks={getSubtasks(task.id)}
                 />
@@ -177,7 +184,8 @@ export const TasksPage = () => {
               <TaskItem
                 key={task.id}
                 task={task}
-                onToggle={handleToggle}
+                subject={task.subject_id ? getSubjectById(task.subject_id) : undefined}
+                onToggle={toggleTask}
                 subtasks={getSubtasks(task.id)}
               />
             ))

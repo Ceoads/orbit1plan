@@ -1,4 +1,4 @@
-import { Task, getSubjectById, getDaysUntil } from "@/lib/mockData";
+import { Task, Subject } from "@/hooks/useOrbitData";
 import { cn } from "@/lib/utils";
 import { Check, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { SubjectDot } from "./SubjectBadge";
@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 
 interface TaskItemProps {
   task: Task;
+  subject?: Subject;
   onToggle: (taskId: string) => void;
   onDecompose?: (taskId: string) => void;
   subtasks?: Task[];
@@ -24,11 +25,18 @@ const energyLabels = {
   high: "⚡ High energy",
 };
 
-export const TaskItem = ({ task, onToggle, onDecompose, subtasks = [] }: TaskItemProps) => {
+export const TaskItem = ({ task, subject, onToggle, onDecompose, subtasks = [] }: TaskItemProps) => {
   const [showSubtasks, setShowSubtasks] = useState(false);
-  const subject = task.subjectId ? getSubjectById(task.subjectId) : null;
-  const daysUntil = getDaysUntil(task.dueDate);
-  const isOverdue = daysUntil < 0;
+  
+  const getDaysUntil = (dateStr: string): number => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = date.getTime() - now.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const daysUntil = task.due_date ? getDaysUntil(task.due_date) : null;
+  const isOverdue = daysUntil !== null && daysUntil < 0;
 
   return (
     <div className="animate-fade-in">
@@ -36,7 +44,7 @@ export const TaskItem = ({ task, onToggle, onDecompose, subtasks = [] }: TaskIte
         className={cn(
           "bg-white/70 backdrop-blur-lg rounded-xl border border-white/30 shadow-soft",
           "p-4 border-l-4 transition-all duration-200",
-          energyColors[task.energyLevel],
+          energyColors[task.energy_level],
           task.status === 'done' && "opacity-60"
         )}
       >
@@ -68,30 +76,38 @@ export const TaskItem = ({ task, onToggle, onDecompose, subtasks = [] }: TaskIte
             <div className="flex items-center gap-3 mt-2 flex-wrap">
               {subject && (
                 <div className="flex items-center gap-1.5">
-                  <SubjectDot subject={subject} />
+                  <SubjectDot subject={{
+                    id: subject.id,
+                    name: subject.name,
+                    colorKey: subject.color_key as any,
+                    teacher: '',
+                    icon: subject.icon
+                  }} />
                   <span className="text-xs text-muted-foreground">{subject.name}</span>
                 </div>
               )}
               <span className="text-xs text-muted-foreground">
-                {energyLabels[task.energyLevel]}
+                {energyLabels[task.energy_level]}
               </span>
-              <span className={cn(
-                "text-xs font-medium",
-                isOverdue ? "text-destructive" :
-                daysUntil <= 1 ? "text-warning" :
-                "text-muted-foreground"
-              )}>
-                {isOverdue ? 'Overdue' :
-                 daysUntil === 0 ? 'Due today' :
-                 daysUntil === 1 ? 'Tomorrow' :
-                 `${daysUntil} days`}
-              </span>
+              {daysUntil !== null && (
+                <span className={cn(
+                  "text-xs font-medium",
+                  isOverdue ? "text-destructive" :
+                  daysUntil <= 1 ? "text-warning" :
+                  "text-muted-foreground"
+                )}>
+                  {isOverdue ? 'Overdue' :
+                   daysUntil === 0 ? 'Due today' :
+                   daysUntil === 1 ? 'Tomorrow' :
+                   `${daysUntil} days`}
+                </span>
+              )}
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            {!task.isSubtask && onDecompose && task.status !== 'done' && (
+            {!task.is_subtask && onDecompose && task.status !== 'done' && (
               <Button
                 variant="ghost"
                 size="sm"
