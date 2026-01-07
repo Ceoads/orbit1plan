@@ -1,7 +1,7 @@
-import { Home, Calendar, FolderOpen, CheckSquare, GraduationCap } from "lucide-react";
+import { Home, FolderOpen, CheckSquare, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type NavTab = 'pulse' | 'schedule' | 'vault' | 'tasks' | 'exams';
+export type NavTab = 'pulse' | 'vault' | 'tasks' | 'exams';
 
 interface BottomNavProps {
   activeTab: NavTab;
@@ -10,7 +10,6 @@ interface BottomNavProps {
 
 const tabs = [
   { id: 'pulse' as const, label: 'Pulse', icon: Home },
-  { id: 'schedule' as const, label: 'Schedule', icon: Calendar },
   { id: 'vault' as const, label: 'Vault', icon: FolderOpen },
   { id: 'tasks' as const, label: 'Tasks', icon: CheckSquare },
   { id: 'exams' as const, label: 'Exams', icon: GraduationCap },

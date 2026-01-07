@@ -202,65 +202,6 @@ export const useOrbitData = () => {
     ));
   };
 
-  // Update task priority (for drag-and-drop reordering)
-  const updateTaskPriority = async (taskId: string, newPriority: number) => {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ priority_score: newPriority })
-      .eq('id', taskId);
-
-    if (error) {
-      toast.error('Failed to update task order');
-      return;
-    }
-
-    setTasks(prev => prev.map(t => 
-      t.id === taskId ? { ...t, priority_score: newPriority } : t
-    ));
-  };
-
-  // Delete task
-  const deleteTask = async (taskId: string) => {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', taskId);
-
-    if (error) {
-      toast.error('Failed to delete task');
-      return;
-    }
-
-    setTasks(prev => prev.filter(t => t.id !== taskId && t.parent_task_id !== taskId));
-    toast.success('Task deleted');
-  };
-
-  // Delete subject
-  const deleteSubject = async (subjectId: string) => {
-    // First check if there are notes or tasks linked
-    const linkedNotes = notes.filter(n => n.subject_id === subjectId);
-    const linkedTasks = tasks.filter(t => t.subject_id === subjectId);
-
-    if (linkedNotes.length > 0 || linkedTasks.length > 0) {
-      toast.error('Cannot delete subject with linked notes or tasks');
-      return false;
-    }
-
-    const { error } = await supabase
-      .from('subjects')
-      .delete()
-      .eq('id', subjectId);
-
-    if (error) {
-      toast.error('Failed to delete subject');
-      return false;
-    }
-
-    setSubjects(prev => prev.filter(s => s.id !== subjectId));
-    toast.success('Subject deleted');
-    return true;
-  };
-
   // Get current class based on time
   const getCurrentClass = (): CalendarEvent | null => {
     const now = new Date();
@@ -353,9 +294,6 @@ export const useOrbitData = () => {
     createNote,
     createTask,
     toggleTask,
-    updateTaskPriority,
-    deleteTask,
-    deleteSubject,
     getCurrentClass,
     getNextClass,
     getSubjectById,

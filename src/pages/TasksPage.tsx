@@ -1,79 +1,30 @@
 import { useState } from "react";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { TaskItem } from "@/components/TaskItem";
-import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckSquare, Zap, Sun, Moon, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 
 type EnergyFilter = 'all' | 'high' | 'medium' | 'low';
 
 export const TasksPage = () => {
   const { user } = useAuth();
-  const { tasks, subjects, toggleTask, updateTaskPriority, deleteTask, getSubjectById, createTask, refetch } = useOrbitData();
+  const { tasks, toggleTask, getSubjectById, refetch } = useOrbitData();
   const [energyFilter, setEnergyFilter] = useState<EnergyFilter>('all');
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   const filteredTasks = tasks.filter(t => 
     !t.is_subtask && 
     (energyFilter === 'all' || t.energy_level === energyFilter)
   );
 
-  const todoTasks = filteredTasks
-    .filter(t => t.status === 'todo')
-    .sort((a, b) => b.priority_score - a.priority_score);
-    
+  const todoTasks = filteredTasks.filter(t => t.status === 'todo');
   const doneTasks = filteredTasks.filter(t => t.status === 'done');
 
   const getSubtasks = (parentId: string) => 
     tasks.filter(t => t.parent_task_id === parentId);
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = todoTasks.findIndex(t => t.id === active.id);
-      const newIndex = todoTasks.findIndex(t => t.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        // Calculate new priority based on position
-        // Higher index = lower in list = lower priority
-        const maxPriority = 100;
-        const step = maxPriority / (todoTasks.length + 1);
-        const newPriority = Math.round(maxPriority - (newIndex * step));
-
-        await updateTaskPriority(active.id as string, newPriority);
-        refetch();
-      }
-    }
-  };
 
   const handleDecompose = async (taskId: string) => {
     if (!user) return;
@@ -134,38 +85,21 @@ export const TasksPage = () => {
     }
   };
 
-  const handleCreateTask = async (data: {
-    title: string;
-    energy_level: 'low' | 'medium' | 'high';
-    due_date: string | null;
-    subject_id: string | null;
-    priority_score: number;
-  }) => {
-    const result = await createTask(data);
-    if (result) {
-      toast.success("Task created!");
-    }
-    return result;
-  };
-
   const energyFilters = [
     { id: 'all' as const, label: 'All', icon: null },
     { id: 'high' as const, label: 'High', icon: Zap },
-    { id: 'medium' as const, label: 'Med', icon: Sun },
+    { id: 'medium' as const, label: 'Medium', icon: Sun },
     { id: 'low' as const, label: 'Low', icon: Moon },
   ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between pt-2">
-        <div className="flex items-center gap-2">
-          <CheckSquare className="w-5 h-5 text-primary" />
-          <h1 className="font-display text-xl font-bold text-foreground">
-            To-Do Engine
-          </h1>
-        </div>
-        <CreateTaskDialog subjects={subjects} onCreateTask={handleCreateTask} />
+      <div className="flex items-center gap-2 pt-2">
+        <CheckSquare className="w-5 h-5 text-primary" />
+        <h1 className="font-display text-xl font-bold text-foreground">
+          To-Do Engine
+        </h1>
       </div>
 
       {/* Energy Filter */}
@@ -175,34 +109,34 @@ export const TasksPage = () => {
             key={id}
             onClick={() => setEnergyFilter(id)}
             className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
+              flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
               ${energyFilter === id 
                 ? 'bg-primary text-primary-foreground' 
                 : 'bg-white/60 text-muted-foreground hover:bg-white/80'
               }
             `}
           >
-            {Icon && <Icon className="w-3.5 h-3.5" />}
+            {Icon && <Icon className="w-4 h-4" />}
             {label}
           </button>
         ))}
       </div>
 
       {/* AI Suggestion Card */}
-      <GlassCard variant="subtle" className="p-3">
+      <GlassCard variant="subtle" className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-primary" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">
               {todoTasks.length > 0 
-                ? `${todoTasks.length} tasks • Drag to reorder`
+                ? `${todoTasks.length} tasks waiting for you`
                 : "All caught up! 🎉"
               }
             </p>
             <p className="text-xs text-muted-foreground">
-              Tap ✨ to break big tasks into steps
+              Use ✨ to break big tasks into smaller steps
             </p>
           </div>
         </div>
@@ -223,34 +157,20 @@ export const TasksPage = () => {
           {todoTasks.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">All tasks completed! 🎉</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Add a new task to get started
-              </p>
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={todoTasks.map(t => t.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {todoTasks.map(task => (
-                  <TaskItem
-                    key={task.id}
-                    task={task}
-                    subject={task.subject_id ? getSubjectById(task.subject_id) : undefined}
-                    onToggle={toggleTask}
-                    onDecompose={handleDecompose}
-                    onDelete={deleteTask}
-                    subtasks={getSubtasks(task.id)}
-                    isDraggable={true}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+            todoTasks
+              .sort((a, b) => b.priority_score - a.priority_score)
+              .map(task => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  subject={task.subject_id ? getSubjectById(task.subject_id) : undefined}
+                  onToggle={toggleTask}
+                  onDecompose={handleDecompose}
+                  subtasks={getSubtasks(task.id)}
+                />
+              ))
           )}
         </TabsContent>
 
@@ -266,7 +186,6 @@ export const TasksPage = () => {
                 task={task}
                 subject={task.subject_id ? getSubjectById(task.subject_id) : undefined}
                 onToggle={toggleTask}
-                onDelete={deleteTask}
                 subtasks={getSubtasks(task.id)}
               />
             ))

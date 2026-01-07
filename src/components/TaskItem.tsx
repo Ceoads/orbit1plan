@@ -1,20 +1,16 @@
 import { Task, Subject } from "@/hooks/useOrbitData";
 import { cn } from "@/lib/utils";
-import { Check, Sparkles, ChevronDown, ChevronUp, GripVertical, Trash2 } from "lucide-react";
+import { Check, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { SubjectDot } from "./SubjectBadge";
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import { Button } from "./ui/button";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 interface TaskItemProps {
   task: Task;
   subject?: Subject;
   onToggle: (taskId: string) => void;
   onDecompose?: (taskId: string) => void;
-  onDelete?: (taskId: string) => void;
   subtasks?: Task[];
-  isDraggable?: boolean;
 }
 
 const energyColors = {
@@ -24,35 +20,13 @@ const energyColors = {
 };
 
 const energyLabels = {
-  low: "🌙 Low",
-  medium: "☀️ Med",
-  high: "⚡ High",
+  low: "🌙 Low energy",
+  medium: "☀️ Medium energy",
+  high: "⚡ High energy",
 };
 
-export const TaskItem = ({ 
-  task, 
-  subject, 
-  onToggle, 
-  onDecompose, 
-  onDelete,
-  subtasks = [],
-  isDraggable = false 
-}: TaskItemProps) => {
+export const TaskItem = ({ task, subject, onToggle, onDecompose, subtasks = [] }: TaskItemProps) => {
   const [showSubtasks, setShowSubtasks] = useState(false);
-  
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id, disabled: !isDraggable });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
   
   const getDaysUntil = (dateStr: string): number => {
     const date = new Date(dateStr);
@@ -65,11 +39,7 @@ export const TaskItem = ({
   const isOverdue = daysUntil !== null && daysUntil < 0;
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style}
-      className={cn("animate-fade-in", isDragging && "opacity-50")}
-    >
+    <div className="animate-fade-in">
       <div 
         className={cn(
           "bg-white/70 backdrop-blur-lg rounded-xl border border-white/30 shadow-soft",
@@ -78,18 +48,7 @@ export const TaskItem = ({
           task.status === 'done' && "opacity-60"
         )}
       >
-        <div className="flex items-start gap-2">
-          {/* Drag Handle */}
-          {isDraggable && task.status !== 'done' && (
-            <button
-              {...attributes}
-              {...listeners}
-              className="touch-none p-1 -ml-1 text-muted-foreground/50 hover:text-muted-foreground cursor-grab active:cursor-grabbing"
-            >
-              <GripVertical className="w-4 h-4" />
-            </button>
-          )}
-
+        <div className="flex items-start gap-3">
           {/* Checkbox */}
           <button
             onClick={() => onToggle(task.id)}
@@ -108,15 +67,15 @@ export const TaskItem = ({
           {/* Content */}
           <div className="flex-1 min-w-0">
             <h4 className={cn(
-              "font-medium text-foreground text-sm",
+              "font-medium text-foreground",
               task.status === 'done' && "line-through text-muted-foreground"
             )}>
               {task.title}
             </h4>
             
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
               {subject && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <SubjectDot subject={{
                     id: subject.id,
                     name: subject.name,
@@ -124,62 +83,52 @@ export const TaskItem = ({
                     teacher: '',
                     icon: subject.icon
                   }} />
-                  <span className="text-[10px] text-muted-foreground">{subject.name}</span>
+                  <span className="text-xs text-muted-foreground">{subject.name}</span>
                 </div>
               )}
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {energyLabels[task.energy_level]}
               </span>
               {daysUntil !== null && (
                 <span className={cn(
-                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
-                  isOverdue ? "bg-destructive/10 text-destructive" :
-                  daysUntil <= 1 ? "bg-warning/10 text-warning" :
-                  "bg-muted text-muted-foreground"
+                  "text-xs font-medium",
+                  isOverdue ? "text-destructive" :
+                  daysUntil <= 1 ? "text-warning" :
+                  "text-muted-foreground"
                 )}>
                   {isOverdue ? 'Overdue' :
-                   daysUntil === 0 ? 'Today' :
+                   daysUntil === 0 ? 'Due today' :
                    daysUntil === 1 ? 'Tomorrow' :
-                   `${daysUntil}d`}
+                   `${daysUntil} days`}
                 </span>
               )}
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             {!task.is_subtask && onDecompose && task.status !== 'done' && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => onDecompose(task.id)}
-                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-4 h-4" />
               </Button>
             )}
             {subtasks.length > 0 && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => setShowSubtasks(!showSubtasks)}
-                className="h-7 w-7 text-muted-foreground"
+                className="text-muted-foreground"
               >
                 {showSubtasks ? (
-                  <ChevronUp className="w-3.5 h-3.5" />
+                  <ChevronUp className="w-4 h-4" />
                 ) : (
-                  <ChevronDown className="w-3.5 h-3.5" />
+                  <ChevronDown className="w-4 h-4" />
                 )}
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(task.id)}
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>
@@ -194,7 +143,6 @@ export const TaskItem = ({
               key={subtask.id} 
               task={subtask} 
               onToggle={onToggle}
-              onDelete={onDelete}
             />
           ))}
         </div>

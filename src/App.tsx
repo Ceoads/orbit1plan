@@ -8,7 +8,6 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import SettingsPage from "./pages/SettingsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,7 +44,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (user) {
-    return <Navigate to="/app" replace />;
+    return <Navigate to="/" replace />;
   }
   
   return <>{children}</>;
@@ -54,7 +53,6 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={
         <PublicRoute>
           <AuthPage />
@@ -66,7 +64,7 @@ const AppRoutes = () => {
           <SettingsPage />
         </ProtectedRoute>
       } />
-      <Route path="/app" element={
+      <Route path="/" element={
         <ProtectedRoute>
           <Index />
         </ProtectedRoute>
