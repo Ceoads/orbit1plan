@@ -6,7 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Exam detection keywords
+// Task-worthy event keywords (only these create tasks)
+const TASK_KEYWORDS = [
+  'exam', 'examen', 'test', 'ds', 'final', 'partiel', 
+  'controle', 'épreuve', 'quiz', 'midterm', 'assessment',
+  'rendu', 'deadline', 'projet', 'presentation', 'soutenance',
+  'devoir', 'rapport', 'assignment', 'homework', 'due'
+];
+
+// Exam-specific keywords (subset of task keywords)
 const EXAM_KEYWORDS = [
   'exam', 'examen', 'test', 'ds', 'final', 'partiel', 
   'controle', 'épreuve', 'quiz', 'midterm', 'assessment'

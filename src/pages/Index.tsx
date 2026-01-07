@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BottomNav, NavTab } from "@/components/BottomNav";
 import { SmartCaptureButton } from "@/components/SmartCaptureButton";
 import { PulsePage } from "./PulsePage";
+import { SchedulePage } from "./SchedulePage";
 import { VaultPage } from "./VaultPage";
 import { TasksPage } from "./TasksPage";
 import { ExamsPage } from "./ExamsPage";
@@ -37,6 +38,8 @@ const Index = () => {
     switch (activeTab) {
       case 'pulse':
         return <PulsePage />;
+      case 'schedule':
+        return <SchedulePage />;
       case 'vault':
         return <VaultPage />;
       case 'tasks':
