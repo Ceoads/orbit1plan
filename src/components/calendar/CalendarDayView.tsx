@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useMemo } from "react";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { GlassCard } from "@/components/GlassCard";
 import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
@@ -25,6 +25,20 @@ export const CalendarDayView = ({
 }: CalendarDayViewProps) => {
   const [direction, setDirection] = useState(0);
   
+  // Get the week days centered around the current date's month
+  const weekDays = useMemo(() => {
+    const days: Date[] = [];
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay()); // Start from Sunday
+    
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+    return days;
+  }, [date]);
+
   const dayEvents = events
     .filter(e => e.day_of_week === date.getDay())
     .sort((a, b) => {
@@ -32,6 +46,10 @@ export const CalendarDayView = ({
       const [bH, bM] = b.start_time.split(':').map(Number);
       return (aH * 60 + aM) - (bH * 60 + bM);
     });
+
+  const getEventsForDay = (d: Date) => {
+    return events.filter(e => e.day_of_week === d.getDay());
+  };
 
   const getSubject = (subjectId: string | null) => {
     return subjects.find(s => s.id === subjectId);
@@ -66,13 +84,35 @@ export const CalendarDayView = ({
     onDateChange?.(newDate);
   };
 
+  const selectDay = (newDate: Date) => {
+    const diff = newDate.getTime() - date.getTime();
+    setDirection(diff > 0 ? 1 : -1);
+    onDateChange?.(newDate);
+  };
+
+  const navigateWeek = (offset: number) => {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() + (offset * 7));
+    setDirection(offset);
+    onDateChange?.(newDate);
+  };
+
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 50;
     if (info.offset.x > threshold) {
-      navigateDay(-1); // Swipe right = previous day
+      navigateDay(-1);
     } else if (info.offset.x < -threshold) {
-      navigateDay(1); // Swipe left = next day
+      navigateDay(1);
     }
+  };
+
+  const isToday = (d: Date) => {
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  };
+
+  const isSelected = (d: Date) => {
+    return d.toDateString() === date.toDateString();
   };
 
   // Generate time slots from 08:00 to 20:00
@@ -93,49 +133,93 @@ export const CalendarDayView = ({
     }),
   };
 
+  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
   return (
     <div className="space-y-4">
-      {/* Header with navigation arrows */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onBack}
-            className="rounded-full h-9 w-9"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <p className="text-sm text-muted-foreground">
-              {date.toLocaleDateString('en-US', { weekday: 'long' })}
-            </p>
-            <h2 className="font-display font-semibold text-foreground text-lg">
-              {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </h2>
-          </div>
-        </div>
-        
-        {/* Day navigation arrows */}
-        <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigateDay(-1)}
-            className="rounded-full h-8 w-8"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigateDay(1)}
-            className="rounded-full h-8 w-8"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onBack}
+          className="rounded-full h-9 w-9"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1">
+          <h2 className="font-display font-semibold text-foreground text-lg">
+            {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </h2>
         </div>
       </div>
+
+      {/* Week Strip */}
+      <div className="flex items-center gap-1">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => navigateWeek(-1)}
+          className="rounded-full h-8 w-8 flex-shrink-0"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        
+        <div className="flex-1 flex justify-between">
+          {weekDays.map((day, index) => {
+            const hasEvents = getEventsForDay(day).length > 0;
+            const selected = isSelected(day);
+            const today = isToday(day);
+            
+            return (
+              <button
+                key={day.toISOString()}
+                onClick={() => selectDay(day)}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 rounded-xl transition-all min-w-[40px]",
+                  selected && "bg-primary text-primary-foreground shadow-md",
+                  !selected && today && "ring-2 ring-primary ring-inset",
+                  !selected && !today && "hover:bg-accent"
+                )}
+              >
+                <span className={cn(
+                  "text-[10px] font-medium",
+                  selected ? "text-primary-foreground/80" : "text-muted-foreground"
+                )}>
+                  {dayNames[index]}
+                </span>
+                <span className={cn(
+                  "text-sm font-semibold",
+                  selected ? "text-primary-foreground" : "text-foreground"
+                )}>
+                  {day.getDate()}
+                </span>
+                {/* Event indicator dot */}
+                {hasEvents && (
+                  <div className={cn(
+                    "w-1.5 h-1.5 rounded-full",
+                    selected ? "bg-primary-foreground" : "bg-warning"
+                  )} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+        
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => navigateWeek(1)}
+          className="rounded-full h-8 w-8 flex-shrink-0"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Selected day label */}
+      <p className="text-sm text-muted-foreground text-center">
+        {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+      </p>
 
       {/* Swipeable Timeline View */}
       <AnimatePresence mode="wait" custom={direction}>
@@ -151,7 +235,7 @@ export const CalendarDayView = ({
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.2}
           onDragEnd={handleDragEnd}
-          className="relative space-y-0 overflow-y-auto max-h-[calc(100vh-350px)] touch-pan-y"
+          className="relative space-y-0 overflow-y-auto max-h-[calc(100vh-420px)] touch-pan-y"
         >
           {timeSlots.map(hour => {
             const hourEvents = dayEvents.filter(e => {
@@ -221,11 +305,6 @@ export const CalendarDayView = ({
           )}
         </motion.div>
       </AnimatePresence>
-      
-      {/* Swipe hint */}
-      <p className="text-center text-xs text-muted-foreground">
-        Swipe left/right to change days
-      </p>
     </div>
   );
 };
