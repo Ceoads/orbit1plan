@@ -28,12 +28,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Check if this was a session-only login that should be cleared
+      const isSessionOnly = sessionStorage.getItem('orbit_session_only') === 'true';
+      
+      // If user closed browser and reopened, sessionStorage will be empty
+      // but localStorage session still exists - we need to check if they previously
+      // chose session-only mode
+      if (session && !isSessionOnly) {
+        setSession(session);
+        setUser(session?.user ?? null);
+      } else if (session && isSessionOnly) {
+        // Keep the session for this tab since sessionStorage persists per-tab
+        setSession(session);
+        setUser(session?.user ?? null);
+      } else {
+        setSession(null);
+        setUser(null);
+      }
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Handle session-only cleanup when tab/browser closes
+    const handleBeforeUnload = () => {
+      const isSessionOnly = sessionStorage.getItem('orbit_session_only') === 'true';
+      if (isSessionOnly) {
+        // Clear the session on browser close for session-only logins
+        supabase.auth.signOut();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
 
   const signOut = async () => {

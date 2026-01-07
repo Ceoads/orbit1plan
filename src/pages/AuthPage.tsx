@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/GlassCard";
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, Sparkles } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 
 const authSchema = z.object({
@@ -22,6 +23,7 @@ const AuthPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   // Auto-redirect if already logged in (returning user)
@@ -72,6 +74,15 @@ const AuthPage = () => {
     setLoading(true);
 
     try {
+      // Set session persistence based on "Remember me" checkbox
+      if (!rememberMe) {
+        // For session-only login, we'll sign out when browser closes
+        // by storing a flag that the auth listener can check
+        sessionStorage.setItem('orbit_session_only', 'true');
+      } else {
+        sessionStorage.removeItem('orbit_session_only');
+      }
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -163,6 +174,23 @@ const AuthPage = () => {
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
+
+            {isLogin && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  disabled={loading}
+                />
+                <Label 
+                  htmlFor="rememberMe" 
+                  className="text-sm text-muted-foreground cursor-pointer"
+                >
+                  Remember me on this device
+                </Label>
+              </div>
+            )}
 
             <Button
               type="submit"
