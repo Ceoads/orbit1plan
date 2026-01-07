@@ -5,45 +5,33 @@ import { PulsePage } from "./PulsePage";
 import { VaultPage } from "./VaultPage";
 import { TasksPage } from "./TasksPage";
 import { ExamsPage } from "./ExamsPage";
-import { toast } from "sonner";
-import { getCurrentClass, getSubjectById } from "@/lib/mockData";
+import { useOrbitData } from "@/hooks/useOrbitData";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { LogOut, Settings } from "lucide-react";
+import { SetupWizard } from "@/components/SetupWizard";
 
 const Index = () => {
+  const { signOut, user } = useAuth();
+  const { subjects, loading, getCurrentClass, getSubjectById, refetch } = useOrbitData();
   const [activeTab, setActiveTab] = useState<NavTab>('pulse');
+  const [showSetup, setShowSetup] = useState(false);
 
-  const handleCapture = (type: 'photo' | 'voice') => {
-    const currentClass = getCurrentClass();
-    const subject = currentClass ? getSubjectById(currentClass.subjectId) : null;
+  // Check if user needs onboarding
+  const needsSetup = !loading && subjects.length === 0;
 
-    if (type === 'photo') {
-      if (subject) {
-        toast.success(`📸 Photo captured!`, {
-          description: `Tagged as ${subject.icon} ${subject.name}. AI analyzing...`,
-          duration: 3000,
-        });
-        
-        // Simulate AI processing
-        setTimeout(() => {
-          toast.success(`✨ Note processed!`, {
-            description: `Key concepts extracted and review task created.`,
-            duration: 4000,
-          });
-        }, 2000);
-      } else {
-        toast.info(`📸 Photo captured!`, {
-          description: `No active class detected. You can tag it manually.`,
-        });
-      }
-    } else {
-      toast.success(`🎤 Recording started...`, {
-        description: subject 
-          ? `Will be saved to ${subject.icon} ${subject.name}`
-          : `Recording voice note...`,
-      });
-    }
+  const currentClass = getCurrentClass();
+  const currentSubject = currentClass ? getSubjectById(currentClass.subject_id) : null;
+
+  const handleNoteCreated = () => {
+    refetch();
   };
 
   const renderPage = () => {
+    if (needsSetup || showSetup) {
+      return <SetupWizard onComplete={() => { setShowSetup(false); refetch(); }} />;
+    }
+
     switch (activeTab) {
       case 'pulse':
         return <PulsePage />;
@@ -58,18 +46,64 @@ const Index = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen mesh-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen mesh-background">
+      {/* Header with logout */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/60 backdrop-blur-lg border-b border-white/20">
+        <div className="container max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+          <h1 className="font-display text-lg font-bold text-foreground">✨ Orbit</h1>
+          <div className="flex items-center gap-2">
+            {!needsSetup && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSetup(true)}
+                className="rounded-full"
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              className="rounded-full text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
       {/* Main Content */}
-      <main className="container max-w-lg mx-auto px-4 pb-32 pt-6">
+      <main className="container max-w-lg mx-auto px-4 pb-32 pt-20">
         {renderPage()}
       </main>
 
-      {/* Smart Capture FAB */}
-      <SmartCaptureButton onCapture={handleCapture} />
+      {/* Smart Capture FAB - only show after setup */}
+      {!needsSetup && !showSetup && (
+        <SmartCaptureButton
+          currentSubject={currentSubject ? {
+            id: currentSubject.id,
+            name: currentSubject.name,
+            icon: currentSubject.icon,
+          } : null}
+          onNoteCreated={handleNoteCreated}
+        />
+      )}
 
-      {/* Bottom Navigation */}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* Bottom Navigation - only show after setup */}
+      {!needsSetup && !showSetup && (
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      )}
     </div>
   );
 };

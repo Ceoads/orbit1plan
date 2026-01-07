@@ -1,42 +1,56 @@
-import { Exam, getSubjectById, getDaysUntil, mockNotes } from "@/lib/mockData";
 import { GlassCard } from "./GlassCard";
-import { SubjectBadge } from "./SubjectBadge";
-import { cn } from "@/lib/utils";
 import { Calendar, FileText } from "lucide-react";
 import { Progress } from "./ui/progress";
+import { cn } from "@/lib/utils";
 
 interface ExamCardProps {
-  exam: Exam;
+  exam: {
+    id: string;
+    title: string;
+    exam_date: string | null;
+    subjectName: string;
+    subjectIcon: string;
+    subjectColorKey: 'math' | 'history' | 'physics' | 'english' | 'chemistry';
+    notesCount: number;
+    daysUntil: number;
+  };
 }
 
+const colorClasses: Record<string, string> = {
+  math: "bg-math/10 text-math border-math/20",
+  history: "bg-warning/10 text-warning border-warning/20",
+  physics: "bg-success/10 text-success border-success/20",
+  english: "bg-english/10 text-english border-english/20",
+  chemistry: "bg-destructive/10 text-destructive border-destructive/20",
+};
+
 export const ExamCard = ({ exam }: ExamCardProps) => {
-  const subject = getSubjectById(exam.subjectId);
-  const daysUntil = getDaysUntil(exam.date);
+  const urgencyLevel = exam.daysUntil <= 2 ? 'urgent' : exam.daysUntil <= 5 ? 'soon' : 'normal';
   
-  // Calculate readiness based on linked notes (mock logic)
-  const totalNotesForSubject = mockNotes.filter(n => n.subjectId === exam.subjectId).length;
-  const linkedNotesCount = exam.linkedNotes.length;
-  const readinessScore = totalNotesForSubject > 0 
-    ? Math.round((linkedNotesCount / Math.max(totalNotesForSubject, 3)) * 100)
-    : 0;
-
-  const urgencyLevel = daysUntil <= 2 ? 'urgent' : daysUntil <= 5 ? 'soon' : 'normal';
-
-  if (!subject) return null;
+  // Calculate readiness (simple heuristic: more notes = more prepared)
+  const readinessScore = Math.min(100, exam.notesCount * 25);
 
   return (
     <GlassCard className="p-5 animate-fade-in">
       <div className="flex items-start justify-between mb-4">
-        <SubjectBadge subject={subject} size="sm" />
+        <span 
+          className={cn(
+            "inline-flex items-center gap-1.5 font-medium rounded-full border px-3 py-1 text-sm",
+            colorClasses[exam.subjectColorKey] || colorClasses.math
+          )}
+        >
+          <span>{exam.subjectIcon}</span>
+          {exam.subjectName}
+        </span>
         <div className={cn(
           "px-3 py-1 rounded-full text-sm font-medium",
           urgencyLevel === 'urgent' ? "bg-destructive/10 text-destructive" :
           urgencyLevel === 'soon' ? "bg-warning/10 text-warning" :
           "bg-muted text-muted-foreground"
         )}>
-          {daysUntil === 0 ? 'Today!' :
-           daysUntil === 1 ? 'Tomorrow' :
-           `${daysUntil} days`}
+          {exam.daysUntil === 0 ? 'Today!' :
+           exam.daysUntil === 1 ? 'Tomorrow' :
+           `${exam.daysUntil} days`}
         </div>
       </div>
 
@@ -44,16 +58,18 @@ export const ExamCard = ({ exam }: ExamCardProps) => {
         {exam.title}
       </h3>
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Calendar className="w-4 h-4" />
-        <span>
-          {exam.date.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric' 
-          })}
-        </span>
-      </div>
+      {exam.exam_date && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <Calendar className="w-4 h-4" />
+          <span>
+            {new Date(exam.exam_date).toLocaleDateString('en-US', { 
+              weekday: 'short', 
+              month: 'short', 
+              day: 'numeric' 
+            })}
+          </span>
+        </div>
+      )}
 
       {/* Readiness Meter */}
       <div className="space-y-2">
@@ -81,7 +97,7 @@ export const ExamCard = ({ exam }: ExamCardProps) => {
           )}
         />
         <p className="text-xs text-muted-foreground">
-          {linkedNotesCount} notes linked • {totalNotesForSubject} total for subject
+          {exam.notesCount} notes captured
         </p>
       </div>
     </GlassCard>

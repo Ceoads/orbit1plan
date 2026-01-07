@@ -1,14 +1,18 @@
-import { mockExams, getDaysUntil } from "@/lib/mockData";
+import { useOrbitData } from "@/hooks/useOrbitData";
 import { ExamCard } from "@/components/ExamCard";
 import { GraduationCap } from "lucide-react";
 
 export const ExamsPage = () => {
-  const sortedExams = [...mockExams].sort(
-    (a, b) => a.date.getTime() - b.date.getTime()
-  );
+  const { getUpcomingExams, getSubjectById, getNotesBySubject } = useOrbitData();
+  
+  const upcomingExams = getUpcomingExams();
 
-  const upcomingExams = sortedExams.filter(e => getDaysUntil(e.date) >= 0);
-  const pastExams = sortedExams.filter(e => getDaysUntil(e.date) < 0);
+  const getDaysUntil = (dateStr: string): number => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = date.getTime() - now.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -29,28 +33,32 @@ export const ExamsPage = () => {
           {upcomingExams.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No upcoming exams 🎉</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add exams in settings to track them here
+              </p>
             </div>
           ) : (
-            upcomingExams.map(exam => (
-              <ExamCard key={exam.id} exam={exam} />
-            ))
+            upcomingExams.map(exam => {
+              const subject = getSubjectById(exam.subject_id);
+              const notesCount = exam.subject_id ? getNotesBySubject(exam.subject_id).length : 0;
+              
+              return (
+                <ExamCard 
+                  key={exam.id} 
+                  exam={{
+                    ...exam,
+                    subjectName: subject?.name || 'Unknown',
+                    subjectIcon: subject?.icon || '📚',
+                    subjectColorKey: (subject?.color_key || 'math') as any,
+                    notesCount,
+                    daysUntil: exam.exam_date ? getDaysUntil(exam.exam_date) : 0,
+                  }}
+                />
+              );
+            })
           )}
         </div>
       </section>
-
-      {/* Past Exams */}
-      {pastExams.length > 0 && (
-        <section>
-          <h2 className="font-display font-semibold text-muted-foreground mb-3">
-            Past Exams
-          </h2>
-          <div className="space-y-4 opacity-60">
-            {pastExams.map(exam => (
-              <ExamCard key={exam.id} exam={exam} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 };

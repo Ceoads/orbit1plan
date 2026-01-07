@@ -1,13 +1,20 @@
 import { cn } from "@/lib/utils";
-import { Subject } from "@/lib/mockData";
+
+interface SubjectData {
+  id: string;
+  name: string;
+  colorKey: 'math' | 'history' | 'physics' | 'english' | 'chemistry';
+  teacher: string;
+  icon: string;
+}
 
 interface SubjectBadgeProps {
-  subject: Subject;
+  subject: SubjectData;
   size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
 }
 
-const colorClasses: Record<Subject['colorKey'], string> = {
+const colorClasses: Record<string, string> = {
   math: "bg-math/10 text-math border-math/20",
   history: "bg-warning/10 text-warning border-warning/20",
   physics: "bg-success/10 text-success border-success/20",
@@ -15,12 +22,12 @@ const colorClasses: Record<Subject['colorKey'], string> = {
   chemistry: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
-const solidColorClasses: Record<Subject['colorKey'], string> = {
-  math: "bg-math text-white",
-  history: "bg-warning text-white",
-  physics: "bg-success text-white",
-  english: "bg-english text-white",
-  chemistry: "bg-destructive text-white",
+const solidColorClasses: Record<string, string> = {
+  math: "bg-math",
+  history: "bg-warning",
+  physics: "bg-success",
+  english: "bg-english",
+  chemistry: "bg-destructive",
 };
 
 export const SubjectBadge = ({ subject, size = 'md', showIcon = true }: SubjectBadgeProps) => {
@@ -34,7 +41,7 @@ export const SubjectBadge = ({ subject, size = 'md', showIcon = true }: SubjectB
     <span 
       className={cn(
         "inline-flex items-center gap-1.5 font-medium rounded-full border",
-        colorClasses[subject.colorKey],
+        colorClasses[subject.colorKey] || colorClasses.math,
         sizeClasses[size]
       )}
     >
@@ -44,12 +51,12 @@ export const SubjectBadge = ({ subject, size = 'md', showIcon = true }: SubjectB
   );
 };
 
-export const SubjectDot = ({ subject }: { subject: Subject }) => {
+export const SubjectDot = ({ subject }: { subject: SubjectData }) => {
   return (
     <span 
       className={cn(
         "inline-block w-2.5 h-2.5 rounded-full",
-        solidColorClasses[subject.colorKey]
+        solidColorClasses[subject.colorKey] || solidColorClasses.math
       )}
     />
   );
