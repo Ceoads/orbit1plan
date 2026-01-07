@@ -97,6 +97,7 @@ export const ScheduleCalendar = ({
             subjects={subjects}
             onBack={handleBackToMonthly}
             onEventClick={onStudyFocus}
+            onDateChange={setSelectedDate}
           />
         )}
       </GlassCard>
