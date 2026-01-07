@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { BottomNav, NavTab } from "@/components/BottomNav";
 import { SmartCaptureButton } from "@/components/SmartCaptureButton";
 import { PulsePage } from "./PulsePage";
@@ -12,6 +13,7 @@ import { LogOut, Settings } from "lucide-react";
 import { SetupWizard } from "@/components/SetupWizard";
 
 const Index = () => {
+  const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { subjects, loading, getCurrentClass, getSubjectById, refetch } = useOrbitData();
   const [activeTab, setActiveTab] = useState<NavTab>('pulse');
@@ -65,7 +67,7 @@ const Index = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowSetup(true)}
+                onClick={() => navigate('/settings')}
                 className="rounded-full"
               >
                 <Settings className="w-5 h-5" />
