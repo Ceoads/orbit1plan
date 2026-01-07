@@ -69,6 +69,11 @@ const AppRoutes = () => {
           <Index />
         </ProtectedRoute>
       } />
+      <Route path="/app" element={
+        <ProtectedRoute>
+          <Index />
+        </ProtectedRoute>
+      } />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
