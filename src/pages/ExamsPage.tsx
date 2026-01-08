@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { ExamCard } from "@/components/ExamCard";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AddExamModal } from "@/components/modals";
 
 export const ExamsPage = () => {
-  const { getUpcomingExams, getSubjectById, getNotesBySubject } = useOrbitData();
+  const { getUpcomingExams, getSubjectById, getNotesBySubject, subjects } = useOrbitData();
+  const [showAddExam, setShowAddExam] = useState(false);
   
   const upcomingExams = getUpcomingExams();
 
@@ -19,9 +23,16 @@ export const ExamsPage = () => {
       {/* Header */}
       <div className="flex items-center gap-2 pt-2">
         <GraduationCap className="w-5 h-5 text-primary" />
-        <h1 className="font-display text-xl font-bold text-foreground">
+        <h1 className="font-display text-xl font-bold text-foreground flex-1">
           Exam Lab
         </h1>
+        <Button 
+          size="icon" 
+          onClick={() => setShowAddExam(true)}
+          className="rounded-full h-10 w-10 gradient-primary shadow-lg"
+        >
+          <Plus className="w-5 h-5" />
+        </Button>
       </div>
 
       {/* Upcoming Exams */}
@@ -34,7 +45,7 @@ export const ExamsPage = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No upcoming exams 🎉</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Add exams in settings to track them here
+                Tap the + button to add an exam
               </p>
             </div>
           ) : (
@@ -59,6 +70,13 @@ export const ExamsPage = () => {
           )}
         </div>
       </section>
+
+      {/* Add Exam Modal */}
+      <AddExamModal
+        open={showAddExam}
+        onOpenChange={setShowAddExam}
+        subjects={subjects}
+      />
     </div>
   );
 };

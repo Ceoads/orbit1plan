@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { GlassCard } from "@/components/GlassCard";
-import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { AddClassModal } from "@/components/modals/AddClassModal";
 
 interface CalendarDayViewProps {
   date: Date;
@@ -24,6 +26,8 @@ export const CalendarDayView = ({
   onDateChange,
 }: CalendarDayViewProps) => {
   const [direction, setDirection] = useState(0);
+  const [showAddClass, setShowAddClass] = useState(false);
+  const [selectedHour, setSelectedHour] = useState(9);
   
   // Get the week days centered around the current date's month
   const weekDays = useMemo(() => {
@@ -49,6 +53,16 @@ export const CalendarDayView = ({
 
   const getEventsForDay = (d: Date) => {
     return events.filter(e => e.day_of_week === d.getDay());
+  };
+
+  const getFirstEventForDay = (d: Date): CalendarEvent | undefined => {
+    const dayEvts = getEventsForDay(d).filter(e => e.event_type === 'class');
+    if (dayEvts.length === 0) return undefined;
+    return dayEvts.sort((a, b) => {
+      const [aH, aM] = a.start_time.split(':').map(Number);
+      const [bH, bM] = b.start_time.split(':').map(Number);
+      return (aH * 60 + aM) - (bH * 60 + bM);
+    })[0];
   };
 
   const getSubject = (subjectId: string | null) => {
@@ -106,6 +120,11 @@ export const CalendarDayView = ({
     }
   };
 
+  const handleEmptySlotClick = (hour: number) => {
+    setSelectedHour(hour);
+    setShowAddClass(true);
+  };
+
   const isToday = (d: Date) => {
     const today = new Date();
     return d.toDateString() === today.toDateString();
@@ -154,7 +173,7 @@ export const CalendarDayView = ({
         </div>
       </div>
 
-      {/* Week Strip */}
+      {/* Week Strip with Hover Preview */}
       <div className="flex items-center gap-1">
         <Button 
           variant="ghost" 
@@ -167,41 +186,74 @@ export const CalendarDayView = ({
         
         <div className="flex-1 flex justify-between">
           {weekDays.map((day, index) => {
-            const hasEvents = getEventsForDay(day).length > 0;
+            const dayEvts = getEventsForDay(day);
+            const hasEvents = dayEvts.length > 0;
             const selected = isSelected(day);
             const today = isToday(day);
+            const firstEvent = getFirstEventForDay(day);
+            const firstSubject = firstEvent ? getSubject(firstEvent.subject_id) : null;
             
             return (
-              <button
-                key={day.toISOString()}
-                onClick={() => selectDay(day)}
-                className={cn(
-                  "flex flex-col items-center gap-1 p-2 rounded-xl transition-all min-w-[40px]",
-                  selected && "bg-primary text-primary-foreground shadow-md",
-                  !selected && today && "ring-2 ring-primary ring-inset",
-                  !selected && !today && "hover:bg-accent"
+              <HoverCard key={day.toISOString()} openDelay={200} closeDelay={100}>
+                <HoverCardTrigger asChild>
+                  <button
+                    onClick={() => selectDay(day)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-2 rounded-xl transition-all min-w-[40px]",
+                      selected && "bg-primary text-primary-foreground shadow-md",
+                      !selected && today && "ring-2 ring-primary ring-inset",
+                      !selected && !today && "hover:bg-accent"
+                    )}
+                  >
+                    <span className={cn(
+                      "text-[10px] font-medium",
+                      selected ? "text-primary-foreground/80" : "text-muted-foreground"
+                    )}>
+                      {dayNames[index]}
+                    </span>
+                    <span className={cn(
+                      "text-sm font-semibold",
+                      selected ? "text-primary-foreground" : "text-foreground"
+                    )}>
+                      {day.getDate()}
+                    </span>
+                    {/* Event indicator dot */}
+                    {hasEvents && (
+                      <div className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        selected ? "bg-primary-foreground" : "bg-warning"
+                      )} />
+                    )}
+                  </button>
+                </HoverCardTrigger>
+                {hasEvents && firstEvent && (
+                  <HoverCardContent className="w-56 p-3" side="bottom">
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium">
+                        {day.toLocaleDateString('en-US', { weekday: 'long' })}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        {firstSubject && (
+                          <span className="text-lg">{firstSubject.icon}</span>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            {firstSubject?.name || firstEvent.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {firstEvent.start_time.slice(0, 5)} - {firstEvent.end_time.slice(0, 5)}
+                          </p>
+                        </div>
+                      </div>
+                      {dayEvts.length > 1 && (
+                        <p className="text-xs text-muted-foreground">
+                          +{dayEvts.length - 1} more class{dayEvts.length > 2 ? 'es' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </HoverCardContent>
                 )}
-              >
-                <span className={cn(
-                  "text-[10px] font-medium",
-                  selected ? "text-primary-foreground/80" : "text-muted-foreground"
-                )}>
-                  {dayNames[index]}
-                </span>
-                <span className={cn(
-                  "text-sm font-semibold",
-                  selected ? "text-primary-foreground" : "text-foreground"
-                )}>
-                  {day.getDate()}
-                </span>
-                {/* Event indicator dot */}
-                {hasEvents && (
-                  <div className={cn(
-                    "w-1.5 h-1.5 rounded-full",
-                    selected ? "bg-primary-foreground" : "bg-warning"
-                  )} />
-                )}
-              </button>
+              </HoverCard>
             );
           })}
         </div>
@@ -290,7 +342,13 @@ export const CalendarDayView = ({
                       })}
                     </div>
                   ) : (
-                    <div className="h-[1px]" />
+                    <button
+                      onClick={() => handleEmptySlotClick(hour)}
+                      className="w-full h-[48px] border-2 border-dashed border-border/50 rounded-xl flex items-center justify-center gap-2 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all group"
+                    >
+                      <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">Add class</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -299,12 +357,22 @@ export const CalendarDayView = ({
           
           {/* No Events Message */}
           {dayEvents.length === 0 && (
-            <GlassCard variant="subtle" className="p-6 text-center">
+            <GlassCard variant="subtle" className="p-6 text-center mt-4">
               <p className="text-muted-foreground">No classes scheduled for this day</p>
+              <p className="text-xs text-muted-foreground mt-1">Tap an empty slot to add a class</p>
             </GlassCard>
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Add Class Modal */}
+      <AddClassModal
+        open={showAddClass}
+        onOpenChange={setShowAddClass}
+        defaultHour={selectedHour}
+        defaultDayOfWeek={date.getDay()}
+        subjects={subjects}
+      />
     </div>
   );
 };
