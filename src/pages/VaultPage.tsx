@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useOrbitData, Subject, Note } from "@/hooks/useOrbitData";
 import { SearchBar } from "@/components/SearchBar";
 import { NoteCard } from "@/components/NoteCard";
-import { ArrowLeft, FolderOpen, ChevronRight } from "lucide-react";
+import { ArrowLeft, FolderOpen, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AddSubjectModal, AddNoteModal } from "@/components/modals";
 
 const colorStyles: Record<string, { bg: string; border: string }> = {
   math: { bg: "bg-math/10", border: "border-math/20" },
@@ -18,6 +19,8 @@ export const VaultPage = () => {
   const { subjects, notes, getNotesBySubject } = useOrbitData();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [showAddSubject, setShowAddSubject] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
 
   // Filter notes based on search query
   const filteredNotes = selectedSubject 
@@ -65,6 +68,14 @@ export const VaultPage = () => {
             </p>
           )}
         </div>
+        {/* Add button */}
+        <Button 
+          size="icon" 
+          onClick={() => selectedSubject ? setShowAddNote(true) : setShowAddSubject(true)}
+          className="rounded-full h-10 w-10 gradient-primary shadow-lg"
+        >
+          <Plus className="w-5 h-5" />
+        </Button>
       </div>
 
       {/* Search */}
@@ -82,7 +93,7 @@ export const VaultPage = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No subjects yet</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Complete setup to add your subjects
+                Tap the + button to add a subject
               </p>
             </div>
           ) : (
@@ -124,7 +135,7 @@ export const VaultPage = () => {
                 {searchQuery ? 'No notes match your search' : 'No notes yet'}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                Capture notes with the + button
+                Tap the + button to add a note
               </p>
             </div>
           ) : (
@@ -136,6 +147,18 @@ export const VaultPage = () => {
           )}
         </div>
       )}
+
+      {/* Modals */}
+      <AddSubjectModal
+        open={showAddSubject}
+        onOpenChange={setShowAddSubject}
+      />
+      <AddNoteModal
+        open={showAddNote}
+        onOpenChange={setShowAddNote}
+        subjects={subjects}
+        defaultSubjectId={selectedSubject?.id}
+      />
     </div>
   );
 };
