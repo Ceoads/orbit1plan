@@ -6,6 +6,7 @@ import { PulsePage } from "./PulsePage";
 import { VaultPage } from "./VaultPage";
 import { TasksPage } from "./TasksPage";
 import { ExamsPage } from "./ExamsPage";
+import { ExamLabPage } from "./ExamLabPage";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ const Index = () => {
         return <TasksPage />;
       case 'exams':
         return <ExamsPage />;
+      case 'lab':
+        return <ExamLabPage />;
       default:
         return <PulsePage />;
     }

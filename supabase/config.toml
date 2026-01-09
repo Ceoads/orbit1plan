@@ -1,1 +1,10 @@
 project_id = "qaansoasbfzjsxsqpcsb"
+
+[functions.sync-calendar]
+verify_jwt = true
+
+[functions.process-note]
+verify_jwt = true
+
+[functions.generate-flashcards]
+verify_jwt = true

@@ -73,6 +73,63 @@ export type Database = {
           },
         ]
       }
+      flashcards: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          last_reviewed_at: string | null
+          mastered: boolean
+          note_id: string | null
+          question: string
+          review_count: number
+          subject_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          last_reviewed_at?: string | null
+          mastered?: boolean
+          note_id?: string | null
+          question: string
+          review_count?: number
+          subject_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          last_reviewed_at?: string | null
+          mastered?: boolean
+          note_id?: string | null
+          question?: string
+          review_count?: number
+          subject_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes_vault"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcards_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes_vault: {
         Row: {
           ai_summary: string | null
