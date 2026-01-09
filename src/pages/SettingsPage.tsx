@@ -10,14 +10,27 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Calendar, RefreshCw, Check, AlertCircle, 
-  Link2, Clock, Loader2, Trash2, BookOpen 
+  Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface UserSettings {
   ical_url: string | null;
+  ical_filter_group: string | null;
   last_synced_at: string | null;
   sync_enabled: boolean;
   timezone: string;
+}
+
+interface DetectedGroup {
+  code: string;
+  count: number;
 }
 
 const SettingsPage = () => {
@@ -25,9 +38,12 @@ const SettingsPage = () => {
   const { user, signOut } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [icalUrl, setIcalUrl] = useState("");
+  const [filterGroup, setFilterGroup] = useState("");
+  const [detectedGroups, setDetectedGroups] = useState<DetectedGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scanningGroups, setScanningGroups] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -48,6 +64,7 @@ const SettingsPage = () => {
       if (data) {
         setSettings(data);
         setIcalUrl(data.ical_url || "");
+        setFilterGroup(data.ical_filter_group || "");
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -56,12 +73,36 @@ const SettingsPage = () => {
     }
   };
 
+  const scanForGroups = async () => {
+    if (!icalUrl) return;
+    
+    setScanningGroups(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-calendar', {
+        body: { userId: user?.id, icalUrl, scanOnly: true },
+      });
+
+      if (error) throw error;
+
+      setDetectedGroups(data.detectedGroups || []);
+      
+      if (data.detectedGroups?.length === 0) {
+        toast.info("Aucun groupe détecté automatiquement");
+      }
+    } catch (error: any) {
+      console.error('Error scanning groups:', error);
+      toast.error("Erreur lors de la détection des groupes");
+    } finally {
+      setScanningGroups(false);
+    }
+  };
+
   const handleSaveUrl = async () => {
     if (!user) return;
     
     // Basic URL validation
     if (icalUrl && !icalUrl.includes('.ics') && !icalUrl.includes('ical') && !icalUrl.includes('calendar')) {
-      toast.error("This doesn't look like an iCal URL. It should contain '.ics' or 'ical'");
+      toast.error("Cette URL ne semble pas être une URL iCal. Elle devrait contenir '.ics' ou 'ical'");
       return;
     }
     
@@ -72,11 +113,12 @@ const SettingsPage = () => {
         .upsert({
           user_id: user.id,
           ical_url: icalUrl || null,
+          ical_filter_group: filterGroup || null,
         }, { onConflict: 'user_id' });
       
       if (error) throw error;
       
-      toast.success("Calendar URL saved!");
+      toast.success("Paramètres enregistrés !");
       
       // Trigger sync if URL was added
       if (icalUrl) {
@@ -84,7 +126,7 @@ const SettingsPage = () => {
       }
     } catch (error: any) {
       console.error('Error saving URL:', error);
-      toast.error("Failed to save URL");
+      toast.error("Échec de l'enregistrement");
     } finally {
       setSaving(false);
     }
@@ -92,27 +134,29 @@ const SettingsPage = () => {
 
   const handleSync = async () => {
     if (!user || !icalUrl) {
-      toast.error("Please add your calendar URL first");
+      toast.error("Ajoute d'abord ton URL de calendrier");
       return;
     }
     
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('sync-calendar', {
-        body: { userId: user.id, icalUrl },
+        body: { userId: user.id, icalUrl, filterGroup: filterGroup || undefined },
       });
       
       if (error) throw error;
       
       const result = data.results?.[0];
       if (result?.success) {
-        toast.success(`Synced ${result.eventsSynced} events!`, {
+        toast.success(`${result.eventsSynced} cours synchronisés !`, {
           description: result.newSubjects > 0 
-            ? `${result.newSubjects} new subjects discovered` 
-            : undefined,
+            ? `${result.newSubjects} nouvelles matières découvertes` 
+            : result.filterApplied 
+              ? `Filtré par: ${result.filterApplied}`
+              : undefined,
         });
         if (result.examsFound > 0) {
-          toast.info(`📚 ${result.examsFound} exams detected!`);
+          toast.info(`📚 ${result.examsFound} examens détectés !`);
         }
         fetchSettings(); // Refresh last synced time
       } else {
@@ -120,8 +164,8 @@ const SettingsPage = () => {
       }
     } catch (error: any) {
       console.error('Sync error:', error);
-      toast.error("Failed to sync calendar", {
-        description: error.message || "Check your iCal URL",
+      toast.error("Échec de la synchronisation", {
+        description: error.message || "Vérifie ton URL iCal",
       });
     } finally {
       setSyncing(false);
@@ -140,17 +184,17 @@ const SettingsPage = () => {
       if (error) throw error;
       
       setSettings(prev => prev ? { ...prev, sync_enabled: enabled } : null);
-      toast.success(enabled ? "Auto-sync enabled" : "Auto-sync disabled");
+      toast.success(enabled ? "Synchronisation auto activée" : "Synchronisation auto désactivée");
     } catch (error: any) {
       console.error('Error toggling sync:', error);
-      toast.error("Failed to update setting");
+      toast.error("Échec de la mise à jour");
     }
   };
 
   const handleClearData = async () => {
     if (!user) return;
     
-    if (!confirm("This will delete all your subjects, notes, and events. Are you sure?")) {
+    if (!confirm("Cela va supprimer toutes tes matières, notes et événements. Es-tu sûr ?")) {
       return;
     }
     
@@ -161,11 +205,11 @@ const SettingsPage = () => {
       await supabase.from('calendar_events').delete().eq('user_id', user.id);
       await supabase.from('subjects').delete().eq('user_id', user.id);
       
-      toast.success("All data cleared");
+      toast.success("Toutes les données ont été supprimées");
       navigate('/');
     } catch (error: any) {
       console.error('Error clearing data:', error);
-      toast.error("Failed to clear data");
+      toast.error("Échec de la suppression");
     }
   };
 
@@ -185,7 +229,7 @@ const SettingsPage = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="rounded-full">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="font-display text-lg font-bold text-foreground">Settings</h1>
+          <h1 className="font-display text-lg font-bold text-foreground">Paramètres</h1>
         </div>
       </header>
 
@@ -194,7 +238,7 @@ const SettingsPage = () => {
         <section className="animate-fade-in">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-5 h-5 text-primary" />
-            <h2 className="font-display font-semibold text-foreground">Calendar Sync</h2>
+            <h2 className="font-display font-semibold text-foreground">Synchronisation Calendrier</h2>
           </div>
           
           <GlassCard variant="elevated" className="p-5 space-y-5">
@@ -202,59 +246,126 @@ const SettingsPage = () => {
             <div className="space-y-2">
               <Label htmlFor="ical-url" className="flex items-center gap-2">
                 <Link2 className="w-4 h-4" />
-                Your iCal URL
+                URL iCal
               </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="ical-url"
-                  type="url"
-                  placeholder="https://your-school.edu/calendar.ics"
-                  value={icalUrl}
-                  onChange={(e) => setIcalUrl(e.target.value)}
-                  className="flex-1 bg-white/50 border-white/30"
-                />
-                <Button 
-                  onClick={handleSaveUrl}
-                  disabled={saving}
-                  size="icon"
-                  className="gradient-primary"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                </Button>
-              </div>
+              <Input
+                id="ical-url"
+                type="url"
+                placeholder="https://ton-ecole.edu/calendar.ics"
+                value={icalUrl}
+                onChange={(e) => setIcalUrl(e.target.value)}
+                className="bg-white/50 border-white/30"
+              />
               <p className="text-xs text-muted-foreground">
-                Find this in your school's calendar export settings (Hyperplanning, Google Calendar, etc.)
+                Trouve ce lien dans les paramètres d'export de ton calendrier (Hyperplanning, Google Calendar, etc.)
               </p>
             </div>
+
+            {/* Group Filter */}
+            <div className="space-y-2 border-t border-white/20 pt-4">
+              <Label className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Filtre de Groupe
+              </Label>
+              
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ex: TC2 G1 A, L3-B..."
+                  value={filterGroup}
+                  onChange={(e) => setFilterGroup(e.target.value)}
+                  className="flex-1 bg-white/50 border-white/30"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={scanForGroups}
+                  disabled={!icalUrl || scanningGroups}
+                  title="Détecter les groupes"
+                >
+                  {scanningGroups ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+
+              {detectedGroups.length > 0 && (
+                <Select value={filterGroup} onValueChange={setFilterGroup}>
+                  <SelectTrigger className="bg-white/50 border-white/30">
+                    <SelectValue placeholder="Groupes détectés..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {detectedGroups.map((group) => (
+                      <SelectItem key={group.code} value={group.code}>
+                        {group.code} ({group.count} cours)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              <p className="text-xs text-muted-foreground">
+                💡 Entre ton code de groupe pour ne voir que tes cours (ex: TC2 G1 A)
+              </p>
+            </div>
+
+            {/* Save Button */}
+            <Button 
+              onClick={handleSaveUrl}
+              disabled={saving}
+              className="w-full gradient-primary"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Check className="w-4 h-4 mr-2" />
+              )}
+              Enregistrer et Synchroniser
+            </Button>
 
             {/* Last Synced */}
             {settings?.last_synced_at && (
               <div className="flex items-center justify-between py-3 border-t border-white/20">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  <span>Last synced</span>
+                  <span>Dernière synchro</span>
                 </div>
                 <span className="text-sm font-medium text-foreground">
-                  {new Date(settings.last_synced_at).toLocaleString()}
+                  {new Date(settings.last_synced_at).toLocaleString('fr-FR')}
+                </span>
+              </div>
+            )}
+
+            {/* Current Filter */}
+            {settings?.ical_filter_group && (
+              <div className="flex items-center justify-between py-3 border-t border-white/20">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="w-4 h-4" />
+                  <span>Filtre actif</span>
+                </div>
+                <span className="text-sm font-medium text-primary">
+                  {settings.ical_filter_group}
                 </span>
               </div>
             )}
 
             {/* Sync Button */}
             <Button
+              variant="outline"
               onClick={handleSync}
               disabled={syncing || !icalUrl}
-              className="w-full gradient-primary"
+              className="w-full"
             >
               {syncing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Syncing...
+                  Synchronisation...
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Sync Now
+                  Resynchroniser maintenant
                 </>
               )}
             </Button>
@@ -262,8 +373,8 @@ const SettingsPage = () => {
             {/* Auto Sync Toggle */}
             <div className="flex items-center justify-between py-3 border-t border-white/20">
               <div>
-                <p className="font-medium text-foreground">Auto-sync enabled</p>
-                <p className="text-xs text-muted-foreground">Automatically update your schedule daily</p>
+                <p className="font-medium text-foreground">Synchronisation automatique</p>
+                <p className="text-xs text-muted-foreground">Mise à jour quotidienne de ton emploi du temps</p>
               </div>
               <Switch
                 checked={settings?.sync_enabled ?? true}
@@ -281,12 +392,13 @@ const SettingsPage = () => {
                 <BookOpen className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="font-medium text-foreground mb-1">How iCal Sync Works</p>
+                <p className="font-medium text-foreground mb-1">Comment ça marche</p>
                 <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>• Automatically imports your class schedule</li>
-                  <li>• Discovers subjects from event titles</li>
-                  <li>• Detects exams and creates study tasks</li>
-                  <li>• Extracts room numbers for navigation</li>
+                  <li>• Import automatique de ton emploi du temps</li>
+                  <li>• Découverte intelligente des matières</li>
+                  <li>• Filtrage par groupe pour ne voir que tes cours</li>
+                  <li>• Détection des examens et création de tâches</li>
+                  <li>• Extraction des salles pour la navigation</li>
                 </ul>
               </div>
             </div>
@@ -297,7 +409,7 @@ const SettingsPage = () => {
         <section className="animate-fade-in">
           <div className="flex items-center gap-2 mb-3">
             <AlertCircle className="w-5 h-5 text-destructive" />
-            <h2 className="font-display font-semibold text-destructive">Danger Zone</h2>
+            <h2 className="font-display font-semibold text-destructive">Zone Danger</h2>
           </div>
           
           <GlassCard variant="subtle" className="p-5 space-y-4 border-destructive/20">
@@ -307,7 +419,7 @@ const SettingsPage = () => {
               className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Clear All Data
+              Supprimer toutes mes données
             </Button>
             
             <Button
@@ -315,7 +427,7 @@ const SettingsPage = () => {
               onClick={signOut}
               className="w-full"
             >
-              Sign Out
+              Se déconnecter
             </Button>
           </GlassCard>
         </section>
