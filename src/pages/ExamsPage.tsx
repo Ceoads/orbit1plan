@@ -1,13 +1,26 @@
 import { useState } from "react";
-import { useOrbitData } from "@/hooks/useOrbitData";
+import { useOrbitData, CalendarEvent } from "@/hooks/useOrbitData";
 import { ExamCard } from "@/components/ExamCard";
+import { SwipeableItem } from "@/components/SwipeableItem";
 import { GraduationCap, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AddExamModal } from "@/components/modals";
+import { AddExamModal, EditExamModal } from "@/components/modals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const ExamsPage = () => {
-  const { getUpcomingExams, getSubjectById, getNotesBySubject, subjects } = useOrbitData();
+  const { getUpcomingExams, getSubjectById, getNotesBySubject, subjects, deleteEvent } = useOrbitData();
   const [showAddExam, setShowAddExam] = useState(false);
+  const [editingExam, setEditingExam] = useState<CalendarEvent | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   
   const upcomingExams = getUpcomingExams();
 
@@ -16,6 +29,12 @@ export const ExamsPage = () => {
     const now = new Date();
     const diff = date.getTime() - now.getTime();
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteEvent(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   return (
@@ -54,29 +73,58 @@ export const ExamsPage = () => {
               const notesCount = exam.subject_id ? getNotesBySubject(exam.subject_id).length : 0;
               
               return (
-                <ExamCard 
-                  key={exam.id} 
-                  exam={{
-                    ...exam,
-                    subjectName: subject?.name || 'Unknown',
-                    subjectIcon: subject?.icon || '📚',
-                    subjectColorKey: (subject?.color_key || 'math') as any,
-                    notesCount,
-                    daysUntil: exam.exam_date ? getDaysUntil(exam.exam_date) : 0,
-                  }}
-                />
+                <SwipeableItem
+                  key={exam.id}
+                  onEdit={() => setEditingExam(exam)}
+                  onDelete={() => setDeleteTarget({ id: exam.id, name: exam.title })}
+                >
+                  <ExamCard 
+                    exam={{
+                      ...exam,
+                      subjectName: subject?.name || 'Unknown',
+                      subjectIcon: subject?.icon || '📚',
+                      subjectColorKey: (subject?.color_key || 'math') as any,
+                      notesCount,
+                      daysUntil: exam.exam_date ? getDaysUntil(exam.exam_date) : 0,
+                    }}
+                  />
+                </SwipeableItem>
               );
             })
           )}
         </div>
       </section>
 
-      {/* Add Exam Modal */}
+      {/* Modals */}
       <AddExamModal
         open={showAddExam}
         onOpenChange={setShowAddExam}
         subjects={subjects}
       />
+      <EditExamModal
+        open={!!editingExam}
+        onOpenChange={(open) => !open && setEditingExam(null)}
+        event={editingExam}
+        subjects={subjects}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete exam?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
