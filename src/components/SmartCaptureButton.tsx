@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Camera, Mic, Plus, X, Upload } from "lucide-react";
+import { Camera, Mic, Plus, X, Upload, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,9 +8,10 @@ import { toast } from "sonner";
 interface SmartCaptureButtonProps {
   currentSubject?: { id: string; name: string; icon: string } | null;
   onNoteCreated?: () => void;
+  generateFlashcards?: boolean;
 }
 
-export const SmartCaptureButton = ({ currentSubject, onNoteCreated }: SmartCaptureButtonProps) => {
+export const SmartCaptureButton = ({ currentSubject, onNoteCreated, generateFlashcards = true }: SmartCaptureButtonProps) => {
   const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -19,7 +20,7 @@ export const SmartCaptureButton = ({ currentSubject, onNoteCreated }: SmartCaptu
 
   const processImage = async (file: File) => {
     if (!user) {
-      toast.error("Please sign in to capture notes");
+      toast.error("Connecte-toi pour capturer des notes");
       return;
     }
 
@@ -35,7 +36,7 @@ export const SmartCaptureButton = ({ currentSubject, onNoteCreated }: SmartCaptu
       });
       const base64 = await base64Promise;
 
-      toast.loading("🧠 AI analyzing your note...", { id: "processing" });
+      toast.loading("🧠 L'IA analyse ta note...", { id: "processing" });
 
       // Upload to storage first
       const fileName = `${user.id}/${Date.now()}-${file.name}`;
@@ -57,27 +58,74 @@ export const SmartCaptureButton = ({ currentSubject, onNoteCreated }: SmartCaptu
       if (aiError) throw aiError;
 
       // Save note to database
-      const { error: noteError } = await supabase.from("notes_vault").insert({
+      const { data: noteData, error: noteError } = await supabase.from("notes_vault").insert({
         user_id: user.id,
         subject_id: currentSubject?.id || null,
         media_url: publicUrl,
         raw_text: aiResult.rawText || null,
         ai_summary: aiResult.aiSummary || null,
-      });
+      }).select().single();
 
       if (noteError) throw noteError;
 
       toast.dismiss("processing");
-      toast.success(`📸 Note captured!`, {
+      toast.success(`📸 Note capturée !`, {
         description: currentSubject 
-          ? `Tagged as ${currentSubject.icon} ${currentSubject.name}`
-          : "Saved to your vault",
+          ? `Tagué comme ${currentSubject.icon} ${currentSubject.name}`
+          : "Sauvegardé dans ton coffre",
       });
+
+      // Generate flashcards automatically
+      if (generateFlashcards && noteData) {
+        toast.loading("✨ Génération des flashcards...", { id: "flashcards" });
+        
+        try {
+          const { data: flashcardsResult, error: flashcardsError } = await supabase.functions.invoke("generate-flashcards", {
+            body: { 
+              imageBase64: base64, 
+              noteId: noteData.id,
+              subjectId: currentSubject?.id || null 
+            },
+          });
+
+          if (flashcardsError) throw flashcardsError;
+
+          if (flashcardsResult.flashcards && flashcardsResult.flashcards.length > 0) {
+            // Save flashcards to database
+            const flashcardsToInsert = flashcardsResult.flashcards.map((fc: { question: string; answer: string }) => ({
+              user_id: user.id,
+              subject_id: currentSubject?.id || null,
+              note_id: noteData.id,
+              question: fc.question,
+              answer: fc.answer,
+              mastered: false,
+            }));
+
+            const { error: insertError } = await supabase
+              .from('flashcards')
+              .insert(flashcardsToInsert);
+
+            if (insertError) throw insertError;
+
+            toast.dismiss("flashcards");
+            toast.success(`🎴 ${flashcardsResult.flashcards.length} flashcards créées !`, {
+              description: "Va dans Exam Lab pour réviser",
+            });
+          } else {
+            toast.dismiss("flashcards");
+            toast.info("Aucune flashcard générée pour cette image");
+          }
+        } catch (flashcardError) {
+          console.error("Error generating flashcards:", flashcardError);
+          toast.dismiss("flashcards");
+          toast.error("Échec de la génération des flashcards");
+        }
+      }
 
       // Create a review task
       await supabase.from("tasks").insert({
         user_id: user.id,
-        title: `Review note: ${aiResult.aiSummary?.substring(0, 50) || "New capture"}...`,
+        title: `Réviser: ${aiResult.aiSummary?.substring(0, 50) || "Nouvelle capture"}...`,
         priority_score: 60,
         energy_level: "medium",
         subject_id: currentSubject?.id || null,
@@ -88,7 +136,7 @@ export const SmartCaptureButton = ({ currentSubject, onNoteCreated }: SmartCaptu
     } catch (error: any) {
       console.error("Error processing image:", error);
       toast.dismiss("processing");
-      toast.error("Failed to process image");
+      toast.error("Échec du traitement de l'image");
     } finally {
       setIsProcessing(false);
     }
