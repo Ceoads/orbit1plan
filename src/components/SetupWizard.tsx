@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { GlassCard } from "./GlassCard";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { ChevronRight, Sparkles, BookOpen, Calendar, Loader2, Link2 } from "lucide-react";
+import { ChevronRight, Sparkles, BookOpen, Calendar, Loader2, Link2, ArrowLeft } from "lucide-react";
+import { GroupSelector } from "./GroupSelector";
 
 const SUBJECT_PRESETS = [
   { name: "Mathematics", icon: "📐", colorKey: "math" },
@@ -24,10 +23,11 @@ interface SetupWizardProps {
   onComplete: () => void;
 }
 
+type SetupStep = 'url' | 'group' | 'manual';
+
 export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
-  const navigate = useNavigate();
   const { user } = useAuth();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<SetupStep>('url');
   const [icalUrl, setIcalUrl] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<typeof SUBJECT_PRESETS>([]);
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
     });
   };
 
-  const handleIcalSync = async () => {
+  const handleUrlSubmit = async () => {
     if (!user || !icalUrl) return;
     
     // Basic URL validation
@@ -55,35 +55,42 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       toast.error("This doesn't look like an iCal URL");
       return;
     }
+
+    // Save the URL first
+    await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: user.id,
+        ical_url: icalUrl,
+      }, { onConflict: 'user_id' });
+
+    // Move to group selection step
+    setStep('group');
+  };
+
+  const handleGroupSelected = async (group: string) => {
+    if (!user) return;
     
     setSyncing(true);
     try {
-      // Save the URL first
-      await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          ical_url: icalUrl,
-        }, { onConflict: 'user_id' });
-
-      // Trigger sync
+      // Trigger sync with the selected group
       const { data, error } = await supabase.functions.invoke('sync-calendar', {
-        body: { userId: user.id, icalUrl },
+        body: { userId: user.id, icalUrl, filterGroup: group },
       });
       
       if (error) throw error;
       
       const result = data.results?.[0];
       if (result?.success) {
-        toast.success(`Imported ${result.eventsSynced} events!`, {
-          description: `${result.newSubjects} subjects discovered`,
+        toast.success(`${result.eventsSynced} cours importés !`, {
+          description: `${result.newSubjects} matières découvertes • Filtre: ${group}`,
         });
         
         // Create welcome tasks
         await supabase.from("tasks").insert([
           {
             user_id: user.id,
-            title: "Welcome to Orbit! Your schedule is synced ✨",
+            title: "Bienvenue sur Orbit ! Ton emploi du temps est synchronisé ✨",
             priority_score: 90,
             energy_level: "low",
             due_date: new Date().toISOString(),
@@ -96,9 +103,49 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       }
     } catch (error: any) {
       console.error('Sync error:', error);
-      toast.error("Failed to sync calendar", {
-        description: "Try the manual setup instead",
+      toast.error("Échec de la synchronisation", {
+        description: "Essaye la configuration manuelle",
       });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleSkipGroupFilter = async () => {
+    if (!user) return;
+    
+    setSyncing(true);
+    try {
+      // Sync without group filter
+      const { data, error } = await supabase.functions.invoke('sync-calendar', {
+        body: { userId: user.id, icalUrl },
+      });
+      
+      if (error) throw error;
+      
+      const result = data.results?.[0];
+      if (result?.success) {
+        toast.success(`${result.eventsSynced} cours importés !`, {
+          description: `${result.newSubjects} matières découvertes`,
+        });
+        
+        await supabase.from("tasks").insert([
+          {
+            user_id: user.id,
+            title: "Bienvenue sur Orbit ! Ton emploi du temps est synchronisé ✨",
+            priority_score: 90,
+            energy_level: "low",
+            due_date: new Date().toISOString(),
+          },
+        ]);
+        
+        onComplete();
+      } else {
+        throw new Error(result?.error || 'Sync failed');
+      }
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      toast.error("Échec de la synchronisation");
     } finally {
       setSyncing(false);
     }
@@ -169,25 +216,25 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       await supabase.from("tasks").insert([
         {
           user_id: user.id,
-          title: "Welcome to Orbit! Tap + to capture notes",
+          title: "Bienvenue sur Orbit ! Tape + pour capturer des notes",
           priority_score: 90,
           energy_level: "low",
           due_date: new Date().toISOString(),
         },
         {
           user_id: user.id,
-          title: "Try breaking down a task with the ✨ button",
+          title: "Essaye de décomposer une tâche avec le bouton ✨",
           priority_score: 70,
           energy_level: "medium",
           due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
         },
       ]);
 
-      toast.success("Setup complete! Welcome to Orbit 🚀");
+      toast.success("Configuration terminée ! Bienvenue sur Orbit 🚀");
       onComplete();
     } catch (error: any) {
       console.error("Setup error:", error);
-      toast.error("Failed to complete setup");
+      toast.error("Échec de la configuration");
     } finally {
       setLoading(false);
     }
@@ -201,23 +248,24 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           <Sparkles className="w-8 h-8 text-white" />
         </div>
         <h1 className="font-display text-2xl font-bold text-foreground">
-          {step === 1 ? "Connect Your Schedule" : "Choose Your Subjects"}
+          {step === 'url' && "Connecte ton Emploi du Temps"}
+          {step === 'group' && "Sélectionne ton Groupe"}
+          {step === 'manual' && "Choisis tes Matières"}
         </h1>
         <p className="text-muted-foreground mt-2">
-          {step === 1 
-            ? "Paste your school's calendar URL for automatic sync"
-            : "Or set up subjects manually"
-          }
+          {step === 'url' && "Colle l'URL iCal de ton école pour une synchronisation automatique"}
+          {step === 'group' && "On a détecté plusieurs groupes, choisis le tien"}
+          {step === 'manual' && "Configure manuellement tes matières"}
         </p>
       </div>
 
-      {step === 1 ? (
+      {step === 'url' && (
         <>
           {/* iCal URL Input */}
           <GlassCard variant="elevated" className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="w-5 h-5 text-primary" />
-              <h2 className="font-display font-semibold">School Calendar URL</h2>
+              <h2 className="font-display font-semibold">URL du Calendrier</h2>
             </div>
 
             <div className="space-y-3">
@@ -233,55 +281,87 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
               </div>
               
               <p className="text-xs text-muted-foreground">
-                💡 Find this in Hyperplanning, Google Calendar, or your school portal under "Export" or "Subscribe"
+                💡 Trouve ce lien dans Hyperplanning, Google Calendar ou le portail de ton école sous "Exporter" ou "S'abonner"
               </p>
             </div>
           </GlassCard>
 
-          {/* Sync Button */}
+          {/* Continue Button */}
           <Button
-            onClick={handleIcalSync}
-            disabled={!icalUrl || syncing}
+            onClick={handleUrlSubmit}
+            disabled={!icalUrl}
             className="w-full h-14 rounded-xl gradient-primary text-white font-medium text-lg"
           >
-            {syncing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Importing Schedule...
-              </>
-            ) : (
-              <>
-                Import My Schedule
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </>
-            )}
+            Continuer
+            <ChevronRight className="w-5 h-5 ml-2" />
           </Button>
 
           {/* Or divider */}
           <div className="flex items-center gap-4">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-sm text-muted-foreground">or</span>
+            <span className="text-sm text-muted-foreground">ou</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           {/* Manual Setup */}
           <Button
             variant="outline"
-            onClick={() => setStep(2)}
+            onClick={() => setStep('manual')}
             className="w-full h-12 rounded-xl"
           >
-            Set Up Manually
+            Configuration Manuelle
           </Button>
         </>
-      ) : (
+      )}
+
+      {step === 'group' && (
+        <>
+          {syncing ? (
+            <GlassCard variant="elevated" className="p-6">
+              <div className="flex flex-col items-center justify-center py-8 gap-4">
+                <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                </div>
+                <div className="text-center">
+                  <p className="font-display font-semibold text-foreground">
+                    Synchronisation en cours...
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Import et nettoyage de ton emploi du temps
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          ) : (
+            <GroupSelector
+              icalUrl={icalUrl}
+              onGroupSelected={handleGroupSelected}
+              onSkip={handleSkipGroupFilter}
+            />
+          )}
+
+          {/* Back button */}
+          <Button
+            variant="ghost"
+            onClick={() => setStep('url')}
+            disabled={syncing}
+            className="w-full"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+        </>
+      )}
+
+      {step === 'manual' && (
         <>
           {/* Subject Selection */}
           <GlassCard variant="elevated" className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <BookOpen className="w-5 h-5 text-primary" />
-              <h2 className="font-display font-semibold">Your Subjects</h2>
+              <h2 className="font-display font-semibold">Tes Matières</h2>
               <span className="text-sm text-muted-foreground ml-auto">
-                {selectedSubjects.length}/5 selected
+                {selectedSubjects.length}/5 sélectionnées
               </span>
             </div>
 
@@ -318,7 +398,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                Get Started
+                Commencer
                 <ChevronRight className="w-5 h-5 ml-2" />
               </>
             )}
@@ -327,10 +407,11 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           {/* Back button */}
           <Button
             variant="ghost"
-            onClick={() => setStep(1)}
+            onClick={() => setStep('url')}
             className="w-full"
           >
-            ← Back to Calendar Import
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour à l'import automatique
           </Button>
         </>
       )}

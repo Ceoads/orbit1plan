@@ -12,6 +12,17 @@ const EXAM_KEYWORDS = [
   'controle', 'épreuve', 'quiz', 'midterm', 'assessment'
 ];
 
+// Group code patterns for detection
+const GROUP_PATTERNS = [
+  /\b(TC\d+\s*G\d+\s*[A-Z]?)\b/gi,           // TC2 G1 A
+  /\b(L[1-3]\s*[-]?\s*[A-Z])\b/gi,            // L3-A, L1 B
+  /\b(M[1-2]\s*[-]?\s*[A-Z0-9]+)\b/gi,        // M1-A, M2 Info
+  /\b(INFO[-\s]?S\d+)\b/gi,                    // INFO-S3, INFO S2
+  /\b(Groupe\s*\d+[A-Z]?)\b/gi,               // Groupe 1A
+  /\b(G\d+\s*[A-Z]?)\b/gi,                     // G1A, G2 B
+  /\b([A-Z]{2,4}[-\s]?\d+[-\s]?[A-Z0-9]*)\b/g, // MIAGE-2A, BUT-INFO-1
+];
+
 // Parse iCal format
 function parseICalData(icalData: string): any[] {
   const events: any[] = [];
@@ -107,11 +118,10 @@ function parseICalDate(dateStr: string): Date | null {
 // Extract room number from location or description
 function extractRoomNumber(location: string | undefined, description: string | undefined): string | null {
   const text = `${location || ''} ${description || ''}`;
-  // Common room patterns: IUTC-514, Room 101, Salle A2, etc.
   const roomPatterns = [
-    /([A-Z]{2,}-[A-Z0-9]+)/i,      // IUTC-514
-    /(?:room|salle|amphi)\s*([A-Z0-9-]+)/i,  // Room 101, Salle A2
-    /([A-Z]\d{2,})/i,              // A101
+    /([A-Z]{2,}-[A-Z0-9]+)/i,
+    /(?:room|salle|amphi)\s*([A-Z0-9-]+)/i,
+    /([A-Z]\d{2,})/i,
   ];
   
   for (const pattern of roomPatterns) {
@@ -124,7 +134,6 @@ function extractRoomNumber(location: string | undefined, description: string | u
 // Extract teacher name from description
 function extractTeacher(description: string | undefined): string | null {
   if (!description) return null;
-  // Common patterns: "Prof: Name", "Enseignant: Name", etc.
   const patterns = [
     /(?:prof(?:esseur)?|teacher|enseignant|intervenant)[:\s]+([^,\n]+)/i,
     /(?:by|par)[:\s]+([^,\n]+)/i,
@@ -143,12 +152,71 @@ function isExamEvent(title: string): boolean {
   return EXAM_KEYWORDS.some(keyword => lowerTitle.includes(keyword));
 }
 
-// Extract subject name from event title
-function extractSubjectName(title: string): string {
+// Extract all group codes from event text
+function extractGroupCodes(text: string): string[] {
+  const groups: Set<string> = new Set();
+  
+  for (const pattern of GROUP_PATTERNS) {
+    const matches = text.matchAll(new RegExp(pattern.source, pattern.flags));
+    for (const match of matches) {
+      const code = match[1].toUpperCase().replace(/\s+/g, ' ').trim();
+      if (code.length >= 2 && code.length <= 20) {
+        groups.add(code);
+      }
+    }
+  }
+  
+  return Array.from(groups);
+}
+
+// Detect groups from first N events
+function detectGroupsFromEvents(events: any[], limit: number = 50): Map<string, number> {
+  const groupCounts: Map<string, number> = new Map();
+  
+  const eventsToScan = events.slice(0, limit);
+  
+  for (const event of eventsToScan) {
+    const textToScan = `${event.summary || ''} ${event.description || ''}`;
+    const codes = extractGroupCodes(textToScan);
+    
+    for (const code of codes) {
+      groupCounts.set(code, (groupCounts.get(code) || 0) + 1);
+    }
+  }
+  
+  return groupCounts;
+}
+
+// Check if event matches the user's group filter
+function eventMatchesGroup(event: any, filterGroup: string | null): boolean {
+  if (!filterGroup) return true; // No filter, include all
+  
+  const textToCheck = `${event.summary || ''} ${event.description || ''}`.toUpperCase();
+  const normalizedFilter = filterGroup.toUpperCase().replace(/\s+/g, '').trim();
+  
+  // Check if the filter group appears in the event
+  // Also try with spaces removed for flexible matching
+  const textNoSpaces = textToCheck.replace(/\s+/g, '');
+  
+  return textNoSpaces.includes(normalizedFilter) || 
+         textToCheck.includes(filterGroup.toUpperCase());
+}
+
+// Extract clean subject name from event title (remove group codes)
+function extractSubjectName(title: string, filterGroup: string | null): string {
+  let clean = title;
+  
+  // Remove detected group codes
+  for (const pattern of GROUP_PATTERNS) {
+    clean = clean.replace(pattern, '');
+  }
+  
   // Remove common prefixes/suffixes
-  let clean = title
+  clean = clean
     .replace(/\s*-\s*(S\d+|Groupe\s*\d+|G\d+|TP|TD|CM|Cours|Amphi).*$/i, '')
     .replace(/^\s*(CM|TD|TP|Cours)\s*-?\s*/i, '')
+    .replace(/\s*[-–]\s*$/g, '')
+    .replace(/^\s*[-–]\s*/g, '')
     .trim();
   
   // If still too long, take first meaningful part
@@ -157,6 +225,12 @@ function extractSubjectName(title: string): string {
   }
   
   return clean || title;
+}
+
+// Format day name in French
+function formatDayFr(date: Date): string {
+  const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  return days[date.getDay()];
 }
 
 serve(async (req) => {
@@ -169,23 +243,91 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, icalUrl, syncAll } = await req.json();
+    const { userId, icalUrl, syncAll, scanOnly, previewOnly, filterGroup } = await req.json();
     
-    let usersToSync: { user_id: string; ical_url: string }[] = [];
+    // Mode: Scan only - detect groups without syncing
+    if (scanOnly && icalUrl) {
+      console.log('Scanning for groups...');
+      
+      const response = await fetch(icalUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch iCal: ${response.status}`);
+      }
+      
+      const icalData = await response.text();
+      const events = parseICalData(icalData);
+      const groupCounts = detectGroupsFromEvents(events, 50);
+      
+      // Sort by count (most common first) and filter noise
+      const detectedGroups = Array.from(groupCounts.entries())
+        .filter(([_, count]) => count >= 2) // At least 2 occurrences
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10) // Top 10 groups
+        .map(([code, count]) => ({ code, count }));
+      
+      console.log(`Detected ${detectedGroups.length} groups`);
+      
+      return new Response(JSON.stringify({ detectedGroups }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Mode: Preview only - show next few events for a group
+    if (previewOnly && icalUrl && filterGroup) {
+      console.log(`Previewing events for group: ${filterGroup}`);
+      
+      const response = await fetch(icalUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch iCal: ${response.status}`);
+      }
+      
+      const icalData = await response.text();
+      const events = parseICalData(icalData);
+      
+      const now = new Date();
+      const filteredEvents = events
+        .filter(e => e.summary && e.start && eventMatchesGroup(e, filterGroup))
+        .filter(e => new Date(e.start) >= now)
+        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+        .slice(0, 5);
+      
+      const previewEvents = filteredEvents.map(e => ({
+        title: extractSubjectName(e.summary, filterGroup),
+        time: `${new Date(e.start).getHours().toString().padStart(2, '0')}:${new Date(e.start).getMinutes().toString().padStart(2, '0')}`,
+        day: formatDayFr(new Date(e.start)),
+      }));
+      
+      return new Response(JSON.stringify({ previewEvents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Normal sync mode
+    let usersToSync: { user_id: string; ical_url: string; ical_filter_group: string | null }[] = [];
     
     if (syncAll) {
       // Cron job mode: sync all users with valid iCal URLs
       const { data: settings, error } = await supabase
         .from('user_settings')
-        .select('user_id, ical_url')
+        .select('user_id, ical_url, ical_filter_group')
         .eq('sync_enabled', true)
         .not('ical_url', 'is', null);
       
       if (error) throw error;
       usersToSync = settings || [];
     } else if (userId && icalUrl) {
-      // Single user sync mode
-      usersToSync = [{ user_id: userId, ical_url: icalUrl }];
+      // Single user sync mode - get their filter group
+      const { data: userSettings } = await supabase
+        .from('user_settings')
+        .select('ical_filter_group')
+        .eq('user_id', userId)
+        .single();
+      
+      usersToSync = [{ 
+        user_id: userId, 
+        ical_url: icalUrl,
+        ical_filter_group: filterGroup || userSettings?.ical_filter_group || null
+      }];
     } else {
       return new Response(JSON.stringify({ error: 'Missing userId or icalUrl' }), {
         status: 400,
@@ -195,9 +337,9 @@ serve(async (req) => {
 
     const results = [];
 
-    for (const { user_id, ical_url } of usersToSync) {
+    for (const { user_id, ical_url, ical_filter_group } of usersToSync) {
       try {
-        console.log(`Syncing calendar for user ${user_id}`);
+        console.log(`Syncing calendar for user ${user_id}, filter: ${ical_filter_group || 'none'}`);
         
         // Fetch iCal feed
         const response = await fetch(ical_url);
@@ -206,9 +348,12 @@ serve(async (req) => {
         }
         
         const icalData = await response.text();
-        const events = parseICalData(icalData);
+        const allEvents = parseICalData(icalData);
         
-        console.log(`Parsed ${events.length} events`);
+        // Apply group filter
+        const events = allEvents.filter(e => eventMatchesGroup(e, ical_filter_group));
+        
+        console.log(`Parsed ${allEvents.length} events, ${events.length} after filtering`);
         
         // Get existing subjects for this user
         const { data: existingSubjects } = await supabase
@@ -231,10 +376,8 @@ serve(async (req) => {
           if (!event.summary || !event.start || !event.end) continue;
           
           const title = event.summary;
-          const subjectName = extractSubjectName(title);
+          const subjectName = extractSubjectName(title, ical_filter_group);
           const isExam = isExamEvent(title);
-          const roomNumber = extractRoomNumber(event.location, event.description);
-          const teacherName = extractTeacher(event.description);
           
           // Check if we need to create this subject
           if (!subjectMap.has(subjectName.toLowerCase())) {
@@ -274,7 +417,7 @@ serve(async (req) => {
           if (!event.summary || !event.start || !event.end) continue;
           
           const title = event.summary;
-          const subjectName = extractSubjectName(title);
+          const subjectName = extractSubjectName(title, ical_filter_group);
           const isExam = isExamEvent(title);
           const roomNumber = extractRoomNumber(event.location, event.description);
           const teacherName = extractTeacher(event.description);
@@ -294,7 +437,7 @@ serve(async (req) => {
           eventsToInsert.push({
             user_id: user_id,
             external_id: externalId,
-            title: title,
+            title: subjectName, // Use clean subject name instead of raw title
             subject_id: subjectId,
             start_time: `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`,
             end_time: `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`,
@@ -308,8 +451,7 @@ serve(async (req) => {
         
         console.log(`Prepared ${eventsToInsert.length} events for insertion`);
         
-        // Delete existing events for this user and insert fresh
-        // This is more reliable than upsert with the partial unique index
+        // Delete existing synced events for this user and insert fresh
         const { error: deleteError } = await supabase
           .from('calendar_events')
           .delete()
@@ -346,10 +488,12 @@ serve(async (req) => {
         results.push({
           user_id,
           success: true,
-          eventsFound: events.length,
+          eventsFound: allEvents.length,
+          eventsFiltered: events.length,
           eventsSynced: syncedCount,
           newSubjects: newSubjectsToCreate.size,
           examsFound,
+          filterApplied: ical_filter_group || null,
         });
         
       } catch (userError: unknown) {

@@ -260,6 +260,7 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
+          ical_filter_group: string | null
           ical_url: string | null
           id: string
           last_synced_at: string | null
@@ -270,6 +271,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          ical_filter_group?: string | null
           ical_url?: string | null
           id?: string
           last_synced_at?: string | null
@@ -280,6 +282,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          ical_filter_group?: string | null
           ical_url?: string | null
           id?: string
           last_synced_at?: string | null
