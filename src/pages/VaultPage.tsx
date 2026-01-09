@@ -2,10 +2,21 @@ import { useState } from "react";
 import { useOrbitData, Subject, Note } from "@/hooks/useOrbitData";
 import { SearchBar } from "@/components/SearchBar";
 import { NoteCard } from "@/components/NoteCard";
+import { SwipeableItem } from "@/components/SwipeableItem";
 import { ArrowLeft, FolderOpen, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AddSubjectModal, AddNoteModal } from "@/components/modals";
+import { AddSubjectModal, AddNoteModal, EditSubjectModal, EditNoteModal } from "@/components/modals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const colorStyles: Record<string, { bg: string; border: string }> = {
   math: { bg: "bg-math/10", border: "border-math/20" },
@@ -16,11 +27,14 @@ const colorStyles: Record<string, { bg: string; border: string }> = {
 };
 
 export const VaultPage = () => {
-  const { subjects, notes, getNotesBySubject } = useOrbitData();
+  const { subjects, notes, getNotesBySubject, deleteSubject, deleteNote } = useOrbitData();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'subject' | 'note'; id: string; name: string } | null>(null);
 
   // Filter notes based on search query
   const filteredNotes = selectedSubject 
@@ -39,6 +53,20 @@ export const VaultPage = () => {
   const handleBack = () => {
     setSelectedSubject(null);
     setSearchQuery("");
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    
+    if (deleteTarget.type === 'subject') {
+      await deleteSubject(deleteTarget.id);
+      if (selectedSubject?.id === deleteTarget.id) {
+        setSelectedSubject(null);
+      }
+    } else {
+      await deleteNote(deleteTarget.id);
+    }
+    setDeleteTarget(null);
   };
 
   return (
@@ -102,26 +130,31 @@ export const VaultPage = () => {
               const styles = colorStyles[subject.color_key] || colorStyles.math;
               
               return (
-                <button
+                <SwipeableItem
                   key={subject.id}
-                  onClick={() => setSelectedSubject(subject)}
-                  className={cn(
-                    "w-full p-4 rounded-2xl border-2 transition-all duration-200",
-                    "hover:scale-[1.02] active:scale-[0.98]",
-                    "flex items-center gap-4",
-                    styles.bg,
-                    styles.border
-                  )}
+                  onEdit={() => setEditingSubject(subject)}
+                  onDelete={() => setDeleteTarget({ type: 'subject', id: subject.id, name: subject.name })}
                 >
-                  <div className="text-3xl">{subject.icon}</div>
-                  <div className="flex-1 text-left">
-                    <h3 className="font-display font-semibold text-foreground">{subject.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {subjectNotes.length} {subjectNotes.length === 1 ? 'note' : 'notes'}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </button>
+                  <button
+                    onClick={() => setSelectedSubject(subject)}
+                    className={cn(
+                      "w-full p-4 rounded-2xl border-2 transition-all duration-200",
+                      "hover:scale-[1.02] active:scale-[0.98]",
+                      "flex items-center gap-4",
+                      styles.bg,
+                      styles.border
+                    )}
+                  >
+                    <div className="text-3xl">{subject.icon}</div>
+                    <div className="flex-1 text-left">
+                      <h3 className="font-display font-semibold text-foreground">{subject.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {subjectNotes.length} {subjectNotes.length === 1 ? 'note' : 'notes'}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </SwipeableItem>
               );
             })
           )}
@@ -142,7 +175,17 @@ export const VaultPage = () => {
             filteredNotes
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
               .map(note => (
-                <NoteCard key={note.id} note={note} />
+                <SwipeableItem
+                  key={note.id}
+                  onEdit={() => setEditingNote(note)}
+                  onDelete={() => setDeleteTarget({ 
+                    type: 'note', 
+                    id: note.id, 
+                    name: note.ai_summary?.substring(0, 30) || 'Note' 
+                  })}
+                >
+                  <NoteCard note={note} />
+                </SwipeableItem>
               ))
           )}
         </div>
@@ -159,6 +202,35 @@ export const VaultPage = () => {
         subjects={subjects}
         defaultSubjectId={selectedSubject?.id}
       />
+      <EditSubjectModal
+        open={!!editingSubject}
+        onOpenChange={(open) => !open && setEditingSubject(null)}
+        subject={editingSubject}
+      />
+      <EditNoteModal
+        open={!!editingNote}
+        onOpenChange={(open) => !open && setEditingNote(null)}
+        note={editingNote}
+        subjects={subjects}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteTarget?.type}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

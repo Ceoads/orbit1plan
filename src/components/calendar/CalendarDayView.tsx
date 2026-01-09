@@ -1,12 +1,24 @@
 import { useState, useMemo } from "react";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { GlassCard } from "@/components/GlassCard";
+import { SwipeableItem } from "@/components/SwipeableItem";
 import { Clock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { AddClassModal } from "@/components/modals/AddClassModal";
+import { AddClassModal, EditClassModal } from "@/components/modals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useOrbitData } from "@/hooks/useOrbitData";
 
 interface CalendarDayViewProps {
   date: Date;
@@ -25,9 +37,12 @@ export const CalendarDayView = ({
   onEventClick,
   onDateChange,
 }: CalendarDayViewProps) => {
+  const { deleteEvent } = useOrbitData();
   const [direction, setDirection] = useState(0);
   const [showAddClass, setShowAddClass] = useState(false);
   const [selectedHour, setSelectedHour] = useState(9);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   
   // Get the week days centered around the current date's month
   const weekDays = useMemo(() => {
@@ -123,6 +138,12 @@ export const CalendarDayView = ({
   const handleEmptySlotClick = (hour: number) => {
     setSelectedHour(hour);
     setShowAddClass(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteEvent(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const isToday = (d: Date) => {
@@ -311,33 +332,38 @@ export const CalendarDayView = ({
                         const colorKey = subject?.color_key || 'history';
                         
                         return (
-                          <button
+                          <SwipeableItem
                             key={event.id}
-                            onClick={() => onEventClick?.(event)}
-                            className={cn(
-                              "w-full text-left rounded-xl p-3 border-l-4 transition-all hover:scale-[1.01]",
-                              getSubjectBorderColor(colorKey),
-                              getSubjectBgColor(colorKey)
-                            )}
+                            onEdit={() => setEditingEvent(event)}
+                            onDelete={() => setDeleteTarget({ id: event.id, name: event.title })}
                           >
-                            <div className="flex items-center gap-3">
-                              {subject && (
-                                <span className="text-xl">{subject.icon}</span>
+                            <button
+                              onClick={() => onEventClick?.(event)}
+                              className={cn(
+                                "w-full text-left rounded-xl p-3 border-l-4 transition-all hover:scale-[1.01]",
+                                getSubjectBorderColor(colorKey),
+                                getSubjectBgColor(colorKey)
                               )}
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-foreground">
-                                  {subject?.name || event.title}
-                                </h3>
-                                
-                                <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                                  <Clock className="w-3 h-3" />
-                                  <span>
-                                    {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)}
-                                  </span>
+                            >
+                              <div className="flex items-center gap-3">
+                                {subject && (
+                                  <span className="text-xl">{subject.icon}</span>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium text-foreground">
+                                    {subject?.name || event.title}
+                                  </h3>
+                                  
+                                  <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                                    <Clock className="w-3 h-3" />
+                                    <span>
+                                      {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </button>
+                            </button>
+                          </SwipeableItem>
                         );
                       })}
                     </div>
@@ -365,7 +391,7 @@ export const CalendarDayView = ({
         </motion.div>
       </AnimatePresence>
 
-      {/* Add Class Modal */}
+      {/* Modals */}
       <AddClassModal
         open={showAddClass}
         onOpenChange={setShowAddClass}
@@ -373,6 +399,30 @@ export const CalendarDayView = ({
         defaultDayOfWeek={date.getDay()}
         subjects={subjects}
       />
+      <EditClassModal
+        open={!!editingEvent}
+        onOpenChange={(open) => !open && setEditingEvent(null)}
+        event={editingEvent}
+        subjects={subjects}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete class?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

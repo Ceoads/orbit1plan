@@ -202,6 +202,124 @@ export const useOrbitData = () => {
     ));
   };
 
+  // Update event
+  const updateEvent = async (eventId: string, data: Partial<CalendarEvent>) => {
+    const { error } = await supabase
+      .from('calendar_events')
+      .update(data)
+      .eq('id', eventId);
+
+    if (error) {
+      toast.error('Failed to update event');
+      return;
+    }
+
+    setEvents(prev => prev.map(e => 
+      e.id === eventId ? { ...e, ...data } : e
+    ));
+    toast.success('Event updated');
+  };
+
+  // Delete event
+  const deleteEvent = async (eventId: string) => {
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', eventId);
+
+    if (error) {
+      toast.error('Failed to delete event');
+      return;
+    }
+
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    toast.success('Event deleted');
+  };
+
+  // Update subject
+  const updateSubject = async (subjectId: string, data: Partial<Subject>) => {
+    const { error } = await supabase
+      .from('subjects')
+      .update(data)
+      .eq('id', subjectId);
+
+    if (error) {
+      toast.error('Failed to update subject');
+      return;
+    }
+
+    setSubjects(prev => prev.map(s => 
+      s.id === subjectId ? { ...s, ...data } : s
+    ));
+    toast.success('Subject updated');
+  };
+
+  // Delete subject
+  const deleteSubject = async (subjectId: string) => {
+    const { error } = await supabase
+      .from('subjects')
+      .delete()
+      .eq('id', subjectId);
+
+    if (error) {
+      toast.error('Failed to delete subject');
+      return;
+    }
+
+    setSubjects(prev => prev.filter(s => s.id !== subjectId));
+    toast.success('Subject deleted');
+  };
+
+  // Update note
+  const updateNote = async (noteId: string, data: Partial<Note>) => {
+    const { error } = await supabase
+      .from('notes_vault')
+      .update(data)
+      .eq('id', noteId);
+
+    if (error) {
+      toast.error('Failed to update note');
+      return;
+    }
+
+    setNotes(prev => prev.map(n => 
+      n.id === noteId ? { ...n, ...data } : n
+    ));
+    toast.success('Note updated');
+  };
+
+  // Delete note
+  const deleteNote = async (noteId: string) => {
+    const { error } = await supabase
+      .from('notes_vault')
+      .delete()
+      .eq('id', noteId);
+
+    if (error) {
+      toast.error('Failed to delete note');
+      return;
+    }
+
+    setNotes(prev => prev.filter(n => n.id !== noteId));
+    toast.success('Note deleted');
+  };
+
+  // Delete task
+  const deleteTask = async (taskId: string) => {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (error) {
+      toast.error('Failed to delete task');
+      return;
+    }
+
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+    toast.success('Task deleted');
+  };
+
   // Get current class based on time
   const getCurrentClass = (): CalendarEvent | null => {
     const now = new Date();
@@ -294,6 +412,13 @@ export const useOrbitData = () => {
     createNote,
     createTask,
     toggleTask,
+    updateEvent,
+    deleteEvent,
+    updateSubject,
+    deleteSubject,
+    updateNote,
+    deleteNote,
+    deleteTask,
     getCurrentClass,
     getNextClass,
     getSubjectById,
