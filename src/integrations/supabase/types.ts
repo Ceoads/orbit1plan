@@ -396,6 +396,10 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          campus_latitude: number | null
+          campus_longitude: number | null
+          campus_name: string | null
+          campus_radius_meters: number | null
           created_at: string
           ical_filter_group: string | null
           ical_url: string | null
@@ -407,6 +411,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          campus_latitude?: number | null
+          campus_longitude?: number | null
+          campus_name?: string | null
+          campus_radius_meters?: number | null
           created_at?: string
           ical_filter_group?: string | null
           ical_url?: string | null
@@ -418,6 +426,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          campus_latitude?: number | null
+          campus_longitude?: number | null
+          campus_name?: string | null
+          campus_radius_meters?: number | null
           created_at?: string
           ical_filter_group?: string | null
           ical_url?: string | null
@@ -435,6 +447,8 @@ export type Database = {
           ai_confidence: number | null
           ai_detected_subject: string | null
           ai_summary: string | null
+          capture_latitude: number | null
+          capture_longitude: number | null
           created_at: string
           extracted_text: string | null
           file_type: string | null
@@ -448,11 +462,14 @@ export type Database = {
           thumbnail_url: string | null
           updated_at: string
           user_id: string
+          was_on_campus: boolean | null
         }
         Insert: {
           ai_confidence?: number | null
           ai_detected_subject?: string | null
           ai_summary?: string | null
+          capture_latitude?: number | null
+          capture_longitude?: number | null
           created_at?: string
           extracted_text?: string | null
           file_type?: string | null
@@ -466,11 +483,14 @@ export type Database = {
           thumbnail_url?: string | null
           updated_at?: string
           user_id: string
+          was_on_campus?: boolean | null
         }
         Update: {
           ai_confidence?: number | null
           ai_detected_subject?: string | null
           ai_summary?: string | null
+          capture_latitude?: number | null
+          capture_longitude?: number | null
           created_at?: string
           extracted_text?: string | null
           file_type?: string | null
@@ -484,6 +504,7 @@ export type Database = {
           thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
+          was_on_campus?: boolean | null
         }
         Relationships: [
           {

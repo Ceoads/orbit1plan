@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +13,30 @@ interface SubjectMatch {
   confidence: number;
 }
 
+interface GeolocationData {
+  latitude: number | null;
+  longitude: number | null;
+  isOnCampus: boolean | null;
+  distanceFromCampus: number | null;
+}
+
+interface ClassHistoryData {
+  mode: 'campus' | 'home' | 'unknown';
+  isOnCampus: boolean | null;
+  distanceFromCampus: number | null;
+  campusName: string | null;
+  mostRecentClass: {
+    title: string;
+    subject_id: string | null;
+    endTime: string;
+  } | null;
+  todayClassHistory: {
+    title: string;
+    subject_id: string | null;
+    time: string;
+  }[];
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -25,48 +48,109 @@ serve(async (req) => {
       userId,
       currentClassId,
       todayClasses,
-      subjects 
+      subjects,
+      geolocation,
+      contextMode,
+      classHistory,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Build subject list for AI context
-    const subjectList = subjects.map((s: any) => 
-      `- ${s.name} (keywords: ${s.ical_code || s.name})`
-    ).join('\n');
+    const geo = geolocation as GeolocationData | undefined;
+    const history = classHistory as ClassHistoryData | undefined;
 
-    const currentClassInfo = currentClassId 
-      ? `The user is currently in class: ${todayClasses?.find((c: any) => c.id === currentClassId)?.title || 'Unknown'}`
-      : 'The user is not currently in any class';
+    // Build subject list for AI context
+    const subjectList = subjects?.map((s: any) => 
+      `- ${s.name} (keywords: ${s.ical_code || s.name})`
+    ).join('\n') || 'No subjects configured';
+
+    // Build location context
+    let locationContext = '';
+    if (geo?.isOnCampus === true) {
+      locationContext = `📍 LOCATION: User is ON CAMPUS (${history?.campusName || 'school'}). This strongly suggests the document is related to current or recent classes.`;
+    } else if (geo?.isOnCampus === false && geo.distanceFromCampus) {
+      locationContext = `🏠 LOCATION: User is at HOME (${Math.round(geo.distanceFromCampus)}m from campus). 
+This is "WORK FROM HOME" mode - analyze the document content carefully and consider today's class history.`;
+    } else {
+      locationContext = 'LOCATION: Unknown - rely on document content analysis.';
+    }
+
+    // Build current class context
+    let currentClassInfo = '';
+    if (currentClassId && todayClasses) {
+      const currentClass = todayClasses.find((c: any) => c.id === currentClassId);
+      if (currentClass) {
+        currentClassInfo = `🎓 CURRENT CLASS: "${currentClass.title}" (${currentClass.start_time}-${currentClass.end_time}). 
+If the user is on campus and in this class, strongly weight this subject.`;
+      }
+    }
+
+    // Build work-from-home context
+    let workFromHomeContext = '';
+    if (contextMode === 'home' && history && history.todayClassHistory && history.todayClassHistory.length > 0) {
+      const recentClasses = history.todayClassHistory
+        .map(c => `• ${c.title} (${c.time})`)
+        .join('\n');
+      
+      const mostRecentTitle = history.mostRecentClass?.title || 'Unknown';
+      const mostRecentEndTime = history.mostRecentClass?.endTime || 'unknown';
+      
+      workFromHomeContext = `
+📚 WORK FROM HOME MODE - Today's completed classes:
+${recentClasses}
+
+Most recent class: "${mostRecentTitle}" (ended at ${mostRecentEndTime})
+
+STRATEGY: Since the user is studying at home, they are likely:
+1. Reviewing notes from a class they had today
+2. Doing homework for a class they had today
+3. Preparing for tomorrow's classes
+
+Analyze the document content and match it to the most likely class from today's history.
+If the content clearly matches a recent class, suggest that subject with high confidence.`;
+    }
 
     const todayClassesInfo = todayClasses?.length > 0
-      ? `Today's classes: ${todayClasses.map((c: any) => `${c.title} (${c.start_time}-${c.end_time})`).join(', ')}`
+      ? `Today's schedule: ${todayClasses.map((c: any) => `${c.title} (${c.start_time}-${c.end_time})`).join(', ')}`
       : 'No classes scheduled today';
 
     const systemPrompt = `You are an intelligent document filing assistant for students. Your job is to:
 1. Extract ALL text from the image using OCR
 2. Analyze the content to determine which subject/course it belongs to
-3. Provide a confidence score for your subject detection
+3. Use location and schedule context to improve accuracy
+4. Provide a confidence score for your subject detection
 
 Available subjects:
 ${subjectList}
 
-Context information:
+${locationContext}
+
 ${currentClassInfo}
+
+${workFromHomeContext}
+
 ${todayClassesInfo}
 
-IMPORTANT RULES:
-- If the user is currently in a class, weight that subject higher (but still analyze content)
-- Look for keywords, formulas, diagrams, course titles, or professor names
-- Consider the language and terminology used (technical, literary, scientific, etc.)
-- If you detect multiple subjects, choose the most likely one
-- Be honest about your confidence level
+CLASSIFICATION RULES:
+1. ON CAMPUS + IN CLASS: Weight current class subject very high (0.85-0.95)
+2. ON CAMPUS + BETWEEN CLASSES: Analyze content, consider recent/upcoming classes
+3. WORK FROM HOME: Match content to today's class history, weight recent classes higher
+4. UNKNOWN LOCATION: Pure content analysis
+
+Look for:
+- Course titles, chapter names, textbook references
+- Professor names or initials
+- Mathematical formulas (→ Math/Physics)
+- Historical dates, events (→ History)
+- Chemical formulas, reactions (→ Chemistry)
+- Literary quotes, analysis (→ English/Literature)
+- Code, algorithms (→ Computer Science)
+- Legal terms (→ Law)
+- Economic graphs, terms (→ Economics)
 
 Respond with JSON only:
 {
@@ -75,18 +159,24 @@ Respond with JSON only:
   "detectedSubject": {
     "name": "Most likely subject name",
     "confidence": 0.0-1.0,
-    "reasoning": "Brief explanation of why you chose this subject"
+    "reasoning": "Brief explanation including location/schedule context used"
   },
   "alternativeSubjects": [
     {"name": "Second choice", "confidence": 0.0-1.0}
   ],
   "detectedKeywords": ["keyword1", "keyword2"],
-  "suggestedTags": ["tag1", "tag2"]
+  "suggestedTags": ["tag1", "tag2"],
+  "locationUsed": true/false,
+  "classHistoryUsed": true/false
 }`;
 
-    const userPrompt = 'Analyze this document image. Extract all text, determine the subject, and provide structured metadata.';
+    const userPrompt = 'Analyze this document image. Extract all text, determine the subject using all available context (location, schedule, content), and provide structured metadata.';
 
-    console.log('Calling AI for smart filing analysis...');
+    console.log('Calling AI for smart filing with geolocation context:', {
+      contextMode,
+      isOnCampus: geo?.isOnCampus,
+      hasClassHistory: history?.todayClassHistory?.length || 0,
+    });
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -139,12 +229,11 @@ Respond with JSON only:
     console.log('AI response received');
 
     // Parse the response
-    let result;
+    let result: any;
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       result = JSON.parse(cleanContent);
     } catch {
-      // Fallback if parsing fails
       result = {
         rawText: content,
         aiSummary: 'Unable to parse structured response',
@@ -159,7 +248,6 @@ Respond with JSON only:
     if (result.detectedSubject?.name && subjects?.length > 0) {
       const detectedName = result.detectedSubject.name.toLowerCase();
       
-      // Find best matching subject
       let bestMatch: SubjectMatch | null = null;
       let bestScore = 0;
 
@@ -167,13 +255,13 @@ Respond with JSON only:
         const subjectName = subject.name.toLowerCase();
         const icalCode = (subject.ical_code || '').toLowerCase();
         
-        // Check for exact match
+        // Exact match
         if (subjectName === detectedName || icalCode === detectedName) {
           bestMatch = { ...subject, confidence: result.detectedSubject.confidence };
           break;
         }
         
-        // Check for partial match
+        // Partial match
         if (subjectName.includes(detectedName) || detectedName.includes(subjectName)) {
           const score = Math.min(subjectName.length, detectedName.length) / Math.max(subjectName.length, detectedName.length);
           if (score > bestScore) {
@@ -182,7 +270,7 @@ Respond with JSON only:
           }
         }
         
-        // Check ical_code match
+        // iCal code match
         if (icalCode && (icalCode.includes(detectedName) || detectedName.includes(icalCode))) {
           const score = 0.9;
           if (score > bestScore) {
@@ -200,23 +288,48 @@ Respond with JSON only:
       }
     }
 
-    // If currently in a class and AI is uncertain, boost that class's subject
-    if (currentClassId && todayClasses && (!result.matchedSubjectId || result.matchConfidence < 0.7)) {
+    // Context boost for on-campus users in a class
+    if (currentClassId && todayClasses && geo?.isOnCampus === true && (!result.matchedSubjectId || result.matchConfidence < 0.8)) {
       const currentClass = todayClasses.find((c: any) => c.id === currentClassId);
       if (currentClass?.subject_id) {
-        const currentSubject = subjects.find((s: any) => s.id === currentClass.subject_id);
+        const currentSubject = subjects?.find((s: any) => s.id === currentClass.subject_id);
         if (currentSubject) {
           result.contextBoost = {
-            reason: 'User is currently in this class',
+            reason: 'User is on campus and currently in this class',
             boostedSubjectId: currentSubject.id,
             boostedSubjectName: currentSubject.name,
             boostedSubjectIcon: currentSubject.icon,
             originalConfidence: result.matchConfidence || 0,
-            boostedConfidence: Math.min((result.matchConfidence || 0.5) + 0.3, 0.95)
+            boostedConfidence: Math.min((result.matchConfidence || 0.6) + 0.25, 0.95)
           };
         }
       }
     }
+
+    // Work from home fallback - suggest most recent class if AI is uncertain
+    if (contextMode === 'home' && history?.mostRecentClass && (!result.matchedSubjectId || result.matchConfidence < 0.6)) {
+      const recentSubject = subjects?.find((s: any) => s.id === history.mostRecentClass?.subject_id);
+      if (recentSubject) {
+        result.workFromHomeSuggestion = {
+          reason: `You had "${history.mostRecentClass.title}" at ${history.mostRecentClass.endTime} today. Is this related?`,
+          subjectId: recentSubject.id,
+          subjectName: recentSubject.name,
+          subjectIcon: recentSubject.icon,
+          confidence: 0.65,
+        };
+        result.workFromHomeReasoning = `Tu as eu ${recentSubject.name} à ${history.mostRecentClass.endTime} aujourd'hui. Est-ce pour ce cours ?`;
+      }
+    }
+
+    // Add context metadata to result
+    const hasClassHistory = !!(history && history.todayClassHistory && history.todayClassHistory.length > 0);
+    result.contextInfo = {
+      mode: contextMode,
+      wasOnCampus: geo?.isOnCampus,
+      distanceFromCampus: geo?.distanceFromCampus,
+      locationUsedForSuggestion: result.locationUsed || geo?.isOnCampus !== null,
+      classHistoryUsed: result.classHistoryUsed || (contextMode === 'home' && hasClassHistory),
+    };
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

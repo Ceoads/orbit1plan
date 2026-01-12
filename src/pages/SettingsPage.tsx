@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Calendar, RefreshCw, Check, AlertCircle, 
-  Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye
+  Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
+  MapPin, Navigation, Home
 } from "lucide-react";
 import {
   Select,
@@ -26,6 +28,10 @@ interface UserSettings {
   last_synced_at: string | null;
   sync_enabled: boolean;
   timezone: string;
+  campus_latitude: number | null;
+  campus_longitude: number | null;
+  campus_radius_meters: number;
+  campus_name: string | null;
 }
 
 interface DetectedGroup {
@@ -36,6 +42,18 @@ interface DetectedGroup {
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { 
+    getCurrentPosition, 
+    hasCampusConfigured, 
+    campusName,
+    latitude: currentLat,
+    longitude: currentLng,
+    isOnCampus,
+    loading: geoLoading,
+    setCurrentAsCampus,
+    saveCampusLocation,
+  } = useGeolocation();
+  
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [icalUrl, setIcalUrl] = useState("");
   const [filterGroup, setFilterGroup] = useState("");
@@ -44,6 +62,8 @@ const SettingsPage = () => {
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scanningGroups, setScanningGroups] = useState(false);
+  const [campusNameInput, setCampusNameInput] = useState("");
+  const [savingCampus, setSavingCampus] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -62,9 +82,10 @@ const SettingsPage = () => {
       if (error) throw error;
       
       if (data) {
-        setSettings(data);
+        setSettings(data as UserSettings);
         setIcalUrl(data.ical_url || "");
         setFilterGroup(data.ical_filter_group || "");
+        setCampusNameInput(data.campus_name || "");
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -381,6 +402,70 @@ const SettingsPage = () => {
                 onCheckedChange={handleToggleSync}
               />
             </div>
+          </GlassCard>
+        </section>
+
+        {/* Campus Location Section */}
+        <section className="animate-fade-in">
+          <div className="flex items-center gap-2 mb-3">
+            <MapPin className="w-5 h-5 text-success" />
+            <h2 className="font-display font-semibold text-foreground">Localisation Campus</h2>
+          </div>
+          
+          <GlassCard variant="elevated" className="p-5 space-y-4">
+            {hasCampusConfigured ? (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-success/10 border border-success/20">
+                <MapPin className="w-5 h-5 text-success" />
+                <div>
+                  <p className="font-medium text-foreground">{campusName || 'Campus configuré'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isOnCampus ? '📍 Tu es sur le campus' : '🏠 Tu es hors campus'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Configure la position de ton campus pour activer le mode "Travail à domicile" intelligent.
+                </p>
+                <Input
+                  placeholder="Nom de ton campus (ex: Université Paris)"
+                  value={campusNameInput}
+                  onChange={(e) => setCampusNameInput(e.target.value)}
+                  className="bg-white/50"
+                />
+                <Button
+                  onClick={async () => {
+                    if (!campusNameInput) {
+                      toast.error("Entre le nom de ton campus");
+                      return;
+                    }
+                    setSavingCampus(true);
+                    const success = await setCurrentAsCampus(campusNameInput);
+                    setSavingCampus(false);
+                    if (success) {
+                      toast.success("Campus enregistré !");
+                      fetchSettings();
+                    } else {
+                      toast.error("Erreur - vérifie ta géolocalisation");
+                    }
+                  }}
+                  disabled={savingCampus || !campusNameInput}
+                  className="w-full"
+                >
+                  {savingCampus ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Navigation className="w-4 h-4 mr-2" />
+                  )}
+                  Utiliser ma position actuelle comme campus
+                </Button>
+              </div>
+            )}
+            
+            <p className="text-xs text-muted-foreground">
+              💡 L'IA utilisera ta position pour mieux suggérer le classement de tes captures
+            </p>
           </GlassCard>
         </section>
 
