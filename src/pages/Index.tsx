@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BottomNav, NavTab } from "@/components/BottomNav";
-import { SmartCaptureButton } from "@/components/SmartCaptureButton";
 import { PulsePage } from "./PulsePage";
-import { VaultPage } from "./VaultPage";
+import { TheVaultPage } from "./TheVaultPage";
 import { TasksPage } from "./TasksPage";
 import { ExamsPage } from "./ExamsPage";
 import { ExamLabPage } from "./ExamLabPage";
@@ -39,7 +38,7 @@ const Index = () => {
       case 'pulse':
         return <PulsePage />;
       case 'vault':
-        return <VaultPage />;
+        return <TheVaultPage />;
       case 'tasks':
         return <TasksPage />;
       case 'exams':
@@ -93,17 +92,7 @@ const Index = () => {
         {renderPage()}
       </main>
 
-      {/* Smart Capture FAB - only show after setup */}
-      {!needsSetup && !showSetup && (
-        <SmartCaptureButton
-          currentSubject={currentSubject ? {
-            id: currentSubject.id,
-            name: currentSubject.name,
-            icon: currentSubject.icon,
-          } : null}
-          onNoteCreated={handleNoteCreated}
-        />
-      )}
+      {/* Smart Capture is now integrated into TheVaultPage */}
 
       {/* Bottom Navigation - only show after setup */}
       {!needsSetup && !showSetup && (
