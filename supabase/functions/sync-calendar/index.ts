@@ -170,7 +170,7 @@ function extractGroupCodes(text: string): string[] {
 }
 
 // Detect groups from first N events
-function detectGroupsFromEvents(events: any[], limit: number = 50): Map<string, number> {
+function detectGroupsFromEvents(events: any[], limit: number = 100): Map<string, number> {
   const groupCounts: Map<string, number> = new Map();
   
   const eventsToScan = events.slice(0, limit);
@@ -247,27 +247,34 @@ serve(async (req) => {
     
     // Mode: Scan only - detect groups without syncing
     if (scanOnly && icalUrl) {
-      console.log('Scanning for groups...');
+      console.log('Scanning for groups (proxy mode)...');
       
-      const response = await fetch(icalUrl);
+      const response = await fetch(icalUrl, {
+        headers: { 'User-Agent': 'OrbitPlan-Calendar-Sync/1.0' },
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch iCal: ${response.status}`);
       }
       
       const icalData = await response.text();
       const events = parseICalData(icalData);
-      const groupCounts = detectGroupsFromEvents(events, 50);
+      
+      // Scan 100 first events for groups
+      const groupCounts = detectGroupsFromEvents(events, 100);
       
       // Sort by count (most common first) and filter noise
       const detectedGroups = Array.from(groupCounts.entries())
         .filter(([_, count]) => count >= 2) // At least 2 occurrences
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10) // Top 10 groups
+        .slice(0, 15) // Top 15 groups
         .map(([code, count]) => ({ code, count }));
       
-      console.log(`Detected ${detectedGroups.length} groups`);
+      console.log(`Detected ${detectedGroups.length} groups from ${events.length} events`);
       
-      return new Response(JSON.stringify({ detectedGroups }), {
+      return new Response(JSON.stringify({ 
+        detectedGroups,
+        totalEventsScanned: Math.min(events.length, 100),
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -350,8 +357,19 @@ serve(async (req) => {
         const icalData = await response.text();
         const allEvents = parseICalData(icalData);
         
-        // Apply group filter
-        const events = allEvents.filter(e => eventMatchesGroup(e, ical_filter_group));
+        // Current date for filtering
+        const now = new Date();
+        
+        // Apply group filter AND time filter (only future events)
+        const events = allEvents.filter(e => {
+          // Time filter: only keep events ending after now
+          if (e.end) {
+            const endDate = new Date(e.end);
+            if (endDate < now) return false;
+          }
+          // Group filter: flexible case-insensitive matching
+          return eventMatchesGroup(e, ical_filter_group);
+        });
         
         console.log(`Parsed ${allEvents.length} events, ${events.length} after filtering`);
         
