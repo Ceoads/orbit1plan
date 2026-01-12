@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_years: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_current: boolean | null
+          name: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_current?: boolean | null
+          name: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_current?: boolean | null
+          name?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           created_at: string
@@ -211,10 +244,55 @@ export type Database = {
         }
         Relationships: []
       }
+      semesters: {
+        Row: {
+          academic_year_id: string | null
+          created_at: string
+          end_date: string
+          id: string
+          is_current: boolean | null
+          name: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          academic_year_id?: string | null
+          created_at?: string
+          end_date: string
+          id?: string
+          is_current?: boolean | null
+          name: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          academic_year_id?: string | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_current?: boolean | null
+          name?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semesters_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           color_key: string
           created_at: string
+          ical_code: string | null
           icon: string
           id: string
           name: string
@@ -225,6 +303,7 @@ export type Database = {
         Insert: {
           color_key?: string
           created_at?: string
+          ical_code?: string | null
           icon?: string
           id?: string
           name: string
@@ -235,6 +314,7 @@ export type Database = {
         Update: {
           color_key?: string
           created_at?: string
+          ical_code?: string | null
           icon?: string
           id?: string
           name?: string
@@ -349,6 +429,133 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vault_files: {
+        Row: {
+          ai_confidence: number | null
+          ai_detected_subject: string | null
+          ai_summary: string | null
+          created_at: string
+          extracted_text: string | null
+          file_type: string | null
+          file_url: string
+          filing_status: string | null
+          id: string
+          original_filename: string | null
+          semester_id: string | null
+          subject_id: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_detected_subject?: string | null
+          ai_summary?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          file_type?: string | null
+          file_url: string
+          filing_status?: string | null
+          id?: string
+          original_filename?: string | null
+          semester_id?: string | null
+          subject_id?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_detected_subject?: string | null
+          ai_summary?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          file_type?: string | null
+          file_url?: string
+          filing_status?: string | null
+          id?: string
+          original_filename?: string | null
+          semester_id?: string | null
+          subject_id?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_files_semester_id_fkey"
+            columns: ["semester_id"]
+            isOneToOne: false
+            referencedRelation: "semesters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_files_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vault_filing_history: {
+        Row: {
+          ai_suggested_subject_id: string | null
+          context_data: Json | null
+          created_at: string
+          file_id: string | null
+          final_subject_id: string | null
+          id: string
+          user_id: string
+          was_correct: boolean | null
+        }
+        Insert: {
+          ai_suggested_subject_id?: string | null
+          context_data?: Json | null
+          created_at?: string
+          file_id?: string | null
+          final_subject_id?: string | null
+          id?: string
+          user_id: string
+          was_correct?: boolean | null
+        }
+        Update: {
+          ai_suggested_subject_id?: string | null
+          context_data?: Json | null
+          created_at?: string
+          file_id?: string | null
+          final_subject_id?: string | null
+          id?: string
+          user_id?: string
+          was_correct?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_filing_history_ai_suggested_subject_id_fkey"
+            columns: ["ai_suggested_subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_filing_history_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "vault_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_filing_history_final_subject_id_fkey"
+            columns: ["final_subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
