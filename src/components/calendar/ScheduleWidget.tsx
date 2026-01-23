@@ -4,6 +4,8 @@ import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { CalendarPocketSpace } from "./CalendarPocketSpace";
 import { Calendar, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface ScheduleWidgetProps {
   events: CalendarEvent[];
@@ -19,12 +21,22 @@ export const ScheduleWidget = ({
   const [isOpen, setIsOpen] = useState(false);
   const widgetRef = useRef<HTMLButtonElement>(null);
   const [originRect, setOriginRect] = useState<DOMRect | undefined>();
+  const haptics = useHaptics();
+  const sounds = useSoundEffects();
 
   const handleOpen = () => {
+    haptics.soft();
+    sounds.open();
     if (widgetRef.current) {
       setOriginRect(widgetRef.current.getBoundingClientRect());
     }
     setIsOpen(true);
+  };
+
+  const handleClose = () => {
+    haptics.soft();
+    sounds.close();
+    setIsOpen(false);
   };
 
   // Get today's events summary
@@ -75,12 +87,12 @@ export const ScheduleWidget = ({
         ref={widgetRef}
         onClick={handleOpen}
         className={cn(
-          "w-full soft-card p-5 text-left group cursor-pointer",
+          "w-full soft-card p-5 text-left group cursor-pointer hit-target",
           "hover:shadow-lg transition-shadow duration-300",
           className
         )}
         whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.99 }}
+        whileTap={{ scale: 0.98 }}
         layoutId="schedule-widget"
       >
         {/* Header */}
@@ -147,7 +159,7 @@ export const ScheduleWidget = ({
       {/* Pocket Space */}
       <CalendarPocketSpace
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={handleClose}
         events={events}
         subjects={subjects}
         originRect={originRect}

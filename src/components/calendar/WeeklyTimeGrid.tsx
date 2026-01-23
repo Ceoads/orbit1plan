@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface WeeklyTimeGridProps {
   weekDays: Date[];
@@ -19,6 +21,9 @@ export const WeeklyTimeGrid = ({
   getExamsOnDate,
   onExamClick,
 }: WeeklyTimeGridProps) => {
+  const haptics = useHaptics();
+  const sounds = useSoundEffects();
+
   const timeSlots = useMemo(() => {
     return Array.from({ length: 13 }, (_, i) => i + 8); // 8am - 8pm
   }, []);
@@ -60,6 +65,20 @@ export const WeeklyTimeGrid = ({
     return colorMap[colorKey] || { bg: 'bg-muted', border: 'border-muted-foreground', text: 'text-foreground' };
   };
 
+  const handleExamClick = (exam: CalendarEvent) => {
+    haptics.soft();
+    sounds.open();
+    onExamClick(exam);
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    haptics.selection();
+    sounds.tap();
+    if (event.event_type === 'exam') {
+      handleExamClick(event);
+    }
+  };
+
   // Animation for day headers
   const dayHeaderVariants = {
     hidden: { opacity: 0, y: -10 },
@@ -74,7 +93,7 @@ export const WeeklyTimeGrid = ({
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
-  const currentTimeOffset = ((currentHour - 8) * 60 + currentMinute) / 60; // Hours from 8am
+  const currentTimeOffset = ((currentHour - 8) * 60 + currentMinute) / 60;
 
   return (
     <div className="h-full flex flex-col">
@@ -106,7 +125,7 @@ export const WeeklyTimeGrid = ({
                   {dayNames[index]}
                 </span>
                 <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all",
+                  "w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all hit-target",
                   today && "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                 )}>
                   <span className={cn(
@@ -117,22 +136,15 @@ export const WeeklyTimeGrid = ({
                   </span>
                 </div>
                 
-                {/* Exam Dot Indicator */}
+                {/* Exam Dot Indicator with pulse animation */}
                 {hasExam && (
                   <motion.button
-                    onClick={() => onExamClick(examsOnDay[0])}
-                    className="mt-1.5"
-                    whileHover={{ scale: 1.3 }}
-                    animate={{ 
-                      scale: [1, 1.2, 1],
-                    }}
-                    transition={{ 
-                      repeat: Infinity,
-                      duration: 2,
-                      ease: "easeInOut"
-                    }}
+                    onClick={() => handleExamClick(examsOnDay[0])}
+                    className="mt-1.5 hit-target flex items-center justify-center"
+                    whileHover={{ scale: 1.4 }}
+                    whileTap={{ scale: 0.9 }}
                   >
-                    <div className="w-2 h-2 rounded-full bg-warning shadow-lg shadow-warning/50" />
+                    <div className="w-2 h-2 rounded-full bg-warning shadow-lg shadow-warning/50 animate-exam-pulse" />
                   </motion.button>
                 )}
               </motion.div>
@@ -192,8 +204,8 @@ export const WeeklyTimeGrid = ({
                           <motion.div
                             key={event.id}
                             className={cn(
-                              "absolute inset-x-0.5 rounded-xl p-1 border-l-2 overflow-hidden cursor-pointer",
-                              "hover:shadow-md transition-shadow",
+                              "absolute inset-x-0.5 rounded-xl p-1 border-l-2 overflow-hidden cursor-pointer hit-target",
+                              "active:scale-95 transition-transform",
                               colors.bg,
                               colors.border
                             )}
@@ -205,11 +217,8 @@ export const WeeklyTimeGrid = ({
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.2 + hourIndex * 0.02 }}
                             whileHover={{ scale: 1.02 }}
-                            onClick={() => {
-                              if (event.event_type === 'exam') {
-                                onExamClick(event);
-                              }
-                            }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleEventClick(event)}
                           >
                             <div className="flex flex-col h-full">
                               <span className="text-[9px] font-semibold truncate text-foreground">

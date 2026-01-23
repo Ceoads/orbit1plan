@@ -1,5 +1,8 @@
 import { Home, FolderOpen, CheckSquare, GraduationCap, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { motion } from "framer-motion";
 
 export type NavTab = 'pulse' | 'vault' | 'tasks' | 'exams' | 'lab';
 
@@ -17,38 +20,70 @@ const tabs = [
 ];
 
 export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
+  const haptics = useHaptics();
+  const sounds = useSoundEffects();
+
+  const handleTabClick = (id: NavTab) => {
+    if (id !== activeTab) {
+      haptics.selection();
+      sounds.tap();
+      onTabChange(id);
+    }
+  };
+
   return (
     <nav className="floating-dock pb-safe">
-      <div className="dock-container">
+      <motion.div 
+        className="dock-container"
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ 
+          type: "spring",
+          stiffness: 260,
+          damping: 25,
+          delay: 0.2
+        }}
+      >
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           return (
-            <button
+            <motion.button
               key={id}
-              onClick={() => onTabChange(id)}
+              onClick={() => handleTabClick(id)}
               className={cn(
-                "dock-item",
+                "dock-item hit-target",
                 isActive && "dock-item-active"
               )}
+              whileTap={{ scale: 0.92 }}
+              transition={{ duration: 0.1 }}
             >
               <Icon 
                 className={cn(
-                  "dock-icon w-5 h-5 transition-all duration-200",
+                  "dock-icon w-5 h-5 ease-apple",
                   isActive 
                     ? "text-primary scale-110" 
                     : "text-muted-foreground"
                 )} 
               />
               <span className={cn(
-                "text-[10px] font-medium transition-all duration-200",
+                "text-[10px] font-medium ease-apple",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}>
                 {label}
               </span>
-            </button>
+              
+              {/* Active indicator glow */}
+              {isActive && (
+                <motion.div
+                  className="absolute inset-0 rounded-2xl bg-primary/10"
+                  layoutId="activeTabBg"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+            </motion.button>
           );
         })}
-      </div>
+      </motion.div>
     </nav>
   );
 };

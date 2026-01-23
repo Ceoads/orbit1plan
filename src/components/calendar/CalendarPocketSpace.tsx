@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { WeeklyTimeGrid } from "./WeeklyTimeGrid";
 import { ExamDetailModal } from "./ExamDetailModal";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface CalendarPocketSpaceProps {
   isOpen: boolean;
@@ -21,11 +23,14 @@ export const CalendarPocketSpace = ({
   subjects,
   originRect,
 }: CalendarPocketSpaceProps) => {
+  const haptics = useHaptics();
+  const sounds = useSoundEffects();
+  
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const now = new Date();
     const dayOfWeek = now.getDay();
     const start = new Date(now);
-    start.setDate(now.getDate() - dayOfWeek + 1); // Start from Monday
+    start.setDate(now.getDate() - dayOfWeek + 1);
     start.setHours(0, 0, 0, 0);
     return start;
   });
@@ -33,6 +38,8 @@ export const CalendarPocketSpace = ({
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
+    haptics.selection();
+    sounds.tap();
     setCurrentWeekStart(prev => {
       const newDate = new Date(prev);
       newDate.setDate(prev.getDate() + (direction === 'next' ? 7 : -7));
@@ -41,6 +48,8 @@ export const CalendarPocketSpace = ({
   };
 
   const goToToday = () => {
+    haptics.selection();
+    sounds.tap();
     const now = new Date();
     const dayOfWeek = now.getDay();
     const start = new Date(now);
@@ -64,7 +73,6 @@ export const CalendarPocketSpace = ({
     year: 'numeric' 
   });
 
-  // Check if an exam exists on a specific date
   const getExamsOnDate = (date: Date): CalendarEvent[] => {
     return events.filter(e => {
       if (e.event_type !== 'exam' || !e.exam_date) return false;
@@ -74,10 +82,17 @@ export const CalendarPocketSpace = ({
   };
 
   const handleExamClick = (exam: CalendarEvent) => {
+    haptics.soft();
+    sounds.open();
     setSelectedExam(exam);
   };
 
-  // Animation variants for the pocket space
+  const handleClose = () => {
+    haptics.soft();
+    sounds.close();
+    onClose();
+  };
+
   const backdropVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1 },
@@ -85,9 +100,9 @@ export const CalendarPocketSpace = ({
 
   const pocketVariants = {
     hidden: {
-      scale: 0.8,
+      scale: 0.85,
       opacity: 0,
-      y: 100,
+      y: 80,
     },
     visible: {
       scale: 1,
@@ -95,33 +110,38 @@ export const CalendarPocketSpace = ({
       y: 0,
       transition: {
         type: "spring" as const,
-        stiffness: 100,
-        damping: 20,
-        staggerChildren: 0.05,
-        delayChildren: 0.1,
+        stiffness: 120,
+        damping: 22,
+        staggerChildren: 0.04,
+        delayChildren: 0.08,
       },
     },
     exit: {
-      scale: 0.9,
+      scale: 0.92,
       opacity: 0,
-      y: 50,
+      y: 40,
       transition: {
         duration: 0.2,
+        ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
       },
     },
   };
 
   const headerVariants = {
-    hidden: { opacity: 0, y: -20 },
-    visible: { opacity: 1, y: 0 },
+    hidden: { opacity: 0, y: -15 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] }
+    },
   };
 
   const gridVariants = {
-    hidden: { opacity: 0, scale: 0.95 },
+    hidden: { opacity: 0, scale: 0.97 },
     visible: { 
       opacity: 1, 
       scale: 1,
-      transition: { delay: 0.15 }
+      transition: { delay: 0.12, duration: 0.35, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] }
     },
   };
 
@@ -129,29 +149,30 @@ export const CalendarPocketSpace = ({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* iOS-style Backdrop with heavy blur */}
           <motion.div
-            className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
+            className="fixed inset-0 z-40 ios-glass"
+            style={{ background: 'hsl(var(--background) / 0.6)' }}
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
             exit="hidden"
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           {/* Pocket Space Container */}
           <motion.div
-            className="fixed inset-0 z-50 overflow-hidden"
+            className="fixed inset-0 z-50 overflow-hidden pt-safe"
             variants={pocketVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.2}
+            dragElastic={0.15}
             onDragEnd={(_, info) => {
-              if (info.offset.y > 100 || info.velocity.y > 500) {
-                onClose();
+              if (info.offset.y > 80 || info.velocity.y > 400) {
+                handleClose();
               }
             }}
             style={{ willChange: 'transform' }}
@@ -163,9 +184,9 @@ export const CalendarPocketSpace = ({
                 className="flex justify-center pt-3 pb-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.25 }}
               >
-                <div className="w-12 h-1 rounded-full bg-muted-foreground/30" />
+                <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
               </motion.div>
 
               {/* Header */}
@@ -175,9 +196,12 @@ export const CalendarPocketSpace = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <motion.div 
+                      className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center"
+                      whileTap={{ scale: 0.95 }}
+                    >
                       <Calendar className="w-5 h-5 text-primary" />
-                    </div>
+                    </motion.div>
                     <div>
                       <h1 className="font-display text-xl font-bold text-foreground">
                         {monthYear}
@@ -185,12 +209,12 @@ export const CalendarPocketSpace = ({
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={goToToday}
-                      className="rounded-full text-xs font-medium px-3 h-8"
+                      className="rounded-full text-xs font-medium px-3 h-9 hit-target"
                     >
                       Today
                     </Button>
@@ -198,7 +222,7 @@ export const CalendarPocketSpace = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => navigateWeek('prev')}
-                      className="rounded-full h-8 w-8"
+                      className="rounded-full h-9 w-9 hit-target"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -206,9 +230,17 @@ export const CalendarPocketSpace = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => navigateWeek('next')}
-                      className="rounded-full h-8 w-8"
+                      className="rounded-full h-9 w-9 hit-target"
                     >
                       <ChevronRight className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleClose}
+                      className="rounded-full h-9 w-9 hit-target ml-1"
+                    >
+                      <X className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -229,7 +261,7 @@ export const CalendarPocketSpace = ({
               </motion.div>
 
               {/* Bottom padding for floating dock */}
-              <div className="h-24" />
+              <div className="mb-safe-dock" />
             </div>
           </motion.div>
 
@@ -237,7 +269,11 @@ export const CalendarPocketSpace = ({
           <ExamDetailModal
             exam={selectedExam}
             subject={selectedExam ? subjects.find(s => s.id === selectedExam.subject_id) : undefined}
-            onClose={() => setSelectedExam(null)}
+            onClose={() => {
+              haptics.soft();
+              sounds.close();
+              setSelectedExam(null);
+            }}
           />
         </>
       )}
