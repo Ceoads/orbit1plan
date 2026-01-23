@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { QRCodeScanner } from "@/components/QRCodeScanner";
 import { 
   ArrowLeft, Calendar, RefreshCw, Check, AlertCircle, 
   Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
-  MapPin, Navigation, Home
+  MapPin, Navigation, Home, QrCode
 } from "lucide-react";
 import {
   Select,
@@ -64,6 +65,7 @@ const SettingsPage = () => {
   const [scanningGroups, setScanningGroups] = useState(false);
   const [campusNameInput, setCampusNameInput] = useState("");
   const [savingCampus, setSavingCampus] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -267,18 +269,29 @@ const SettingsPage = () => {
             <div className="space-y-2">
               <Label htmlFor="ical-url" className="flex items-center gap-2">
                 <Link2 className="w-4 h-4" />
-                URL iCal
+                URL iCal / vCal
               </Label>
-              <Input
-                id="ical-url"
-                type="url"
-                placeholder="https://ton-ecole.edu/calendar.ics"
-                value={icalUrl}
-                onChange={(e) => setIcalUrl(e.target.value)}
-                className="bg-white/50 border-white/30"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="ical-url"
+                  type="url"
+                  placeholder="https://ton-ecole.edu/calendar.ics"
+                  value={icalUrl}
+                  onChange={(e) => setIcalUrl(e.target.value)}
+                  className="flex-1 bg-white/50 border-white/30"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowQRScanner(true)}
+                  title="Scanner un QR code"
+                  className="shrink-0"
+                >
+                  <QrCode className="w-4 h-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Trouve ce lien dans les paramètres d'export de ton calendrier (Hyperplanning, Google Calendar, etc.)
+                📱 Scanne un QR code ou entre l'URL manuellement (Hyperplanning, CELCAT, ADE, Google Calendar...)
               </p>
             </div>
 
@@ -517,6 +530,18 @@ const SettingsPage = () => {
           </GlassCard>
         </section>
       </main>
+
+      {/* QR Code Scanner Modal */}
+      {showQRScanner && (
+        <QRCodeScanner
+          onScan={(url) => {
+            setIcalUrl(url);
+            setShowQRScanner(false);
+            toast.success("URL importée !", { description: "Clique sur 'Enregistrer' pour synchroniser" });
+          }}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </div>
   );
 };
