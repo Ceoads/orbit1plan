@@ -2,25 +2,126 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
-    <title>Lovable App</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
-
-    <!-- TODO: Update og:title to match your application name -->
-    <meta property="og:title" content="Lovable App" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    
+    <!-- App Title & Description -->
+    <title>Orbit Plan - Your Academic Companion</title>
+    <meta name="description" content="Orbit Plan helps you manage classes, exams, and study materials with an intelligent, beautiful interface." />
+    <meta name="author" content="Orbit Plan" />
+    
+    <!-- Theme & Colors -->
+    <meta name="theme-color" content="#F5A26B" />
+    <meta name="msapplication-TileColor" content="#F5A26B" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Orbit Plan" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Orbit Plan - Your Academic Companion" />
+    <meta property="og:description" content="Manage classes, exams, and study materials with ease" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
+    
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
+    <meta name="twitter:site" content="@OrbitPlan" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <!-- Preconnect to fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Disable tap highlight on mobile -->
+    <style>
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Splash screen while app loads */
+      #splash-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #FDF6F0 0%, #FFF5ED 50%, #FFEDE0 100%);
+        transition: opacity 0.3s ease-out;
+      }
+      
+      #splash-screen.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      #splash-logo {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        animation: pulse 2s ease-in-out infinite;
+      }
+      
+      #splash-text {
+        font-family: 'Quicksand', system-ui, sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #3D2E26;
+        letter-spacing: 0.05em;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+    </style>
   </head>
 
   <body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+      <div id="splash-logo">✨</div>
+      <div id="splash-text">Orbit</div>
+    </div>
+    
     <div id="root"></div>
+    
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Remove splash screen when app loads -->
+    <script>
+      window.addEventListener('load', function() {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+          setTimeout(function() {
+            splash.classList.add('hidden');
+            setTimeout(function() {
+              splash.remove();
+            }, 300);
+          }, 500);
+        }
+      });
+      
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('SW registered:', registration.scope);
+            })
+            .catch(function(error) {
+              console.log('SW registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
