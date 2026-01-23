@@ -69,6 +69,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Subject colors from CSS variables
+        subject: {
+          math: "hsl(var(--math))",
+          history: "hsl(var(--history))",
+          physics: "hsl(var(--physics))",
+          english: "hsl(var(--english))",
+          chemistry: "hsl(var(--chemistry))",
+          geometry: "hsl(var(--geometry))",
+        },
+        // Also keep direct access
         math: "hsl(var(--math))",
         history: "hsl(var(--history))",
         physics: "hsl(var(--physics))",

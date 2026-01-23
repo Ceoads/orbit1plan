@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { ClassRecapCard, ClassTimeline } from "@/components/dashboard";
+import { ScheduleWidget } from "@/components/calendar";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { Clock, BookOpen, CalendarDays, Sparkles, MapPin, Bell, ChevronRight } from "lucide-react";
 
@@ -12,6 +13,8 @@ export const PulsePage = () => {
     getHighestPriorityTask, 
     getUpcomingExams, 
     getTodayEvents,
+    events,
+    subjects,
     notes, 
     tasks 
   } = useOrbitData();
@@ -163,22 +166,13 @@ export const PulsePage = () => {
         </div>
       )}
 
-      {/* Timeline Section */}
-      {timelineEvents.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-lg font-semibold text-foreground">
-              Today's Schedule
-            </h2>
-            <span className="text-sm text-muted-foreground">
-              {timelineEvents.length} more
-            </span>
-          </div>
-          <div className="soft-card p-5">
-            <ClassTimeline events={timelineEvents} />
-          </div>
-        </section>
-      )}
+      {/* Schedule Widget - Opens Pocket Space */}
+      <section>
+        <ScheduleWidget 
+          events={events} 
+          subjects={subjects} 
+        />
+      </section>
 
       {/* Focus Task */}
       {priorityTask && (
