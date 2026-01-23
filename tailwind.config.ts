@@ -74,13 +74,15 @@ export default {
         physics: "hsl(var(--physics))",
         english: "hsl(var(--english))",
         chemistry: "hsl(var(--chemistry))",
+        geometry: "hsl(var(--geometry))",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        "2xl": "1.25rem",
-        "3xl": "1.5rem",
+        "2xl": "1.5rem",
+        "3xl": "1.75rem",
+        "4xl": "2rem",
       },
       boxShadow: {
         soft: "var(--shadow-soft)",

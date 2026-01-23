@@ -18,43 +18,36 @@ const tabs = [
 
 export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe">
-      <div className="mx-4 mb-4 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/40 shadow-elevated overflow-hidden">
-        <div className="flex items-center justify-around py-2">
-          {tabs.map(({ id, label, icon: Icon }) => {
-            const isActive = activeTab === id;
-            return (
-              <button
-                key={id}
-                onClick={() => onTabChange(id)}
+    <nav className="floating-dock pb-safe">
+      <div className="dock-container">
+        {tabs.map(({ id, label, icon: Icon }) => {
+          const isActive = activeTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onTabChange(id)}
+              className={cn(
+                "dock-item",
+                isActive && "dock-item-active"
+              )}
+            >
+              <Icon 
                 className={cn(
-                  "flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all",
+                  "dock-icon w-5 h-5 transition-all duration-200",
                   isActive 
-                    ? "text-primary" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className={cn(
-                  "relative p-2 rounded-xl transition-all",
-                  isActive && "bg-primary/10"
-                )}>
-                  <Icon 
-                    className={cn(
-                      "w-5 h-5 transition-all",
-                      isActive && "scale-110"
-                    )} 
-                  />
-                </div>
-                <span className={cn(
-                  "text-xs font-medium transition-all",
-                  isActive && "text-primary"
-                )}>
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                    ? "text-primary scale-110" 
+                    : "text-muted-foreground"
+                )} 
+              />
+              <span className={cn(
+                "text-[10px] font-medium transition-all duration-200",
+                isActive ? "text-primary" : "text-muted-foreground"
+              )}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

@@ -401,6 +401,20 @@ export const useOrbitData = () => {
       .sort((a, b) => new Date(a.exam_date!).getTime() - new Date(b.exam_date!).getTime());
   };
 
+  // Get today's events (classes and exams)
+  const getTodayEvents = (): CalendarEvent[] => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    
+    return events
+      .filter(e => e.day_of_week === currentDay)
+      .sort((a, b) => {
+        const [aH, aM] = a.start_time.split(':').map(Number);
+        const [bH, bM] = b.start_time.split(':').map(Number);
+        return (aH * 60 + aM) - (bH * 60 + bM);
+      });
+  };
+
   return {
     subjects,
     events,
@@ -425,6 +439,7 @@ export const useOrbitData = () => {
     getHighestPriorityTask,
     getNotesBySubject,
     getUpcomingExams,
+    getTodayEvents,
     refetch: fetchData,
   };
 };
