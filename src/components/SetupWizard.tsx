@@ -5,8 +5,9 @@ import { Input } from "./ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { ChevronRight, Sparkles, BookOpen, Calendar, Loader2, Link2, ArrowLeft } from "lucide-react";
+import { ChevronRight, Sparkles, BookOpen, Calendar, Loader2, Link2, ArrowLeft, QrCode } from "lucide-react";
 import { GroupSelector } from "./GroupSelector";
+import { QRCodeScanner } from "./QRCodeScanner";
 
 const SUBJECT_PRESETS = [
   { name: "Mathematics", icon: "📐", colorKey: "math" },
@@ -32,6 +33,43 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
   const [selectedSubjects, setSelectedSubjects] = useState<typeof SUBJECT_PRESETS>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+
+  const isValidCalendarUrl = (url: string): boolean => {
+    const lowered = url.toLowerCase();
+    return (
+      lowered.includes('.ics') ||
+      lowered.includes('ical') ||
+      lowered.includes('vcal') ||
+      lowered.includes('calendar') ||
+      lowered.includes('planning') ||
+      lowered.includes('webcal://') ||
+      lowered.includes('hyperplanning') ||
+      lowered.includes('celcat') ||
+      lowered.includes('ade') ||
+      (lowered.startsWith('http') && (
+        lowered.includes('export') ||
+        lowered.includes('subscribe')
+      ))
+    );
+  };
+
+  const normalizeCalendarUrl = (url: string): string => {
+    // Convert webcal:// to https://
+    if (url.startsWith('webcal://')) {
+      return url.replace('webcal://', 'https://');
+    }
+    return url;
+  };
+
+  const handleQRScan = (scannedUrl: string) => {
+    const normalizedUrl = normalizeCalendarUrl(scannedUrl);
+    setIcalUrl(normalizedUrl);
+    setShowQRScanner(false);
+    toast.success("URL ajoutée !", {
+      description: "Clique sur Continuer pour synchroniser",
+    });
+  };
 
   const toggleSubject = (subject: typeof SUBJECT_PRESETS[0]) => {
     setSelectedSubjects(prev => {
@@ -50,9 +88,15 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
   const handleUrlSubmit = async () => {
     if (!user || !icalUrl) return;
     
-    // Basic URL validation
-    if (!icalUrl.includes('.ics') && !icalUrl.includes('ical') && !icalUrl.includes('calendar') && !icalUrl.includes('planning')) {
-      toast.error("This doesn't look like an iCal URL");
+    // Normalize the URL first
+    const normalizedUrl = normalizeCalendarUrl(icalUrl.trim());
+    setIcalUrl(normalizedUrl);
+    
+    // Basic URL validation for iCal and vCal formats
+    if (!isValidCalendarUrl(normalizedUrl)) {
+      toast.error("URL de calendrier non reconnue", {
+        description: "Formats supportés: iCal (.ics), vCal, Hyperplanning, CELCAT, ADE",
+      });
       return;
     }
 
@@ -263,9 +307,22 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
         <>
           {/* iCal URL Input */}
           <GlassCard variant="elevated" className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="w-5 h-5 text-primary" />
-              <h2 className="font-display font-semibold">URL du Calendrier</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                <h2 className="font-display font-semibold">URL du Calendrier</h2>
+              </div>
+              
+              {/* QR Code Scanner Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowQRScanner(true)}
+                className="flex items-center gap-1.5 text-primary hover:bg-primary/10"
+              >
+                <QrCode className="w-4 h-4" />
+                <span className="text-sm">Scanner QR</span>
+              </Button>
             </div>
 
             <div className="space-y-3">
@@ -281,7 +338,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
               </div>
               
               <p className="text-xs text-muted-foreground">
-                💡 Trouve ce lien dans Hyperplanning, Google Calendar ou le portail de ton école sous "Exporter" ou "S'abonner"
+                💡 Formats supportés: iCal (.ics), vCal, Hyperplanning, CELCAT, ADE, webcal://
               </p>
             </div>
           </GlassCard>
@@ -311,6 +368,14 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           >
             Configuration Manuelle
           </Button>
+
+          {/* QR Scanner Modal */}
+          {showQRScanner && (
+            <QRCodeScanner
+              onScan={handleQRScan}
+              onClose={() => setShowQRScanner(false)}
+            />
+          )}
         </>
       )}
 
