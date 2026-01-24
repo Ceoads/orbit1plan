@@ -13,7 +13,7 @@ import { QRCodeScanner } from "@/components/QRCodeScanner";
 import { 
   ArrowLeft, Calendar, RefreshCw, Check, AlertCircle, 
   Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
-  MapPin, Navigation, Home, QrCode
+  MapPin, Navigation, Home, QrCode, Play, Sparkles
 } from "lucide-react";
 import {
   Select,
@@ -479,6 +479,60 @@ const SettingsPage = () => {
             <p className="text-xs text-muted-foreground">
               💡 L'IA utilisera ta position pour mieux suggérer le classement de tes captures
             </p>
+          </GlassCard>
+        </section>
+
+        {/* Tutorial Section */}
+        <section className="animate-fade-in">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h2 className="font-display font-semibold text-foreground">Tutoriel</h2>
+          </div>
+          
+          <GlassCard variant="elevated" className="p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Play className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-foreground mb-1">Parcours Orbit</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Revisite le tutoriel interactif pour découvrir toutes les fonctionnalités d'Orbit.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Reset tutorial flags
+                    localStorage.removeItem("orbit_tutorial_completed");
+                    toast.success("Tutoriel réinitialisé !", {
+                      description: "Retourne sur l'accueil pour le relancer",
+                    });
+                    navigate('/');
+                  }}
+                  className="w-full"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Relancer le tutoriel
+                </Button>
+              </div>
+            </div>
+            
+            {/* Option to restart full onboarding */}
+            <Button
+              variant="ghost"
+              onClick={() => {
+                localStorage.removeItem("orbit_onboarding_seen");
+                localStorage.removeItem("orbit_tutorial_completed");
+                toast.success("Onboarding complet réinitialisé !", {
+                  description: "Retourne sur l'accueil pour revoir l'introduction",
+                });
+                navigate('/');
+              }}
+              className="w-full text-muted-foreground hover:text-foreground"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Revoir l'onboarding complet
+            </Button>
           </GlassCard>
         </section>
 
