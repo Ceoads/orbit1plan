@@ -22,7 +22,7 @@ export const EditExamModal = ({
 }: EditExamModalProps) => {
   const { updateEvent } = useOrbitData();
   const [title, setTitle] = useState("");
-  const [subjectId, setSubjectId] = useState<string>("");
+  const [subjectId, setSubjectId] = useState<string>("__none__");
   const [examDate, setExamDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("11:00");
@@ -32,7 +32,7 @@ export const EditExamModal = ({
   useEffect(() => {
     if (event) {
       setTitle(event.title);
-      setSubjectId(event.subject_id || "");
+      setSubjectId(event.subject_id || "__none__");
       setExamDate(event.exam_date || format(new Date(), 'yyyy-MM-dd'));
       setStartTime(event.start_time);
       setEndTime(event.end_time);
@@ -50,7 +50,7 @@ export const EditExamModal = ({
     setLoading(true);
     await updateEvent(event.id, {
       title,
-      subject_id: subjectId || null,
+      subject_id: subjectId === "__none__" ? null : subjectId,
       start_time: startTime,
       end_time: endTime,
       day_of_week: dayOfWeek,
@@ -86,7 +86,7 @@ export const EditExamModal = ({
                 <SelectValue placeholder="Select a subject" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.icon} {subject.name}

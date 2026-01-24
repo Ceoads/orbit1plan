@@ -20,7 +20,7 @@ export const AddExamModal = ({
 }: AddExamModalProps) => {
   const { createEvent } = useOrbitData();
   const [title, setTitle] = useState("");
-  const [subjectId, setSubjectId] = useState<string>("");
+  const [subjectId, setSubjectId] = useState<string>("__none__");
   const [examDate, setExamDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("11:00");
@@ -37,7 +37,7 @@ export const AddExamModal = ({
     setLoading(true);
     await createEvent({
       title,
-      subject_id: subjectId || null,
+      subject_id: subjectId === "__none__" ? null : subjectId,
       start_time: startTime,
       end_time: endTime,
       day_of_week: dayOfWeek,
@@ -51,7 +51,7 @@ export const AddExamModal = ({
     
     // Reset form
     setTitle("");
-    setSubjectId("");
+    setSubjectId("__none__");
     setRoomNumber("");
     onOpenChange(false);
   };
@@ -81,7 +81,7 @@ export const AddExamModal = ({
                 <SelectValue placeholder="Select a subject" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.icon} {subject.name}

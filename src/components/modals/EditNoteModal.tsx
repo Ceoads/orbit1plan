@@ -20,13 +20,13 @@ export const EditNoteModal = ({
   subjects,
 }: EditNoteModalProps) => {
   const { updateNote } = useOrbitData();
-  const [subjectId, setSubjectId] = useState<string>("");
+  const [subjectId, setSubjectId] = useState<string>("__none__");
   const [rawText, setRawText] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (note) {
-      setSubjectId(note.subject_id || "");
+      setSubjectId(note.subject_id || "__none__");
       setRawText(note.raw_text || "");
     }
   }, [note]);
@@ -37,7 +37,7 @@ export const EditNoteModal = ({
 
     setLoading(true);
     await updateNote(note.id, {
-      subject_id: subjectId || null,
+      subject_id: subjectId === "__none__" ? null : subjectId,
       raw_text: rawText,
     });
     setLoading(false);
@@ -58,7 +58,7 @@ export const EditNoteModal = ({
                 <SelectValue placeholder="Select a subject" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.icon} {subject.name}
