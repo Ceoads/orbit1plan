@@ -9,6 +9,8 @@ export type NavTab = 'pulse' | 'vault' | 'tasks' | 'exams' | 'lab';
 interface BottomNavProps {
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
+  "data-tutorial-pulse"?: string;
+  "data-tutorial-lab"?: string;
 }
 
 const tabs = [
@@ -46,6 +48,13 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
       >
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
+          // Add data attributes for tutorial targeting
+          const tutorialAttr = id === 'pulse' 
+            ? { "data-tutorial": "pulse-tab" }
+            : id === 'lab' 
+              ? { "data-tutorial": "lab-tab" }
+              : {};
+          
           return (
             <motion.button
               key={id}
@@ -56,6 +65,7 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
               )}
               whileTap={{ scale: 0.92 }}
               transition={{ duration: 0.1 }}
+              {...tutorialAttr}
             >
               <Icon 
                 className={cn(
