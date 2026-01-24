@@ -32,15 +32,18 @@ const Index = () => {
       const hasSeenOnboarding = localStorage.getItem("orbit_onboarding_seen") === "true";
       const hasTutorialCompleted = tutorial.hasCompletedTutorial();
       
+      // Show onboarding for first-time users (no subjects and haven't seen onboarding)
       if (needsSetup && !hasSeenOnboarding) {
         setShowOnboarding(true);
-      } else if (!hasTutorialCompleted && subjects.length > 0) {
-        // Start tutorial for users who completed setup but not tutorial
+      } 
+      // Start tutorial for users who have subjects but haven't completed tutorial
+      // This covers both iCal sync AND manual setup
+      else if (!hasTutorialCompleted && subjects.length > 0 && !showSetup) {
         setTutorialActive(true);
         tutorial.startTutorial();
       }
     }
-  }, [loading, user, needsSetup, subjects.length]);
+  }, [loading, user, needsSetup, subjects.length, showSetup]);
 
   const currentClass = getCurrentClass();
   const currentSubject = currentClass ? getSubjectById(currentClass.subject_id) : null;
@@ -64,16 +67,23 @@ const Index = () => {
   };
   
   const handleSetupFromOnboarding = () => {
+    // Mark onboarding as seen when proceeding to setup
+    localStorage.setItem("orbit_onboarding_seen", "true");
     setShowOnboarding(false);
     setShowSetup(true);
   };
   
-  const handleSetupComplete = () => {
+  const handleSetupComplete = async () => {
     setShowSetup(false);
-    refetch();
-    // Start tutorial after setup
-    setTutorialActive(true);
-    tutorial.startTutorial();
+    // Refetch to get newly created subjects
+    await refetch();
+    
+    // ALWAYS start tutorial after setup (manual OR iCal)
+    // Small delay to ensure UI is ready
+    setTimeout(() => {
+      setTutorialActive(true);
+      tutorial.startTutorial();
+    }, 500);
   };
   
   const handleTutorialComplete = () => {
