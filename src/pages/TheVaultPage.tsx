@@ -189,6 +189,7 @@ export const TheVaultPage = () => {
             size="icon" 
             onClick={() => setShowAddSubject(true)}
             className="rounded-full h-10 w-10 gradient-primary shadow-lg"
+            data-tutorial="add-button"
           >
             <Plus className="w-5 h-5" />
           </Button>

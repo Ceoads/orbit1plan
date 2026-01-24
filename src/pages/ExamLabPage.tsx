@@ -283,6 +283,7 @@ export const ExamLabPage = () => {
             onClick={() => setIsReviewing(true)}
             className="w-full h-14 text-lg gap-3"
             size="lg"
+            data-tutorial="review-button"
           >
             <BookOpen className="w-5 h-5" />
             Commencer la révision
@@ -292,7 +293,7 @@ export const ExamLabPage = () => {
           </Button>
         </motion.div>
       ) : (
-        <GlassCard className="text-center py-8">
+        <GlassCard className="text-center py-8" data-tutorial="empty-flashcards">
           <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
           <h3 className="font-semibold mb-2">Aucune flashcard</h3>
           <p className="text-sm text-muted-foreground mb-4">
