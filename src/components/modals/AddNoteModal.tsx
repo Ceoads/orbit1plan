@@ -20,7 +20,7 @@ export const AddNoteModal = ({
   defaultSubjectId = null,
 }: AddNoteModalProps) => {
   const { createNote } = useOrbitData();
-  const [subjectId, setSubjectId] = useState<string>(defaultSubjectId || "");
+  const [subjectId, setSubjectId] = useState<string>(defaultSubjectId || "__none__");
   const [rawText, setRawText] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +30,7 @@ export const AddNoteModal = ({
 
     setLoading(true);
     await createNote({
-      subject_id: subjectId || null,
+      subject_id: subjectId === "__none__" ? null : subjectId,
       raw_text: rawText,
       ai_summary: null,
       media_url: null,
@@ -40,7 +40,7 @@ export const AddNoteModal = ({
     
     // Reset form
     setRawText("");
-    if (!defaultSubjectId) setSubjectId("");
+    if (!defaultSubjectId) setSubjectId("__none__");
     onOpenChange(false);
   };
 
@@ -58,7 +58,7 @@ export const AddNoteModal = ({
                 <SelectValue placeholder="Select a subject" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.icon} {subject.name}
