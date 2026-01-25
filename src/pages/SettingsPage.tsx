@@ -517,21 +517,33 @@ const SettingsPage = () => {
               </div>
             </div>
             
-            {/* Option to restart full onboarding */}
+            {/* Option to restart full tutorial from welcome */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                localStorage.removeItem("orbit_tutorial_completed");
+                toast.success("Tutoriel complet lancé !");
+                navigate('/?restart_tutorial=full');
+              }}
+              className="w-full"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Relancer le tutoriel complet
+            </Button>
+            
+            {/* Option to restart full onboarding narrative */}
             <Button
               variant="ghost"
               onClick={() => {
                 localStorage.removeItem("orbit_onboarding_seen");
                 localStorage.removeItem("orbit_tutorial_completed");
-                toast.success("Onboarding complet réinitialisé !", {
-                  description: "Retourne sur l'accueil pour revoir l'introduction",
-                });
+                toast.success("Onboarding réinitialisé !");
                 navigate('/');
               }}
               className="w-full text-muted-foreground hover:text-foreground"
             >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Revoir l'onboarding complet
+              <Play className="w-4 h-4 mr-2" />
+              Revoir l'introduction narrative
             </Button>
           </GlassCard>
         </section>
