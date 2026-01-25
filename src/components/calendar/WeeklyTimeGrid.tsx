@@ -37,6 +37,14 @@ export const WeeklyTimeGrid = ({
 
   const getEventsForDayAndHour = (date: Date, hour: number): CalendarEvent[] => {
     const dayOfWeek = date.getDay();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Filter: only show events for today or future dates
+    const eventDate = new Date(date);
+    eventDate.setHours(0, 0, 0, 0);
+    if (eventDate < today) return [];
+    
     return events.filter(e => {
       if (e.day_of_week !== dayOfWeek) return false;
       const [startHour] = e.start_time.split(':').map(Number);
@@ -204,8 +212,8 @@ export const WeeklyTimeGrid = ({
                           <motion.div
                             key={event.id}
                             className={cn(
-                              "absolute inset-x-0.5 rounded-xl p-1 border-l-2 overflow-hidden cursor-pointer hit-target",
-                              "active:scale-95 transition-transform",
+                              "absolute inset-x-0 rounded-lg p-1.5 border-l-3 overflow-hidden cursor-pointer",
+                              "active:scale-95 transition-transform shadow-sm",
                               colors.bg,
                               colors.border
                             )}
@@ -220,16 +228,19 @@ export const WeeklyTimeGrid = ({
                             whileTap={{ scale: 0.98 }}
                             onClick={() => handleEventClick(event)}
                           >
-                            <div className="flex flex-col h-full">
-                              <span className="text-[9px] font-semibold truncate text-foreground">
+                            <div className="flex flex-col h-full overflow-hidden">
+                              <span className={cn(
+                                "text-[10px] font-bold leading-tight line-clamp-2",
+                                colors.text
+                              )}>
                                 {subject?.name || event.title}
                               </span>
-                              <span className="text-[8px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
-                                <Clock className="w-2 h-2" />
+                              <span className="text-[9px] text-foreground/70 flex items-center gap-0.5 mt-0.5 font-medium">
+                                <Clock className="w-2.5 h-2.5" />
                                 {event.start_time.slice(0, 5)}
                               </span>
                               {event.room_number && heightMultiplier >= 1.5 && (
-                                <span className="text-[8px] text-muted-foreground truncate mt-auto">
+                                <span className="text-[8px] text-foreground/60 truncate mt-auto font-medium">
                                   📍 {event.room_number}
                                 </span>
                               )}
