@@ -229,18 +229,15 @@ export const WeeklyTimeGrid = ({
                             onClick={() => handleEventClick(event)}
                           >
                             <div className="flex flex-col h-full overflow-hidden">
-                              <span className={cn(
-                                "text-[10px] font-bold leading-tight line-clamp-2",
-                                colors.text
-                              )}>
+                              <span className="text-[10px] font-bold leading-tight line-clamp-2 text-gray-900">
                                 {subject?.name || event.title}
                               </span>
-                              <span className="text-[9px] text-foreground/70 flex items-center gap-0.5 mt-0.5 font-medium">
+                              <span className="text-[9px] text-gray-700 flex items-center gap-0.5 mt-0.5 font-medium">
                                 <Clock className="w-2.5 h-2.5" />
                                 {event.start_time.slice(0, 5)}
                               </span>
                               {event.room_number && heightMultiplier >= 1.5 && (
-                                <span className="text-[8px] text-foreground/60 truncate mt-auto font-medium">
+                                <span className="text-[8px] text-gray-600 truncate mt-auto font-medium">
                                   📍 {event.room_number}
                                 </span>
                               )}
