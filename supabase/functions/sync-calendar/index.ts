@@ -12,6 +12,107 @@ const EXAM_KEYWORDS = [
   'controle', 'épreuve', 'quiz', 'midterm', 'assessment'
 ];
 
+// Non-course events to EXCLUDE (vacations, holidays, study days, etc.)
+const EXCLUDED_EVENT_KEYWORDS = [
+  'vacances', 'férié', 'ferie', 'fériés', 'feries', 'ferié', 'ferie',
+  'journée d\'études', 'journee d\'etudes', 'jour d\'étude',
+  'holiday', 'break', 'congé', 'conge', 'repos',
+  'pas de cours', 'annulé', 'annule', 'cancelled', 'canceled',
+  'pont', 'toussaint', 'noël', 'noel', 'pâques', 'paques',
+  'armistice', 'ascension', 'pentecôte', 'pentecote',
+  'fériation', 'feriation', 'jour off', 'off day',
+  'suspension', 'interruption', 'réunion pédagogique',
+  'semaine de révision', 'revision week', 'reading week'
+];
+
+// Smart icon mapping based on subject keywords
+const SMART_ICON_MAP: { keywords: string[]; icon: string; color: string }[] = [
+  // Sciences & Math
+  { keywords: ['math', 'maths', 'mathématiques', 'algèbre', 'analyse', 'statistique', 'stat', 'probabilité', 'calcul'], icon: '🔢', color: 'math' },
+  { keywords: ['physique', 'physics', 'mécanique', 'optique', 'thermodynamique'], icon: '⚛️', color: 'physics' },
+  { keywords: ['chimie', 'chemistry', 'biochimie', 'organique'], icon: '🧪', color: 'chemistry' },
+  { keywords: ['biologie', 'biology', 'bio', 'svt', 'génétique', 'écologie'], icon: '🧬', color: 'chemistry' },
+  
+  // Tech & Informatique
+  { keywords: ['informatique', 'info', 'programmation', 'coding', 'développement', 'dev', 'algorithmique', 'algo'], icon: '💻', color: 'physics' },
+  { keywords: ['web', 'html', 'css', 'javascript', 'react', 'frontend'], icon: '🌐', color: 'physics' },
+  { keywords: ['base de données', 'database', 'sql', 'bdd', 'data'], icon: '🗄️', color: 'physics' },
+  { keywords: ['réseau', 'network', 'système', 'linux', 'serveur'], icon: '🔧', color: 'physics' },
+  { keywords: ['cybersécurité', 'sécurité', 'security', 'crypto'], icon: '🔐', color: 'physics' },
+  { keywords: ['ia', 'intelligence artificielle', 'machine learning', 'ml', 'deep learning'], icon: '🤖', color: 'physics' },
+  
+  // Langues
+  { keywords: ['anglais', 'english', 'lv1', 'lvb', 'lva'], icon: '🇬🇧', color: 'english' },
+  { keywords: ['allemand', 'german', 'deutsch'], icon: '🇩🇪', color: 'english' },
+  { keywords: ['espagnol', 'spanish', 'español'], icon: '🇪🇸', color: 'english' },
+  { keywords: ['français', 'french', 'littérature', 'lettre'], icon: '🇫🇷', color: 'english' },
+  { keywords: ['chinois', 'mandarin', 'chinese'], icon: '🇨🇳', color: 'english' },
+  { keywords: ['japonais', 'japanese'], icon: '🇯🇵', color: 'english' },
+  { keywords: ['langue', 'communication', 'expression'], icon: '🗣️', color: 'english' },
+  
+  // Business & Management
+  { keywords: ['marketing', 'market', 'publicité', 'pub', 'brand'], icon: '📈', color: 'history' },
+  { keywords: ['management', 'gestion', 'organisation', 'stratégie', 'strategy'], icon: '🎯', color: 'history' },
+  { keywords: ['économie', 'economy', 'éco', 'micro', 'macro', 'finance'], icon: '💰', color: 'history' },
+  { keywords: ['comptabilité', 'compta', 'accounting', 'budget'], icon: '📊', color: 'history' },
+  { keywords: ['droit', 'law', 'juridique', 'legal', 'contrat'], icon: '⚖️', color: 'history' },
+  { keywords: ['commerce', 'vente', 'négociation', 'négo', 'sales', 'client'], icon: '🤝', color: 'history' },
+  { keywords: ['ressources humaines', 'rh', 'hr', 'recrutement'], icon: '👥', color: 'history' },
+  { keywords: ['entrepreneuriat', 'startup', 'business plan', 'création'], icon: '🚀', color: 'history' },
+  { keywords: ['projet', 'project', 'ppp', 'portfolio', 'professionnel'], icon: '📋', color: 'history' },
+  
+  // Arts & Design
+  { keywords: ['art', 'dessin', 'peinture', 'sculpture', 'beaux-arts'], icon: '🎨', color: 'chemistry' },
+  { keywords: ['design', 'ux', 'ui', 'graphique', 'visuel'], icon: '✨', color: 'chemistry' },
+  { keywords: ['musique', 'music', 'instrument', 'solfège'], icon: '🎵', color: 'chemistry' },
+  { keywords: ['photo', 'photographie', 'vidéo', 'audiovisuel'], icon: '📸', color: 'chemistry' },
+  { keywords: ['théâtre', 'theater', 'drama', 'scène'], icon: '🎭', color: 'chemistry' },
+  
+  // Sciences Humaines
+  { keywords: ['histoire', 'history', 'géo', 'géographie', 'geography'], icon: '🌍', color: 'history' },
+  { keywords: ['philosophie', 'philo', 'philosophy', 'éthique'], icon: '🤔', color: 'history' },
+  { keywords: ['psychologie', 'psycho', 'psychology', 'cognitif'], icon: '🧠', color: 'history' },
+  { keywords: ['sociologie', 'socio', 'sociology', 'social'], icon: '👁️', color: 'history' },
+  { keywords: ['politique', 'sciences po', 'politique', 'institutions'], icon: '🏛️', color: 'history' },
+  
+  // Sport & Santé
+  { keywords: ['sport', 'eps', 'éducation physique', 'gym', 'athlétisme'], icon: '⚽', color: 'math' },
+  { keywords: ['santé', 'médecine', 'anatomie', 'health', 'médical'], icon: '🏥', color: 'chemistry' },
+  
+  // Ingénierie
+  { keywords: ['électronique', 'electronic', 'circuit', 'composant'], icon: '⚡', color: 'physics' },
+  { keywords: ['mécanique', 'mechanical', 'machine', 'moteur'], icon: '⚙️', color: 'physics' },
+  { keywords: ['conception', 'cao', 'cad', '3d', 'modélisation'], icon: '📐', color: 'physics' },
+  { keywords: ['architecture', 'bâtiment', 'construction', 'urbanisme'], icon: '🏗️', color: 'physics' },
+];
+
+// Determine smart icon and color based on subject name
+function getSmartIconAndColor(subjectName: string): { icon: string; color: string } {
+  const lowerName = subjectName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  for (const mapping of SMART_ICON_MAP) {
+    for (const keyword of mapping.keywords) {
+      const normalizedKeyword = keyword.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (lowerName.includes(normalizedKeyword)) {
+        return { icon: mapping.icon, color: mapping.color };
+      }
+    }
+  }
+  
+  // Fallback: generic book icon
+  return { icon: '📚', color: 'english' };
+}
+
+// Check if event should be excluded (vacations, holidays, etc.)
+function isExcludedEvent(title: string): boolean {
+  const lowerTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  return EXCLUDED_EVENT_KEYWORDS.some(keyword => {
+    const normalizedKeyword = keyword.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return lowerTitle.includes(normalizedKeyword);
+  });
+}
+
 // Group code patterns for detection - broader patterns
 const GROUP_PATTERNS = [
   /\b(TC\d+\s*G?\d*\s*[A-Z]?)\b/gi,            // TC2, TC2 G1 A, TC1G2
@@ -379,8 +480,17 @@ serve(async (req) => {
         // Current date for filtering
         const now = new Date();
         
-        // Apply group filter AND time filter (only future events)
+        // Apply group filter, time filter, AND exclude non-course events
         const events = allEvents.filter(e => {
+          // Skip events without titles
+          if (!e.summary) return false;
+          
+          // Exclude vacations, holidays, study days, etc.
+          if (isExcludedEvent(e.summary)) {
+            console.log(`Excluding non-course event: ${e.summary}`);
+            return false;
+          }
+          
           // Time filter: only keep events ending after now
           if (e.end) {
             const endDate = new Date(e.end);
@@ -424,26 +534,24 @@ serve(async (req) => {
           if (isExam) examsFound++;
         }
         
-        // Create new subjects
-        const subjectIcons = ['📐', '📜', '⚡', '📚', '🧪', '🌍', '🎨', '💻', '🔬', '📊'];
-        const subjectColors = ['math', 'history', 'physics', 'english', 'chemistry'];
-        let iconIndex = existingSubjects?.length || 0;
-        
+        // Create new subjects with SMART icons based on subject name
         for (const subjectName of newSubjectsToCreate) {
+          const { icon, color } = getSmartIconAndColor(subjectName);
+          
           const { data: newSubject, error } = await supabase
             .from('subjects')
             .insert({
               user_id: user_id,
               name: subjectName,
-              icon: subjectIcons[iconIndex % subjectIcons.length],
-              color_key: subjectColors[iconIndex % subjectColors.length],
+              icon: icon,
+              color_key: color,
             })
             .select()
             .single();
           
           if (!error && newSubject) {
             subjectMap.set(subjectName.toLowerCase(), newSubject.id);
-            iconIndex++;
+            console.log(`Created subject "${subjectName}" with icon ${icon}`);
           }
         }
         
