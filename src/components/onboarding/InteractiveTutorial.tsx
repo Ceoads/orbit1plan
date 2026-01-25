@@ -11,6 +11,7 @@ import { SpotlightOverlay } from "./SpotlightOverlay";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronRight, X } from "lucide-react";
 import Confetti from "./Confetti";
+import { tutorialAnimations } from "./tutorialAnimations";
 
 export type TutorialStep = 
   | "welcome"
@@ -169,6 +170,7 @@ export const InteractiveTutorial = ({
           message={currentMission.message}
           subtitle={currentMission.subtitle}
           tooltipPosition={currentMission.tooltipPosition}
+          animationData={tutorialAnimations[currentStep]}
         >
           {/* Progress indicator */}
           <div className="flex items-center gap-1 mb-3">

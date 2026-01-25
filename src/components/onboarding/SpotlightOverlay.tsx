@@ -5,6 +5,7 @@
 
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
+import Lottie from "lottie-react";
 
 interface SpotlightOverlayProps {
   /** Target element selector or rect position */
@@ -19,6 +20,8 @@ interface SpotlightOverlayProps {
   children?: ReactNode;
   /** Whether to show the overlay */
   isVisible: boolean;
+  /** Lottie animation data */
+  animationData?: object;
 }
 
 export const SpotlightOverlay = ({
@@ -28,6 +31,7 @@ export const SpotlightOverlay = ({
   tooltipPosition = "bottom",
   children,
   isVisible,
+  animationData,
 }: SpotlightOverlayProps) => {
   if (!isVisible) return null;
 
@@ -153,6 +157,18 @@ export const SpotlightOverlay = ({
         )}
         {targetRect && tooltipPosition === "top" && (
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/90 rotate-45 border-r border-b border-white/50" />
+        )}
+
+        {/* Lottie Animation */}
+        {animationData && (
+          <div className="flex justify-center mb-3">
+            <Lottie
+              animationData={animationData}
+              loop={true}
+              autoplay={true}
+              style={{ width: 80, height: 80 }}
+            />
+          </div>
         )}
 
         <p className="font-display font-semibold text-foreground text-center mb-1">
