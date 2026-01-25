@@ -245,6 +245,12 @@ export const useTutorial = () => {
     setIsActive(true);
   };
 
+  // Start tutorial from a specific step (skip earlier steps)
+  const startTutorialFromStep = (step: TutorialStep) => {
+    setCurrentStep(step);
+    setIsActive(true);
+  };
+
   const completeTutorial = () => {
     setIsActive(false);
     setCurrentStep("welcome");
@@ -269,6 +275,7 @@ export const useTutorial = () => {
     isActive,
     currentStep,
     startTutorial,
+    startTutorialFromStep,
     completeTutorial,
     skipTutorial,
     advanceStep,

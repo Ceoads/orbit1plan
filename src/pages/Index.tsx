@@ -79,10 +79,11 @@ const Index = () => {
     await refetch();
     
     // ALWAYS start tutorial after setup (manual OR iCal)
+    // Skip "add-subject" step since subjects are already created during setup
     // Small delay to ensure UI is ready
     setTimeout(() => {
       setTutorialActive(true);
-      tutorial.startTutorial();
+      tutorial.startTutorialFromStep("explore-lab");
     }, 500);
   };
   
