@@ -51,29 +51,34 @@ function parseICalData(icalData: string): any[] {
       processKeyValue(currentEvent, currentKey, currentValue);
     }
     
-    // Parse new line
-    const colonIndex = line.indexOf(':');
-    if (colonIndex === -1) continue;
-    
-    currentKey = line.substring(0, colonIndex);
-    currentValue = line.substring(colonIndex + 1);
-    
-    // Handle special cases
-    if (currentKey.startsWith('DTSTART') || currentKey.startsWith('DTEND')) {
-      const baseKey = currentKey.split(';')[0];
-      currentKey = baseKey;
-    }
-
+    // Check for BEGIN:VEVENT and END:VEVENT first
     if (line === 'BEGIN:VEVENT') {
       currentEvent = {};
       currentKey = '';
       currentValue = '';
+      continue;
     } else if (line === 'END:VEVENT' && currentEvent) {
+      // Process any remaining key-value pair
+      if (currentKey) {
+        processKeyValue(currentEvent, currentKey, currentValue);
+      }
       events.push(currentEvent);
       currentEvent = null;
       currentKey = '';
       currentValue = '';
+      continue;
     }
+    
+    // Parse new line - handle both "KEY:value" and "KEY;param=x:value"
+    const colonIndex = line.indexOf(':');
+    if (colonIndex === -1) continue;
+    
+    let rawKey = line.substring(0, colonIndex);
+    currentValue = line.substring(colonIndex + 1);
+    
+    // Extract base key (remove parameters like ;LANGUAGE=fr or ;TZID=Europe/Paris)
+    const semicolonIndex = rawKey.indexOf(';');
+    currentKey = semicolonIndex !== -1 ? rawKey.substring(0, semicolonIndex) : rawKey;
   }
 
   return events;
