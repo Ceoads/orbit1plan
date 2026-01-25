@@ -12,15 +12,21 @@ const EXAM_KEYWORDS = [
   'controle', 'épreuve', 'quiz', 'midterm', 'assessment'
 ];
 
-// Group code patterns for detection
+// Group code patterns for detection - broader patterns
 const GROUP_PATTERNS = [
-  /\b(TC\d+\s*G\d+\s*[A-Z]?)\b/gi,           // TC2 G1 A
-  /\b(L[1-3]\s*[-]?\s*[A-Z])\b/gi,            // L3-A, L1 B
-  /\b(M[1-2]\s*[-]?\s*[A-Z0-9]+)\b/gi,        // M1-A, M2 Info
-  /\b(INFO[-\s]?S\d+)\b/gi,                    // INFO-S3, INFO S2
-  /\b(Groupe\s*\d+[A-Z]?)\b/gi,               // Groupe 1A
-  /\b(G\d+\s*[A-Z]?)\b/gi,                     // G1A, G2 B
-  /\b([A-Z]{2,4}[-\s]?\d+[-\s]?[A-Z0-9]*)\b/g, // MIAGE-2A, BUT-INFO-1
+  /\b(TC\d+\s*G?\d*\s*[A-Z]?)\b/gi,            // TC2, TC2 G1 A, TC1G2
+  /\b(L[1-3]\s*[-]?\s*[A-Z0-9]*)\b/gi,          // L3-A, L1 B, L2
+  /\b(M[1-2]\s*[-]?\s*[A-Z0-9]+)\b/gi,          // M1-A, M2 Info
+  /\b(INFO[-\s]?S?\d+)\b/gi,                     // INFO-S3, INFO S2, INFO3
+  /\b(Groupe\s*\d+[A-Z]?)\b/gi,                 // Groupe 1A
+  /\b(G\d+\s*[A-Z]?)\b/gi,                       // G1A, G2 B
+  /\b(S\d+[-\s]?[A-Z0-9]*)\b/gi,                 // S3, S3-A, S5 Info
+  /\b(TP\d+[A-Z]?)\b/gi,                         // TP1, TP2A
+  /\b(TD\d+[A-Z]?)\b/gi,                         // TD1, TD2B
+  /\b([A-Z]{2,6}\d+[-\s]?[A-Z0-9]*)\b/g,         // MIAGE2A, BUT1, GEII2
+  /\b(\d{4}[-_][A-Z0-9]+)\b/gi,                  // 2024-INFO, 2025_M1
+  /\[\s*([^\]]+)\s*\]/g,                          // [Anything in brackets]
+  /\(([A-Z0-9][-A-Z0-9\s]{1,15})\)/g,            // (Anything in parentheses with letters/numbers)
 ];
 
 // Parse iCal format
@@ -259,6 +265,10 @@ serve(async (req) => {
       const icalData = await response.text();
       const events = parseICalData(icalData);
       
+      // Log first 10 event titles for debugging
+      const sampleTitles = events.slice(0, 10).map(e => e.summary).filter(Boolean);
+      console.log('Sample event titles:', JSON.stringify(sampleTitles));
+      
       // Scan 100 first events for groups
       const groupCounts = detectGroupsFromEvents(events, 100);
       
@@ -271,9 +281,13 @@ serve(async (req) => {
       
       console.log(`Detected ${detectedGroups.length} groups from ${events.length} events`);
       
+      // If no groups detected, return event summaries as hint for user
+      const eventSummaries = events.slice(0, 5).map(e => e.summary).filter(Boolean);
+      
       return new Response(JSON.stringify({ 
         detectedGroups,
         totalEventsScanned: Math.min(events.length, 100),
+        sampleTitles: detectedGroups.length === 0 ? eventSummaries : undefined,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
