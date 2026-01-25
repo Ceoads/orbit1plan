@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { BottomNav, NavTab } from "@/components/BottomNav";
 import { PulsePage } from "./PulsePage";
 import { TheVaultPage } from "./TheVaultPage";
@@ -15,6 +15,7 @@ import { OrbitOnboarding, useTutorial, TutorialStep } from "@/components/onboard
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { signOut, user } = useAuth();
   const { subjects, loading, getCurrentClass, getSubjectById, refetch } = useOrbitData();
   const [activeTab, setActiveTab] = useState<NavTab>('pulse');
@@ -25,6 +26,18 @@ const Index = () => {
 
   // Check if user needs onboarding
   const needsSetup = !loading && subjects.length === 0;
+  
+  // Check for URL parameter to restart tutorial from "welcome"
+  useEffect(() => {
+    const restartTutorial = searchParams.get("restart_tutorial");
+    if (restartTutorial === "full" && user && !loading) {
+      // Clear the URL param
+      setSearchParams({});
+      // Start tutorial from welcome step
+      setTutorialActive(true);
+      tutorial.startTutorial();
+    }
+  }, [searchParams, user, loading]);
   
   // Check for first-time user experience
   useEffect(() => {
