@@ -35,17 +35,21 @@ export const WeeklyTimeGrid = ({
     return date.toDateString() === today.toDateString();
   };
 
-  // Get all events for a specific day (not filtered by hour)
-  const getEventsForDay = (date: Date): CalendarEvent[] => {
+  const getEventsForDayAndHour = (date: Date, hour: number): CalendarEvent[] => {
     const dayOfWeek = date.getDay();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Filter: only show events for today or future dates
     const eventDate = new Date(date);
     eventDate.setHours(0, 0, 0, 0);
     if (eventDate < today) return [];
     
-    return events.filter(e => e.day_of_week === dayOfWeek);
+    return events.filter(e => {
+      if (e.day_of_week !== dayOfWeek) return false;
+      const [startHour] = e.start_time.split(':').map(Number);
+      return startHour === hour;
+    });
   };
 
   const getSubject = (subjectId: string | null) => {
@@ -56,82 +60,6 @@ export const WeeklyTimeGrid = ({
     const [startH, startM] = event.start_time.split(':').map(Number);
     const [endH, endM] = event.end_time.split(':').map(Number);
     return (endH * 60 + endM) - (startH * 60 + startM);
-  };
-
-  const getEventStartMinutes = (event: CalendarEvent): number => {
-    const [h, m] = event.start_time.split(':').map(Number);
-    return h * 60 + m;
-  };
-
-  const getEventEndMinutes = (event: CalendarEvent): number => {
-    const [h, m] = event.end_time.split(':').map(Number);
-    return h * 60 + m;
-  };
-
-  // Check if two events overlap
-  const eventsOverlap = (a: CalendarEvent, b: CalendarEvent): boolean => {
-    const aStart = getEventStartMinutes(a);
-    const aEnd = getEventEndMinutes(a);
-    const bStart = getEventStartMinutes(b);
-    const bEnd = getEventEndMinutes(b);
-    return aStart < bEnd && bStart < aEnd;
-  };
-
-  // Assign virtual columns to overlapping events
-  const assignEventColumns = (dayEvents: CalendarEvent[]): Map<string, { column: number; totalColumns: number }> => {
-    const result = new Map<string, { column: number; totalColumns: number }>();
-    
-    if (dayEvents.length === 0) return result;
-    
-    // Sort by start time, then by duration (longer first)
-    const sorted = [...dayEvents].sort((a, b) => {
-      const startDiff = getEventStartMinutes(a) - getEventStartMinutes(b);
-      if (startDiff !== 0) return startDiff;
-      return getEventDuration(b) - getEventDuration(a);
-    });
-
-    // Track columns: each column tracks the end time of the last event in it
-    const columns: number[] = [];
-
-    for (const event of sorted) {
-      const eventStart = getEventStartMinutes(event);
-      
-      // Find the first column where this event can fit
-      let assignedColumn = -1;
-      for (let col = 0; col < columns.length; col++) {
-        if (columns[col] <= eventStart) {
-          assignedColumn = col;
-          break;
-        }
-      }
-
-      // If no column fits, create a new one
-      if (assignedColumn === -1) {
-        assignedColumn = columns.length;
-        columns.push(0);
-      }
-
-      // Update the column's end time
-      columns[assignedColumn] = getEventEndMinutes(event);
-      
-      result.set(event.id, { column: assignedColumn, totalColumns: 1 }); // totalColumns updated later
-    }
-
-    // Now calculate totalColumns for each event based on overlapping events
-    for (const event of sorted) {
-      const overlappingEvents = sorted.filter(e => e.id !== event.id && eventsOverlap(event, e));
-      const columnsUsed = new Set<number>();
-      columnsUsed.add(result.get(event.id)!.column);
-      
-      for (const overlap of overlappingEvents) {
-        columnsUsed.add(result.get(overlap.id)!.column);
-      }
-      
-      const maxColumn = Math.max(...Array.from(columnsUsed)) + 1;
-      result.set(event.id, { ...result.get(event.id)!, totalColumns: maxColumn });
-    }
-
-    return result;
   };
 
   const getSubjectColors = (colorKey: string): { bg: string; border: string; text: string } => {
@@ -269,42 +197,29 @@ export const WeeklyTimeGrid = ({
               {/* Day Columns */}
               <div className="flex-1 grid grid-cols-7 gap-1 border-t border-border/20">
                 {weekDays.map((day) => {
-                  const allDayEvents = getEventsForDay(day);
-                  const columnMap = assignEventColumns(allDayEvents);
-                  
-                  // Only render events that start at this hour
-                  const eventsStartingThisHour = allDayEvents.filter(e => {
-                    const [startHour] = e.start_time.split(':').map(Number);
-                    return startHour === hour;
-                  });
+                  const dayEvents = getEventsForDayAndHour(day, hour);
                   
                   return (
                     <div key={day.toISOString()} className="relative min-h-full">
-                      {eventsStartingThisHour.map((event) => {
+                      {dayEvents.map((event) => {
                         const subject = getSubject(event.subject_id);
                         const colorKey = subject?.color_key || 'history';
                         const colors = getSubjectColors(colorKey);
                         const duration = getEventDuration(event);
                         const heightMultiplier = duration / 60;
                         
-                        const columnInfo = columnMap.get(event.id) || { column: 0, totalColumns: 1 };
-                        const widthPercent = 100 / columnInfo.totalColumns;
-                        const leftPercent = columnInfo.column * widthPercent;
-                        
                         return (
                           <motion.div
                             key={event.id}
                             className={cn(
-                              "absolute rounded-[12px] p-1 border-l-2 overflow-hidden cursor-pointer",
+                              "absolute inset-x-0 rounded-lg p-1.5 border-l-3 overflow-hidden cursor-pointer",
                               "active:scale-95 transition-transform shadow-sm",
                               colors.bg,
                               colors.border
                             )}
                             style={{
                               height: `${heightMultiplier * 56 - 4}px`,
-                              width: `calc(${widthPercent}% - 2px)`,
-                              left: `calc(${leftPercent}% + 1px)`,
-                              zIndex: 10 + columnInfo.column,
+                              zIndex: 10,
                             }}
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -314,15 +229,15 @@ export const WeeklyTimeGrid = ({
                             onClick={() => handleEventClick(event)}
                           >
                             <div className="flex flex-col h-full overflow-hidden">
-                              <span className="text-[9px] font-bold leading-tight line-clamp-2 text-gray-900 truncate">
+                              <span className="text-[10px] font-bold leading-tight line-clamp-2 text-gray-900">
                                 {subject?.name || event.title}
                               </span>
-                              <span className="text-[8px] text-gray-700 flex items-center gap-0.5 mt-0.5 font-medium">
-                                <Clock className="w-2 h-2 flex-shrink-0" />
-                                <span className="truncate">{event.start_time.slice(0, 5)}</span>
+                              <span className="text-[9px] text-gray-700 flex items-center gap-0.5 mt-0.5 font-medium">
+                                <Clock className="w-2.5 h-2.5" />
+                                {event.start_time.slice(0, 5)}
                               </span>
-                              {event.room_number && heightMultiplier >= 1.5 && columnInfo.totalColumns === 1 && (
-                                <span className="text-[7px] text-gray-600 truncate mt-auto font-medium">
+                              {event.room_number && heightMultiplier >= 1.5 && (
+                                <span className="text-[8px] text-gray-600 truncate mt-auto font-medium">
                                   📍 {event.room_number}
                                 </span>
                               )}
