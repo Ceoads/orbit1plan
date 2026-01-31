@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { X, Bell, Sparkles, Brain, Calendar, Clock, MapPin, Camera, ChevronRight } from "lucide-react";
+import { X, Bell, Sparkles, Brain, Calendar, Clock, MapPin, Camera, ChevronRight, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -91,6 +91,12 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
   const handleStartExperience = () => {
     onClose();
     navigate('/auth');
+  };
+
+  const handleReplay = () => {
+    setCurrentTime(0);
+    resetStates();
+    setIsPlaying(true);
   };
 
   // Shake animation for haptic simulation
@@ -251,15 +257,25 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
               </motion.div>
             </motion.div>
 
-            {/* CTA Button */}
+            {/* CTA Buttons */}
             <AnimatePresence>
               {showCTA && (
                 <motion.div
+                  className="flex flex-col sm:flex-row items-center gap-3"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.6 }}
                 >
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handleReplay}
+                    className="bg-white/10 backdrop-blur-xl border-white/30 text-white hover:bg-white/20 rounded-full px-6 py-6"
+                  >
+                    <RotateCcw className="w-5 h-5 mr-2" />
+                    Rejouer
+                  </Button>
                   <Button
                     size="lg"
                     onClick={handleStartExperience}
