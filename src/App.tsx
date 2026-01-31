@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
+import LandingPage from "./pages/LandingPage";
 import SettingsPage from "./pages/SettingsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
@@ -25,7 +26,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/landing" replace />;
   }
   
   return <>{children}</>;
@@ -43,6 +44,8 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
+  // Don't redirect authenticated users from auth page
+  // Let them proceed if they intentionally visit /auth
   if (user) {
     return <Navigate to="/" replace />;
   }
@@ -53,6 +56,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   return (
     <Routes>
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="/auth" element={
         <PublicRoute>
           <AuthPage />
