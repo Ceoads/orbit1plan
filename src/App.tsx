@@ -9,6 +9,7 @@ import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
 import SettingsPage from "./pages/SettingsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import { CourseHubPage } from "./pages/CourseHubPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,11 @@ const AppRoutes = () => {
       <Route path="/app" element={
         <ProtectedRoute>
           <Index />
+        </ProtectedRoute>
+      } />
+      <Route path="/course/:eventId" element={
+        <ProtectedRoute>
+          <CourseHubPage />
         </ProtectedRoute>
       } />
       <Route path="*" element={<NotFound />} />
