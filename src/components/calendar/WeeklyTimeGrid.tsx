@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export const WeeklyTimeGrid = ({
   getExamsOnDate,
   onExamClick,
 }: WeeklyTimeGridProps) => {
+  const navigate = useNavigate();
   const haptics = useHaptics();
   const sounds = useSoundEffects();
 
@@ -84,6 +86,9 @@ export const WeeklyTimeGrid = ({
     sounds.tap();
     if (event.event_type === 'exam') {
       handleExamClick(event);
+    } else {
+      // Navigate to Course Hub page for classes
+      navigate(`/course/${event.id}`);
     }
   };
 
