@@ -12,11 +12,14 @@ import {
   Zap,
   Target,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Play
 } from "lucide-react";
+import { DemoTheatre } from "@/components/demo/DemoTheatre";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [showDemo, setShowDemo] = useState(false);
   const { scrollYProgress } = useScroll();
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
@@ -86,7 +89,11 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10 overflow-x-hidden">
+    <>
+    {/* Demo Theatre Modal */}
+    <DemoTheatre isOpen={showDemo} onClose={() => setShowDemo(false)} />
+    
+    <div className={`min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10 overflow-x-hidden transition-all duration-500 ${showDemo ? 'blur-xl scale-95' : ''}`}>
       {/* Floating Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div 
@@ -206,8 +213,10 @@ const LandingPage = () => {
               <Button 
                 size="lg"
                 variant="outline"
-                className="rounded-full px-8 py-6 text-lg border-2 hover:bg-secondary/50"
+                onClick={() => setShowDemo(true)}
+                className="rounded-full px-8 py-6 text-lg border-2 hover:bg-secondary/50 group"
               >
+                <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                 Voir la démo
               </Button>
             </motion.div>
@@ -491,6 +500,7 @@ const LandingPage = () => {
         </div>
       </footer>
     </div>
+    </>
   );
 };
 
