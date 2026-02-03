@@ -34,7 +34,7 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   };
 
   return (
-    <nav className="floating-dock pb-safe">
+    <nav className="floating-dock pb-safe" style={{ isolation: 'isolate' }}>
       <motion.div 
         className="dock-container"
         initial={{ y: 100, opacity: 0 }}
@@ -69,14 +69,14 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
             >
               <Icon 
                 className={cn(
-                  "dock-icon w-5 h-5 ease-apple",
+                  "dock-icon w-5 h-5 ease-apple pointer-events-none",
                   isActive 
                     ? "text-primary scale-110" 
                     : "text-muted-foreground"
                 )} 
               />
               <span className={cn(
-                "text-[10px] font-medium ease-apple",
+                "text-[10px] font-medium ease-apple pointer-events-none",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}>
                 {label}
@@ -85,7 +85,7 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
               {/* Active indicator glow */}
               {isActive && (
                 <motion.div
-                  className="absolute inset-0 rounded-2xl bg-primary/10"
+                  className="absolute inset-0 rounded-2xl bg-primary/10 -z-10"
                   layoutId="activeTabBg"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />

@@ -223,16 +223,20 @@
 
   /* Floating Dock Navigation - Apple HIG Compliant */
   .floating-dock {
-    @apply fixed left-1/2 -translate-x-1/2 z-50;
+    @apply fixed left-1/2 -translate-x-1/2;
+    /* Higher z-index to ensure clickability */
+    z-index: 9999;
     /* Safe area + 16px offset for iPhone home indicator */
     bottom: calc(env(safe-area-inset-bottom, 20px) + 16px);
     max-width: 90%;
     width: max-content;
+    /* Ensure pointer events work */
+    pointer-events: auto;
   }
 
   .dock-container {
     @apply flex items-center gap-1 px-3 py-2.5 rounded-full;
-    background: hsl(0 0% 100% / 0.88);
+    background: hsl(0 0% 100% / 0.92);
     backdrop-filter: blur(25px) saturate(180%);
     -webkit-backdrop-filter: blur(25px) saturate(180%);
     box-shadow: 
@@ -240,6 +244,8 @@
       0 2px 8px -2px hsl(20 30% 20% / 0.08),
       inset 0 1px 0 0 hsl(0 0% 100% / 0.7);
     border: 1px solid hsl(0 0% 100% / 0.5);
+    /* Ensure pointer events work */
+    pointer-events: auto;
   }
 
   .dock-item {
@@ -249,6 +255,10 @@
     /* Minimum 44x44 hit target */
     min-width: 44px;
     min-height: 44px;
+    /* Cursor and pointer events */
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
   }
 
   .dock-item:active {
