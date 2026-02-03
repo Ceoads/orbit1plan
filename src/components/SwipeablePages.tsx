@@ -1,9 +1,12 @@
-import { useState, useRef, ReactNode } from "react";
+import { useState, useRef, ReactNode, useCallback } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { NavTab } from "./BottomNav";
 import { useHaptics } from "@/hooks/useHaptics";
 
 const TAB_ORDER: NavTab[] = ['pulse', 'vault', 'tasks', 'exams', 'lab'];
+
+// Edge zone width in pixels - swipes must start within this zone from screen edges
+const EDGE_ZONE_WIDTH = 30;
 
 interface SwipeablePagesProps {
   activeTab: NavTab;
@@ -15,10 +18,37 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
   const haptics = useHaptics();
   const containerRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef<number | null>(null);
+  const isEdgeSwipe = useRef(false);
   
   const currentIndex = TAB_ORDER.indexOf(activeTab);
   
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  // Check if the swipe started from the edge of the screen
+  const handleDragStart = useCallback((event: MouseEvent | TouchEvent | PointerEvent) => {
+    const clientX = 'touches' in event 
+      ? event.touches[0].clientX 
+      : (event as MouseEvent).clientX;
+    
+    const containerWidth = containerRef.current?.offsetWidth || window.innerWidth;
+    
+    // Check if drag started from left or right edge
+    const isLeftEdge = clientX <= EDGE_ZONE_WIDTH;
+    const isRightEdge = clientX >= containerWidth - EDGE_ZONE_WIDTH;
+    
+    isEdgeSwipe.current = isLeftEdge || isRightEdge;
+    dragStartX.current = clientX;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false);
+    
+    // Only process swipes that started from the edge
+    if (!isEdgeSwipe.current) {
+      return;
+    }
+    
     const threshold = 50;
     const velocity = info.velocity.x;
     const offset = info.offset.x;
@@ -37,14 +67,10 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
         onTabChange(TAB_ORDER[currentIndex + 1]);
       }
     }
-  };
-
-  // Update direction when tab changes externally (from bottom nav)
-  const handleTabChange = (newTab: NavTab) => {
-    const newIndex = TAB_ORDER.indexOf(newTab);
-    setDirection(newIndex > currentIndex ? 1 : -1);
-    onTabChange(newTab);
-  };
+    
+    isEdgeSwipe.current = false;
+    dragStartX.current = null;
+  }, [currentIndex, haptics, onTabChange]);
 
   const variants = {
     enter: (direction: number) => ({
@@ -81,7 +107,8 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
           }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
+          dragElastic={isEdgeSwipe.current ? 0.2 : 0}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           className="w-full h-full"
         >
@@ -92,5 +119,4 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
   );
 };
 
-// Export function to get direction setter for external use
 export { TAB_ORDER };
