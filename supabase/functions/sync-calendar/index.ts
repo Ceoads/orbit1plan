@@ -12,17 +12,33 @@ const EXAM_KEYWORDS = [
   'controle', 'épreuve', 'quiz', 'midterm', 'assessment'
 ];
 
-// Non-course events to EXCLUDE (vacations, holidays, study days, etc.)
+// Non-course events to EXCLUDE (vacations, holidays, cancellations, etc.)
 const EXCLUDED_EVENT_KEYWORDS = [
+  // Cancellations (CRITICAL - must catch all variations)
+  'annulation', 'annulé', 'annule', 'annuler', 'annulée', 'annulees',
+  'cancelled', 'canceled', 'cancellation', 'cancel',
+  'reporté', 'reporte', 'reportee', 'report de',
+  'supprimé', 'supprime', 'supprimée', 'suppression',
+  'cours annulé', 'seance annulee', 'séance annulée',
+  
+  // Vacations & Holidays
   'vacances', 'férié', 'ferie', 'fériés', 'feries', 'ferié', 'ferie',
-  'journée d\'études', 'journee d\'etudes', 'jour d\'étude',
   'holiday', 'break', 'congé', 'conge', 'repos',
-  'pas de cours', 'annulé', 'annule', 'cancelled', 'canceled',
   'pont', 'toussaint', 'noël', 'noel', 'pâques', 'paques',
   'armistice', 'ascension', 'pentecôte', 'pentecote',
   'fériation', 'feriation', 'jour off', 'off day',
+  
+  // Study days & Non-teaching
+  'journée d\'études', 'journee d\'etudes', 'jour d\'étude',
+  'pas de cours', 'no class', 'sans cours',
   'suspension', 'interruption', 'réunion pédagogique',
-  'semaine de révision', 'revision week', 'reading week'
+  'semaine de révision', 'revision week', 'reading week',
+  'journée banalisée', 'journee banalisee',
+  'rattrapage', 'session de rattrapage',
+  
+  // Administrative
+  'inscription', 'rentrée administrative', 'rentree',
+  'absence prof', 'prof absent', 'enseignant absent'
 ];
 
 // Smart icon mapping based on subject keywords
@@ -103,10 +119,26 @@ function getSmartIconAndColor(subjectName: string): { icon: string; color: strin
   return { icon: '📚', color: 'english' };
 }
 
-// Check if event should be excluded (vacations, holidays, etc.)
+// Check if event should be excluded (vacations, holidays, cancellations, etc.)
 function isExcludedEvent(title: string): boolean {
   const lowerTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   
+  // Special check for prefix patterns (most common cancellation format)
+  const prefixPatterns = [
+    /^annulation\s*[:\-–]/i,
+    /^annule\s*[:\-–]/i,
+    /^reporte\s*[:\-–]/i,
+    /^supprime\s*[:\-–]/i,
+    /^cancel/i,
+  ];
+  
+  for (const pattern of prefixPatterns) {
+    if (pattern.test(title)) {
+      return true;
+    }
+  }
+  
+  // Check for excluded keywords anywhere in title
   return EXCLUDED_EVENT_KEYWORDS.some(keyword => {
     const normalizedKeyword = keyword.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     return lowerTitle.includes(normalizedKeyword);
