@@ -111,6 +111,8 @@ export type Database = {
           answer: string
           created_at: string
           id: string
+          image_prompt: string | null
+          image_url: string | null
           last_reviewed_at: string | null
           mastered: boolean
           note_id: string | null
@@ -124,6 +126,8 @@ export type Database = {
           answer: string
           created_at?: string
           id?: string
+          image_prompt?: string | null
+          image_url?: string | null
           last_reviewed_at?: string | null
           mastered?: boolean
           note_id?: string | null
@@ -137,6 +141,8 @@ export type Database = {
           answer?: string
           created_at?: string
           id?: string
+          image_prompt?: string | null
+          image_url?: string | null
           last_reviewed_at?: string | null
           mastered?: boolean
           note_id?: string | null
