@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { BottomNav, NavTab } from "@/components/BottomNav";
+import { SwipeablePages } from "@/components/SwipeablePages";
 import { PulsePage } from "./PulsePage";
 import { TheVaultPage } from "./TheVaultPage";
 import { TasksPage } from "./TasksPage";
@@ -11,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings } from "lucide-react";
 import { SetupWizard } from "@/components/SetupWizard";
-import { OrbitOnboarding, useTutorial, TutorialStep } from "@/components/onboarding";
+import { OrbitOnboarding, useTutorial } from "@/components/onboarding";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -104,25 +105,27 @@ const Index = () => {
     setTutorialActive(false);
   };
 
+  // Memoize page components to prevent re-renders
+  const pageComponents = useMemo(() => ({
+    pulse: <PulsePage />,
+    vault: <TheVaultPage />,
+    tasks: <TasksPage />,
+    exams: <ExamsPage />,
+    lab: <ExamLabPage />,
+  }), []);
+
   const renderPage = () => {
     if (showSetup || (needsSetup && !showOnboarding)) {
       return <SetupWizard onComplete={handleSetupComplete} />;
     }
 
-    switch (activeTab) {
-      case 'pulse':
-        return <PulsePage />;
-      case 'vault':
-        return <TheVaultPage />;
-      case 'tasks':
-        return <TasksPage />;
-      case 'exams':
-        return <ExamsPage />;
-      case 'lab':
-        return <ExamLabPage />;
-      default:
-        return <PulsePage />;
-    }
+    return (
+      <SwipeablePages
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        children={pageComponents}
+      />
+    );
   };
 
   if (loading) {
@@ -181,7 +184,7 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container max-w-lg mx-auto px-4 pb-32 pt-20">
+      <main className="container max-w-lg mx-auto px-4 pb-32 pt-20 relative" style={{ zIndex: 1 }}>
         {renderPage()}
       </main>
 
