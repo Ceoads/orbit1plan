@@ -34,7 +34,13 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   };
 
   return (
-    <nav className="floating-dock pb-safe" style={{ isolation: 'isolate' }}>
+    <nav 
+      className="floating-dock" 
+      style={{ 
+        isolation: 'isolate',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)'
+      }}
+    >
       <motion.div 
         className="dock-container"
         initial={{ y: 100, opacity: 0 }}
