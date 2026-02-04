@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.smart-file]
 verify_jwt = false
+
+[functions.generate-quiz]
+verify_jwt = false
