@@ -216,7 +216,7 @@ export const CourseHubPage = () => {
         <span>Glissez pour fermer</span>
       </motion.div>
 
-      <div className="px-4 pb-8 space-y-6">
+      <div className="px-4 pb-8 space-y-6 mb-safe-dock">
         {/* Course Header - Glassmorphism */}
         <motion.div
           className={cn(
@@ -246,9 +246,9 @@ export const CourseHubPage = () => {
             </motion.div>
           )}
 
-          {/* Course Title */}
+          {/* Course Title - Dynamic Typography */}
           <motion.h1 
-            className="text-2xl md:text-3xl font-display font-bold text-foreground mb-4"
+            className="text-dynamic-title font-display font-bold text-foreground mb-4"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15 }}

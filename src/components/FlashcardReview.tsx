@@ -37,21 +37,21 @@ const FlashcardContent = ({
   const hasImage = card.image_url && !isFlipped;
   
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-2">
-      {/* Image section (only on question side) */}
+    <div className="flex-1 flex flex-col items-center justify-center p-3">
+      {/* Image section - Portrait optimized (top 2/3 of card) */}
       {hasImage && (
-        <div className="w-full mb-4 relative">
+        <div className="w-full flex-shrink-0 mb-3 relative flashcard-image-container">
           {!imageLoaded && (
-            <div className="w-full aspect-square rounded-2xl overflow-hidden">
+            <div className="w-full h-full rounded-2xl overflow-hidden">
               <Skeleton className="w-full h-full animate-pulse bg-gradient-to-br from-primary/10 to-primary/5">
                 <div className="flex flex-col items-center justify-center h-full gap-2">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                   >
-                    <ImageIcon className="w-8 h-8 text-primary/40" />
+                    <ImageIcon className="w-10 h-10 text-primary/40" />
                   </motion.div>
-                  <span className="text-xs text-muted-foreground">Chargement...</span>
+                  <span className="text-sm text-muted-foreground">Génération en cours...</span>
                 </div>
               </Skeleton>
             </div>
@@ -60,7 +60,8 @@ const FlashcardContent = ({
             src={card.image_url!}
             alt="Illustration du concept"
             className={cn(
-              "w-full aspect-square object-contain rounded-2xl bg-white/50",
+              "w-full h-full object-contain rounded-2xl bg-white/50",
+              "shadow-soft",
               !imageLoaded && "hidden"
             )}
             onLoad={onImageLoad}
@@ -69,17 +70,22 @@ const FlashcardContent = ({
         </div>
       )}
       
-      {/* Text content */}
-      <span className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-        {isFlipped ? "Réponse" : "Question"}
-      </span>
-      <p className={cn(
-        "text-center leading-relaxed",
-        hasImage ? "text-base" : "text-lg font-medium",
-        isFlipped ? "text-primary" : "text-foreground"
+      {/* Text content - Centered for easy reading */}
+      <div className={cn(
+        "flashcard-content-area text-center",
+        hasImage ? "py-2" : "py-6"
       )}>
-        {isFlipped ? card.answer : card.question}
-      </p>
+        <span className="text-xs uppercase tracking-widest text-muted-foreground mb-3 block">
+          {isFlipped ? "Réponse" : "Question"}
+        </span>
+        <p className={cn(
+          "text-center leading-relaxed text-dynamic-body",
+          hasImage ? "text-base font-medium" : "text-lg font-semibold",
+          isFlipped ? "text-primary" : "text-foreground"
+        )}>
+          {isFlipped ? card.answer : card.question}
+        </p>
+      </div>
     </div>
   );
 };
@@ -238,9 +244,10 @@ export const FlashcardReview = ({
                 "relative w-full rounded-3xl shadow-elevated",
                 "bg-gradient-to-br from-card to-card/80",
                 "border border-border/50",
-                "flex flex-col p-5",
+                "flex flex-col p-4",
                 "transition-all duration-300",
-                currentCard.image_url ? "min-h-[480px]" : "aspect-[3/4]",
+                "flashcard-portrait",
+                currentCard.image_url ? "min-h-[60vh] max-h-[75vh]" : "aspect-[3/4]",
                 isFlipped && "bg-gradient-to-br from-primary/10 to-primary/5"
               )}>
                 {/* Swipe indicators */}
@@ -251,7 +258,7 @@ export const FlashcardReview = ({
                   À revoir
                 </motion.div>
                 <motion.div 
-                  className="absolute top-4 right-4 px-3 py-1 rounded-full bg-green-500/20 text-green-600 text-sm font-medium opacity-0 z-10"
+                  className="absolute top-4 right-4 px-3 py-1 rounded-full bg-success/20 text-success text-sm font-medium opacity-0 z-10"
                   animate={{ opacity: exitDirection === "right" ? 1 : 0 }}
                 >
                   Maîtrisé !
@@ -276,29 +283,29 @@ export const FlashcardReview = ({
         </AnimatePresence>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex items-center justify-center gap-6 p-4 pb-6">
+      {/* Action buttons - Safe area aware */}
+      <div className="flex items-center justify-center gap-8 p-4 pb-safe">
         <motion.button
           whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+          whileTap={{ scale: 0.9 }}
           onClick={() => handleSwipe("left")}
-          className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border-2 border-destructive/30 hover:border-destructive transition-colors"
+          className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border-2 border-destructive/30 hover:border-destructive transition-colors hit-target shadow-soft"
         >
           <X className="w-8 h-8 text-destructive" />
         </motion.button>
         
         <motion.button
           whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+          whileTap={{ scale: 0.9 }}
           onClick={() => handleSwipe("right")}
-          className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center border-2 border-green-500/30 hover:border-green-500 transition-colors"
+          className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center border-2 border-success/30 hover:border-success transition-colors hit-target shadow-soft"
         >
-          <Check className="w-8 h-8 text-green-600" />
+          <Check className="w-8 h-8 text-success" />
         </motion.button>
       </div>
 
       {/* Instructions */}
-      <p className="text-center text-xs text-muted-foreground pb-4">
+      <p className="text-center text-xs text-muted-foreground pb-2 mb-safe-dock">
         Swipe ← à revoir • Swipe → maîtrisé
       </p>
     </div>
