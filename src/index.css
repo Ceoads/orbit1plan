@@ -143,6 +143,16 @@
   }
 }
 
+/* Global keyframes for animations */
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(16 85% 68% / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(16 85% 68% / 0);
+  }
+}
+
 @layer components {
   .glass-card {
     @apply bg-white/75 backdrop-blur-xl border border-white/40 rounded-3xl;
@@ -232,6 +242,39 @@
     width: max-content;
     /* Ensure pointer events work */
     pointer-events: auto;
+  }
+
+  /* LaTeX content styling */
+  .latex-content {
+    font-family: var(--font-body), serif;
+  }
+
+  .latex-content .katex {
+    font-size: 1em;
+    color: hsl(var(--foreground));
+  }
+
+  .latex-display {
+    overflow-x: auto;
+    padding: 0.75rem 0;
+    text-align: center;
+  }
+
+  .latex-display .katex {
+    font-size: 1.1em;
+  }
+
+  .latex-error {
+    font-family: monospace;
+    font-size: 0.85em;
+    background: hsl(var(--destructive) / 0.1);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+  }
+
+  /* Smart scroll highlight animation */
+  .highlight-anchor {
+    animation: highlight-pulse 1s ease-out 2;
   }
 
   .dock-container {

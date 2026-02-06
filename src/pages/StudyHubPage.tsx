@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Share2, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, Share2, RefreshCw, Sparkles, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ import { SummaryPanel } from "@/components/study-hub/SummaryPanel";
 import { PracticeZone } from "@/components/study-hub/PracticeZone";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import type { SectionAnchor } from "@/components/study-hub/SmartScrollContext";
 
 interface VaultFileWithSubject {
   id: string;
@@ -41,6 +42,10 @@ export const StudyHubPage = () => {
   const [regenerating, setRegenerating] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [dragY, setDragY] = useState(0);
+  
+  // Smart scroll state
+  const [scrollTarget, setScrollTarget] = useState<SectionAnchor | null>(null);
+  const documentRef = useRef<HTMLDivElement>(null);
 
   // Fetch file data with subject info
   useEffect(() => {
@@ -75,6 +80,24 @@ export const StudyHubPage = () => {
 
     fetchFile();
   }, [fileId, user, navigate]);
+
+  // Handle Smart Scroll anchor click
+  const handleAnchorClick = useCallback((anchor: SectionAnchor) => {
+    haptics.selection();
+    setScrollTarget(anchor);
+    
+    // On mobile, scroll to document section first
+    if (isMobile && documentRef.current) {
+      documentRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    toast.info(`🔗 Navigation vers: ${anchor.label.substring(0, 30)}...`, { duration: 1500 });
+  }, [haptics, isMobile]);
+
+  // Clear scroll target after animation
+  const handleScrollComplete = useCallback(() => {
+    setScrollTarget(null);
+  }, []);
 
   // Handle swipe to dismiss
   const handleDragEnd = (_: any, info: any) => {
@@ -253,10 +276,12 @@ export const StudyHubPage = () => {
         isMobile ? "space-y-4" : "grid grid-cols-2 gap-6"
       )}>
         {/* Document Viewer - Left/Top */}
-        <section className={cn(!isMobile && "sticky top-20 h-fit")}>
+        <section ref={documentRef} className={cn(!isMobile && "sticky top-20 h-fit")}>
           <DocumentViewer 
             fileUrl={file.file_url} 
-            fileName={file.subjects?.name || 'Document'} 
+            fileName={file.subjects?.name || 'Document'}
+            scrollTarget={scrollTarget}
+            onScrollComplete={handleScrollComplete}
           />
         </section>
 
@@ -267,6 +292,8 @@ export const StudyHubPage = () => {
             summary={file.ai_summary}
             transcript={file.extracted_text}
             isRegenerating={regenerating}
+            onAnchorClick={handleAnchorClick}
+            extractedText={file.extracted_text}
           />
 
           {/* Practice Zone */}
@@ -279,6 +306,29 @@ export const StudyHubPage = () => {
           />
         </section>
       </main>
+
+      {/* Mobile floating "See Source" button */}
+      <AnimatePresence>
+        {isMobile && scrollTarget && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50"
+          >
+            <Button
+              onClick={() => {
+                haptics.selection();
+                documentRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="gradient-primary text-primary-foreground rounded-full shadow-lg px-6"
+            >
+              <FileSearch className="w-4 h-4 mr-2" />
+              Voir la source
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

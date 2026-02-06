@@ -1,22 +1,41 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, FileText, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+import { Sparkles, FileText, ChevronDown, ChevronUp, Copy, Check, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
+import { LatexRenderer, containsLatex } from "./LatexRenderer";
+import { generateAnchorsFromSummary, SectionAnchor } from "./SmartScrollContext";
 
 interface SummaryPanelProps {
   summary: string | null;
   transcript: string | null;
   isRegenerating: boolean;
+  onAnchorClick?: (anchor: SectionAnchor) => void;
+  extractedText?: string | null;
 }
 
-export const SummaryPanel = ({ summary, transcript, isRegenerating }: SummaryPanelProps) => {
+export const SummaryPanel = ({ 
+  summary, 
+  transcript, 
+  isRegenerating, 
+  onAnchorClick,
+  extractedText 
+}: SummaryPanelProps) => {
   const haptics = useHaptics();
   const [showFullTranscript, setShowFullTranscript] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [anchors, setAnchors] = useState<SectionAnchor[]>([]);
+
+  // Generate anchors from summary
+  useEffect(() => {
+    if (summary && extractedText) {
+      const generatedAnchors = generateAnchorsFromSummary(summary, extractedText);
+      setAnchors(generatedAnchors);
+    }
+  }, [summary, extractedText]);
 
   const handleCopyTranscript = async () => {
     if (!transcript) return;
@@ -74,21 +93,51 @@ export const SummaryPanel = ({ summary, transcript, isRegenerating }: SummaryPan
             <Skeleton className="h-4 w-5/6" />
           </div>
         ) : keyPoints.length > 0 ? (
-          <ul className="space-y-2">
-            {keyPoints.map((point, index) => (
-              <motion.li
-                key={index}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-start gap-2"
-              >
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-medium">
-                  {index + 1}
-                </span>
-                <p className="text-sm text-foreground leading-relaxed">{point}</p>
-              </motion.li>
-            ))}
+          <ul className="space-y-3">
+            {keyPoints.map((point, index) => {
+              const anchor = anchors[index];
+              const hasLatex = containsLatex(point);
+              const isClickable = !!onAnchorClick && !!anchor;
+
+              return (
+                <motion.li
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={cn(
+                    "flex items-start gap-2 group",
+                    isClickable && "cursor-pointer hover:bg-primary/5 -mx-2 px-2 py-1.5 rounded-xl transition-colors"
+                  )}
+                  onClick={() => {
+                    if (isClickable && anchor) {
+                      haptics.selection();
+                      onAnchorClick(anchor);
+                    }
+                  }}
+                >
+                  <span className={cn(
+                    "w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-medium transition-all",
+                    isClickable && "group-hover:bg-primary group-hover:text-primary-foreground"
+                  )}>
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 flex items-start gap-2">
+                    {hasLatex ? (
+                      <LatexRenderer 
+                        content={point} 
+                        className="text-sm text-foreground leading-relaxed flex-1" 
+                      />
+                    ) : (
+                      <p className="text-sm text-foreground leading-relaxed flex-1">{point}</p>
+                    )}
+                    {isClickable && (
+                      <Link2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                    )}
+                  </div>
+                </motion.li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground italic">
@@ -137,12 +186,21 @@ export const SummaryPanel = ({ summary, transcript, isRegenerating }: SummaryPan
           </div>
         ) : transcript ? (
           <div>
-            <p className={cn(
-              "text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed",
-              !showFullTranscript && "line-clamp-4"
-            )}>
-              {transcript}
-            </p>
+            {containsLatex(transcript) ? (
+              <div className={cn(
+                "text-sm text-muted-foreground leading-relaxed",
+                !showFullTranscript && "line-clamp-4"
+              )}>
+                <LatexRenderer content={transcript} />
+              </div>
+            ) : (
+              <p className={cn(
+                "text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed",
+                !showFullTranscript && "line-clamp-4"
+              )}>
+                {transcript}
+              </p>
+            )}
             
             {transcript.length > 200 && (
               <Button
