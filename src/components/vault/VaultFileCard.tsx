@@ -1,9 +1,11 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { FileText, Tag, Sparkles, Image } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { FileText, Tag, Sparkles, Image, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VaultFile } from "@/hooks/useVaultData";
 import { Badge } from "@/components/ui/badge";
+import { useHaptics } from "@/hooks/useHaptics";
 
 interface VaultFileCardProps {
   file: VaultFile;
@@ -11,7 +13,23 @@ interface VaultFileCardProps {
 }
 
 export const VaultFileCard = ({ file, onClick }: VaultFileCardProps) => {
+  const navigate = useNavigate();
+  const haptics = useHaptics();
   const formattedDate = format(new Date(file.created_at), "d MMM yyyy 'à' HH:mm", { locale: fr });
+
+  // Extract quiz score from tags if present
+  const quizScoreTag = file.tags?.find(tag => tag.startsWith('quiz:'));
+  const quizScore = quizScoreTag ? parseInt(quizScoreTag.replace('quiz:', '').replace('%', '')) : null;
+
+  const handleClick = () => {
+    haptics.selection();
+    if (onClick) {
+      onClick();
+    } else {
+      // Navigate to Study Hub
+      navigate(`/study/${file.id}`);
+    }
+  };
 
   const statusColors = {
     pending: "bg-warning/10 text-warning border-warning/20",
@@ -21,7 +39,7 @@ export const VaultFileCard = ({ file, onClick }: VaultFileCardProps) => {
 
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       className={cn(
         "w-full p-4 rounded-2xl bg-card border border-border",
         "hover:shadow-soft hover:border-primary/20 transition-all duration-200",
@@ -83,13 +101,30 @@ export const VaultFileCard = ({ file, onClick }: VaultFileCardProps) => {
           {/* Footer */}
           <div className="flex items-center justify-between mt-3">
             <span className="text-xs text-muted-foreground">{formattedDate}</span>
-            <Badge 
-              variant="outline" 
-              className={cn("text-xs", statusColors[file.filing_status as keyof typeof statusColors] || statusColors.pending)}
-            >
-              {file.filing_status === 'confirmed' ? '✓ Classé' : 
-               file.filing_status === 'changed' ? '↺ Modifié' : '⏳ En attente'}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {/* Quiz score badge */}
+              {quizScore !== null && (
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    quizScore >= 80 ? "bg-success/10 text-success border-success/20" :
+                    quizScore >= 50 ? "bg-warning/10 text-warning border-warning/20" :
+                    "bg-destructive/10 text-destructive border-destructive/20"
+                  )}
+                >
+                  <Trophy className="w-3 h-3 mr-1" />
+                  {quizScore}%
+                </Badge>
+              )}
+              <Badge 
+                variant="outline" 
+                className={cn("text-xs", statusColors[file.filing_status as keyof typeof statusColors] || statusColors.pending)}
+              >
+                {file.filing_status === 'confirmed' ? '✓ Classé' : 
+                 file.filing_status === 'changed' ? '↺ Modifié' : '⏳ En attente'}
+              </Badge>
+            </div>
           </div>
         </div>
       </div>
