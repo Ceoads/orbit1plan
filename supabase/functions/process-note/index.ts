@@ -22,12 +22,25 @@ serve(async (req) => {
     let userPrompt = '';
 
     if (action === 'ocr') {
-      systemPrompt = `You are an OCR and note analysis assistant for students. Extract all visible text from the image and provide a brief, helpful summary. Format your response as JSON with two fields:
-- "rawText": The complete extracted text from the image
-- "aiSummary": A 1-2 sentence summary highlighting the key concepts or takeaways for studying
+      systemPrompt = `You are an OCR and scientific note analysis assistant for students in STAPS, medicine, engineering, and sciences. Extract all visible text from the image and provide a structured summary.
 
-Be concise and focus on extractable information useful for studying.`;
-      userPrompt = 'Please analyze this image, extract the text, and summarize the key points for studying.';
+CRITICAL: For any mathematical, physical, or chemical expressions:
+- Wrap inline variables/symbols with single $: $\\alpha$, $x^2$, $\\Delta T$
+- Wrap complex equations with $$: $$f(x) = \\int_{-\\infty}^{\\infty} \\hat{f}(\\xi)e^{2\\pi i \\xi x} \\,d\\xi$$
+
+Format your response as JSON with two fields:
+- "rawText": The complete extracted text with LaTeX formatting for any math/science notation
+- "aiSummary": 3-5 bullet points highlighting key concepts (use LaTeX for formulas). Each point should be on its own line starting with "• "
+
+Examples of LaTeX formatting:
+- Variables: $\\alpha$, $\\beta$, $\\theta$
+- Fractions: $\\frac{a}{b}$
+- Integrals: $\\int_a^b f(x)dx$
+- Sums: $\\sum_{i=1}^n x_i$
+- Greek letters: $\\Delta$, $\\Sigma$, $\\Omega$
+
+Be concise and focus on information useful for studying.`;
+      userPrompt = 'Please analyze this image, extract the text with proper LaTeX formatting for any mathematical or scientific notation, and summarize the key points for studying.';
     } else if (action === 'decompose') {
       systemPrompt = `You are a task decomposition assistant helping students with executive dysfunction. Break down large tasks into 3 smaller, actionable sub-tasks. Format your response as JSON with a "subtasks" array containing objects with:
 - "title": A clear, actionable task title

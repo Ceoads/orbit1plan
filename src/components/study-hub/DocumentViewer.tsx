@@ -1,20 +1,68 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, X, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
+import { Maximize2, X, ZoomIn, ZoomOut, RotateCw, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
+import { SectionAnchor } from "./SmartScrollContext";
 
 interface DocumentViewerProps {
   fileUrl: string;
   fileName: string;
+  scrollTarget?: SectionAnchor | null;
+  onScrollComplete?: () => void;
 }
 
-export const DocumentViewer = ({ fileUrl, fileName }: DocumentViewerProps) => {
+export const DocumentViewer = ({ 
+  fileUrl, 
+  fileName, 
+  scrollTarget,
+  onScrollComplete 
+}: DocumentViewerProps) => {
   const haptics = useHaptics();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [highlightPosition, setHighlightPosition] = useState<{ y: number; height: number } | null>(null);
+  const [showHighlight, setShowHighlight] = useState(false);
+
+  // Handle scroll to anchor
+  useEffect(() => {
+    if (!scrollTarget || !containerRef.current || !imageRef.current) return;
+
+    const imageHeight = imageRef.current.offsetHeight;
+    const targetY = scrollTarget.relativeY * imageHeight;
+    const highlightHeight = imageHeight * 0.15; // 15% of image height
+
+    // Calculate scroll position to center the target
+    const container = containerRef.current;
+    const scrollTo = targetY - container.offsetHeight / 2 + highlightHeight / 2;
+
+    // Smooth scroll to position
+    container.scrollTo({
+      top: Math.max(0, scrollTo),
+      behavior: 'smooth'
+    });
+
+    // Show highlight overlay
+    setHighlightPosition({
+      y: targetY - highlightHeight / 2,
+      height: highlightHeight
+    });
+    setShowHighlight(true);
+
+    // Clear highlight after animation
+    const timer = setTimeout(() => {
+      setShowHighlight(false);
+      setHighlightPosition(null);
+      onScrollComplete?.();
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [scrollTarget, onScrollComplete]);
 
   const handleFullscreen = () => {
     haptics.selection();
@@ -45,25 +93,73 @@ export const DocumentViewer = ({ fileUrl, fileName }: DocumentViewerProps) => {
 
   return (
     <>
-      {/* Compact viewer */}
+      {/* Compact viewer with scroll support */}
       <motion.div
         layoutId="document-viewer"
         className="relative rounded-2xl overflow-hidden bg-card border border-border shadow-soft"
       >
-        <div className="aspect-[4/3] relative">
-          <img
-            src={fileUrl}
-            alt={fileName}
-            className="w-full h-full object-contain bg-muted/50"
-            loading="eager"
-          />
+        <div 
+          ref={containerRef}
+          className="aspect-[4/3] relative overflow-auto scroll-smooth"
+        >
+          <div className="relative min-h-full">
+            <img
+              ref={imageRef}
+              src={fileUrl}
+              alt={fileName}
+              className="w-full h-auto object-contain bg-muted/50"
+              loading="eager"
+            />
+            
+            {/* Smart scroll highlight overlay */}
+            <AnimatePresence>
+              {showHighlight && highlightPosition && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: "spring", damping: 20 }}
+                  className="absolute left-0 right-0 pointer-events-none"
+                  style={{
+                    top: highlightPosition.y,
+                    height: highlightPosition.height,
+                  }}
+                >
+                  {/* Coral highlight with pulse animation */}
+                  <motion.div
+                    className="absolute inset-0 bg-primary/20 border-2 border-primary/40 rounded-xl"
+                    animate={{
+                      boxShadow: [
+                        "0 0 0 0 rgba(var(--primary), 0.4)",
+                        "0 0 0 12px rgba(var(--primary), 0)",
+                      ],
+                    }}
+                    transition={{
+                      duration: 1,
+                      repeat: 2,
+                      ease: "easeOut",
+                    }}
+                  />
+                  
+                  {/* Eye indicator */}
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg"
+                  >
+                    <Eye className="w-4 h-4 text-primary-foreground" />
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           
           {/* Fullscreen button overlay */}
           <Button
             onClick={handleFullscreen}
             size="icon"
             variant="secondary"
-            className="absolute bottom-3 right-3 rounded-xl bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg hit-target"
+            className="absolute bottom-3 right-3 rounded-xl bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg hit-target z-10"
           >
             <Maximize2 className="w-5 h-5" />
           </Button>
