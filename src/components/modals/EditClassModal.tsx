@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject, CalendarEvent, useOrbitData } from "@/hooks/useOrbitData";
+import { useTranslation } from "react-i18next";
 
 interface EditClassModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ export const EditClassModal = ({
   event,
   subjects,
 }: EditClassModalProps) => {
+  const { t } = useTranslation();
   const { updateEvent } = useOrbitData();
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState<string>("__none__");
@@ -40,13 +42,13 @@ export const EditClassModal = ({
   }, [event]);
 
   const days = [
-    { value: "0", label: "Sunday" },
-    { value: "1", label: "Monday" },
-    { value: "2", label: "Tuesday" },
-    { value: "3", label: "Wednesday" },
-    { value: "4", label: "Thursday" },
-    { value: "5", label: "Friday" },
-    { value: "6", label: "Saturday" },
+    { value: "0", label: t('calendar.daysLong.sunday') },
+    { value: "1", label: t('calendar.daysLong.monday') },
+    { value: "2", label: t('calendar.daysLong.tuesday') },
+    { value: "3", label: t('calendar.daysLong.wednesday') },
+    { value: "4", label: t('calendar.daysLong.thursday') },
+    { value: "5", label: t('calendar.daysLong.friday') },
+    { value: "6", label: t('calendar.daysLong.saturday') },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,28 +72,28 @@ export const EditClassModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display">Edit Class</DialogTitle>
+          <DialogTitle className="font-display">{t('modals.editClass.title')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Class Name</Label>
+            <Label htmlFor="title">{t('modals.addClass.className')}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Mathematics"
+              placeholder={t('modals.addClass.classPlaceholder')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">Subject (optional)</Label>
+            <Label htmlFor="subject">{t('modals.addClass.subjectOptional')}</Label>
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a subject" />
+                <SelectValue placeholder={t('modals.addClass.selectSubject')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
+                <SelectItem value="__none__">{t('common.none')}</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.icon} {subject.name}
@@ -102,7 +104,7 @@ export const EditClassModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="day">Day</Label>
+            <Label htmlFor="day">{t('modals.addClass.day')}</Label>
             <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
               <SelectTrigger>
                 <SelectValue />
@@ -119,7 +121,7 @@ export const EditClassModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startTime">Start Time</Label>
+              <Label htmlFor="startTime">{t('modals.addClass.startTime')}</Label>
               <Input
                 id="startTime"
                 type="time"
@@ -129,7 +131,7 @@ export const EditClassModal = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endTime">End Time</Label>
+              <Label htmlFor="endTime">{t('modals.addClass.endTime')}</Label>
               <Input
                 id="endTime"
                 type="time"
@@ -141,21 +143,21 @@ export const EditClassModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="room">Room (optional)</Label>
+            <Label htmlFor="room">{t('modals.addClass.roomOptional')}</Label>
             <Input
               id="room"
               value={roomNumber}
               onChange={(e) => setRoomNumber(e.target.value)}
-              placeholder="e.g. Room 101"
+              placeholder={t('modals.addClass.roomPlaceholder')}
             />
           </div>
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading} className="flex-1 gradient-primary">
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? t('common.saving') : t('modals.editClass.save')}
             </Button>
           </div>
         </form>

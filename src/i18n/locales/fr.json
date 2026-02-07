@@ -17,7 +17,10 @@
     "search": "Rechercher",
     "noResults": "Aucun résultat",
     "seeMore": "Voir plus",
-    "seeLess": "Voir moins"
+    "seeLess": "Voir moins",
+    "none": "Aucun",
+    "saving": "Enregistrement...",
+    "adding": "Ajout..."
   },
   "nav": {
     "pulse": "Pulse",
@@ -147,13 +150,13 @@
       "sunday": "DIM"
     },
     "daysLong": {
+      "sunday": "Dimanche",
       "monday": "Lundi",
       "tuesday": "Mardi",
       "wednesday": "Mercredi",
       "thursday": "Jeudi",
       "friday": "Vendredi",
-      "saturday": "Samedi",
-      "sunday": "Dimanche"
+      "saturday": "Samedi"
     }
   },
   "studyHub": {
@@ -254,5 +257,82 @@
     "todaySchedule": "Ton emploi du temps",
     "quickCapture": "Capture rapide",
     "recentActivity": "Activité récente"
+  },
+  "modals": {
+    "addClass": {
+      "title": "Ajouter un cours",
+      "className": "Nom du cours",
+      "classPlaceholder": "ex. Mathématiques",
+      "subject": "Matière",
+      "subjectOptional": "Matière (optionnel)",
+      "selectSubject": "Sélectionner une matière",
+      "day": "Jour",
+      "startTime": "Heure de début",
+      "endTime": "Heure de fin",
+      "room": "Salle",
+      "roomOptional": "Salle (optionnel)",
+      "roomPlaceholder": "ex. Salle 101",
+      "add": "Ajouter le cours"
+    },
+    "editClass": {
+      "title": "Modifier le cours",
+      "save": "Enregistrer"
+    },
+    "addExam": {
+      "title": "Ajouter un examen",
+      "examName": "Nom de l'examen",
+      "examPlaceholder": "ex. Examen final",
+      "examDate": "Date de l'examen",
+      "roomPlaceholder": "ex. Amphi A",
+      "add": "Ajouter l'examen"
+    },
+    "editExam": {
+      "title": "Modifier l'examen",
+      "save": "Enregistrer"
+    },
+    "addNote": {
+      "title": "Ajouter une note",
+      "content": "Contenu de la note",
+      "contentPlaceholder": "Écris ta note ici...",
+      "add": "Ajouter la note"
+    },
+    "editNote": {
+      "title": "Modifier la note",
+      "save": "Enregistrer"
+    },
+    "addSubject": {
+      "title": "Ajouter une matière",
+      "subjectName": "Nom de la matière",
+      "subjectPlaceholder": "ex. Mathématiques",
+      "teacher": "Professeur",
+      "teacherOptional": "Professeur (optionnel)",
+      "teacherPlaceholder": "ex. M. Dupont",
+      "icon": "Icône",
+      "color": "Couleur",
+      "add": "Ajouter la matière"
+    },
+    "editSubject": {
+      "title": "Modifier la matière",
+      "save": "Enregistrer"
+    }
+  },
+  "toasts": {
+    "subjectCreated": "Matière créée avec succès",
+    "subjectUpdated": "Matière mise à jour",
+    "subjectDeleted": "Matière supprimée",
+    "eventCreated": "Événement créé avec succès",
+    "eventUpdated": "Événement mis à jour",
+    "eventDeleted": "Événement supprimé",
+    "noteCreated": "Note créée avec succès",
+    "noteUpdated": "Note mise à jour",
+    "noteDeleted": "Note supprimée",
+    "taskCreated": "Tâche créée avec succès",
+    "taskUpdated": "Tâche mise à jour",
+    "taskDeleted": "Tâche supprimée",
+    "error": "Une erreur s'est produite",
+    "errorLoading": "Erreur lors du chargement des données",
+    "errorCreating": "Erreur lors de la création",
+    "errorUpdating": "Erreur lors de la mise à jour",
+    "errorDeleting": "Erreur lors de la suppression"
   }
 }

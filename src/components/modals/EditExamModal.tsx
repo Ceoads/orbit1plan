@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject, CalendarEvent, useOrbitData } from "@/hooks/useOrbitData";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 interface EditExamModalProps {
   open: boolean;
@@ -20,6 +21,7 @@ export const EditExamModal = ({
   event,
   subjects,
 }: EditExamModalProps) => {
+  const { t } = useTranslation();
   const { updateEvent } = useOrbitData();
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState<string>("__none__");
@@ -65,28 +67,28 @@ export const EditExamModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display">Edit Exam</DialogTitle>
+          <DialogTitle className="font-display">{t('modals.editExam.title')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Exam Name</Label>
+            <Label htmlFor="title">{t('modals.addExam.examName')}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Final Exam"
+              placeholder={t('modals.addExam.examPlaceholder')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
+            <Label htmlFor="subject">{t('modals.addClass.subject')}</Label>
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a subject" />
+                <SelectValue placeholder={t('modals.addClass.selectSubject')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
+                <SelectItem value="__none__">{t('common.none')}</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.icon} {subject.name}
@@ -97,7 +99,7 @@ export const EditExamModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="examDate">Exam Date</Label>
+            <Label htmlFor="examDate">{t('modals.addExam.examDate')}</Label>
             <Input
               id="examDate"
               type="date"
@@ -109,7 +111,7 @@ export const EditExamModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startTime">Start Time</Label>
+              <Label htmlFor="startTime">{t('modals.addClass.startTime')}</Label>
               <Input
                 id="startTime"
                 type="time"
@@ -119,7 +121,7 @@ export const EditExamModal = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endTime">End Time</Label>
+              <Label htmlFor="endTime">{t('modals.addClass.endTime')}</Label>
               <Input
                 id="endTime"
                 type="time"
@@ -131,21 +133,21 @@ export const EditExamModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="room">Room (optional)</Label>
+            <Label htmlFor="room">{t('modals.addClass.roomOptional')}</Label>
             <Input
               id="room"
               value={roomNumber}
               onChange={(e) => setRoomNumber(e.target.value)}
-              placeholder="e.g. Exam Hall A"
+              placeholder={t('modals.addExam.roomPlaceholder')}
             />
           </div>
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading} className="flex-1 gradient-primary">
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? t('common.saving') : t('modals.editExam.save')}
             </Button>
           </div>
         </form>

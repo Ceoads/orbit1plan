@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface AddSubjectModalProps {
   open: boolean;
@@ -25,6 +26,7 @@ export const AddSubjectModal = ({
   open,
   onOpenChange,
 }: AddSubjectModalProps) => {
+  const { t } = useTranslation();
   const { createSubject } = useOrbitData();
   const [name, setName] = useState("");
   const [teacherName, setTeacherName] = useState("");
@@ -57,32 +59,32 @@ export const AddSubjectModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display">Add New Subject</DialogTitle>
+          <DialogTitle className="font-display">{t('modals.addSubject.title')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Subject Name</Label>
+            <Label htmlFor="name">{t('modals.addSubject.subjectName')}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Mathematics"
+              placeholder={t('modals.addSubject.subjectPlaceholder')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="teacher">Teacher (optional)</Label>
+            <Label htmlFor="teacher">{t('modals.addSubject.teacherOptional')}</Label>
             <Input
               id="teacher"
               value={teacherName}
               onChange={(e) => setTeacherName(e.target.value)}
-              placeholder="e.g. Mr. Smith"
+              placeholder={t('modals.addSubject.teacherPlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Icon</Label>
+            <Label>{t('modals.addSubject.icon')}</Label>
             <div className="flex flex-wrap gap-2">
               {iconOptions.map((opt) => (
                 <button
@@ -103,7 +105,7 @@ export const AddSubjectModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label>Color</Label>
+            <Label>{t('modals.addSubject.color')}</Label>
             <div className="flex gap-2">
               {colorOptions.map((opt) => (
                 <button
@@ -125,10 +127,10 @@ export const AddSubjectModal = ({
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading} className="flex-1 gradient-primary">
-              {loading ? "Adding..." : "Add Subject"}
+              {loading ? t('common.adding') : t('modals.addSubject.add')}
             </Button>
           </div>
         </form>
