@@ -8,6 +8,14 @@ const TAB_ORDER: NavTab[] = ['pulse', 'vault', 'tasks', 'exams', 'lab'];
 // Edge zone width in pixels - swipes must start within this zone from screen edges
 const EDGE_ZONE_WIDTH = 30;
 
+// Selectors for containers that should block global navigation
+const SWIPE_BLOCKED_SELECTORS = [
+  '[data-calendar-container]',
+  '[data-swipe-blocked]',
+  '.calendar-pocket-space',
+  '.weekly-time-grid',
+];
+
 interface SwipeablePagesProps {
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
@@ -21,10 +29,20 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef<number | null>(null);
   const isEdgeSwipe = useRef(false);
+  const isBlockedSwipe = useRef(false);
   
   const currentIndex = TAB_ORDER.indexOf(activeTab);
   
-  // Check if the swipe started from the edge of the screen
+  // Check if the element or its parents match blocked selectors
+  const isInsideBlockedContainer = useCallback((target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof Element)) return false;
+    
+    return SWIPE_BLOCKED_SELECTORS.some(selector => {
+      return target.closest(selector) !== null;
+    });
+  }, []);
+  
+  // Check if the swipe started from the edge of the screen and not inside a blocked container
   const handleDragStart = useCallback((event: MouseEvent | TouchEvent | PointerEvent) => {
     const clientX = 'touches' in event 
       ? event.touches[0].clientX 
@@ -36,16 +54,20 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
     const isLeftEdge = clientX <= EDGE_ZONE_WIDTH;
     const isRightEdge = clientX >= containerWidth - EDGE_ZONE_WIDTH;
     
-    isEdgeSwipe.current = isLeftEdge || isRightEdge;
+    // Check if swipe started inside a blocked container (calendar, etc.)
+    isBlockedSwipe.current = isInsideBlockedContainer(event.target);
+    
+    isEdgeSwipe.current = (isLeftEdge || isRightEdge) && !isBlockedSwipe.current;
     dragStartX.current = clientX;
     setIsDragging(true);
-  }, []);
+  }, [isInsideBlockedContainer]);
 
   const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
     
-    // Only process swipes that started from the edge
-    if (!isEdgeSwipe.current) {
+    // Only process swipes that started from the edge and not inside blocked containers
+    if (!isEdgeSwipe.current || isBlockedSwipe.current) {
+      isBlockedSwipe.current = false;
       return;
     }
     

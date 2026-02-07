@@ -482,4 +482,70 @@
     @apply flex-1 flex flex-col items-center justify-center px-4 py-3;
     min-height: 30%;
   }
+
+  /* iOS-style scrollbar - hidden by default, appears on scroll */
+  .scrollbar-ios {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease;
+  }
+
+  .scrollbar-ios:hover,
+  .scrollbar-ios:active {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  .scrollbar-ios::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .scrollbar-ios::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-ios::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 2px;
+    transition: background 0.3s ease;
+  }
+
+  .scrollbar-ios:hover::-webkit-scrollbar-thumb,
+  .scrollbar-ios:active::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
+
+  /* Calendar scroll container with smooth inertia */
+  .calendar-scroll-container {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: smooth;
+    scroll-snap-type: y proximity;
+  }
+
+  .calendar-scroll-container > div > div {
+    scroll-snap-align: start;
+  }
+
+  /* Horizontal day snap scrolling */
+  .calendar-day-snap {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendar-day-snap > * {
+    scroll-snap-align: start;
+  }
+
+  /* Touch manipulation for better mobile interaction */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Pocket space background */
+  .pocket-space-bg {
+    background: hsl(var(--background));
+    background-image: var(--gradient-mesh);
+  }
 }
