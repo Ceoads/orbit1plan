@@ -64,14 +64,17 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, noteId, subjectId, generateImages = true } = await req.json();
+    const { imageBase64, noteContent, noteId, subjectId, generateImages = true } = await req.json();
 
-    if (!imageBase64) {
+    // Accept either imageBase64 OR noteContent (extracted text)
+    if (!imageBase64 && !noteContent) {
       return new Response(
-        JSON.stringify({ error: 'Image base64 is required' }),
+        JSON.stringify({ error: 'Image base64 or note content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const useTextMode = !imageBase64 && !!noteContent;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -84,8 +87,8 @@ serve(async (req) => {
 
     console.log('Generating flashcards from image...');
 
-    const systemPrompt = `Tu es un assistant pédagogique expert. À partir d'une image de cours (tableau, notes manuscrites, diapositive), tu dois:
-1. Analyser le contenu visuel (OCR et compréhension)
+    const systemPrompt = `Tu es un assistant pédagogique expert. À partir du contenu de cours fourni, tu dois:
+1. Analyser et comprendre le contenu
 2. Identifier les concepts clés et informations importantes
 3. Créer 5 à 10 flashcards de révision (Question/Réponse)
 
@@ -103,7 +106,40 @@ Règles:
 - Adapte le niveau au contenu (universitaire, lycée, etc.)
 - IMPORTANT: Mets "requires_image": true si le concept est visuel/spatial/anatomique (ex: schéma d'organe, carte, diagramme, structure cellulaire)
 - Mets "requires_image": false pour les concepts abstraits (définitions philosophiques, dates, etc.)
-- Si l'image est illisible ou ne contient pas de contenu éducatif, retourne {"flashcards": [], "error": "Contenu non reconnu"}`;
+- Si le contenu est illisible ou ne contient pas de contenu éducatif, retourne {"flashcards": [], "error": "Contenu non reconnu"}`;
+
+    // Build messages based on input type
+    let messages: any[];
+    
+    if (useTextMode) {
+      // Text-only mode
+      console.log('Using text mode with extracted content');
+      messages = [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Analyse ce contenu de cours et génère des flashcards de révision. Pour chaque concept visuel (anatomie, schéma, carte, etc.), indique requires_image: true.\n\nContenu:\n${noteContent}`
+        }
+      ];
+    } else {
+      // Image mode
+      console.log('Using image mode');
+      messages = [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Analyse cette image de cours et génère des flashcards de révision. Pour chaque concept visuel (anatomie, schéma, carte, etc.), indique requires_image: true.' },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
+              }
+            }
+          ]
+        }
+      ];
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -113,21 +149,7 @@ Règles:
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Analyse cette image de cours et génère des flashcards de révision. Pour chaque concept visuel (anatomie, schéma, carte, etc.), indique requires_image: true.' },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
-                }
-              }
-            ]
-          }
-        ],
+        messages,
       }),
     });
 
