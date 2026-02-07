@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 export type NavTab = 'pulse' | 'vault' | 'tasks' | 'exams' | 'lab';
 
@@ -13,17 +14,18 @@ interface BottomNavProps {
   "data-tutorial-lab"?: string;
 }
 
-const tabs = [
-  { id: 'pulse' as const, label: 'Pulse', icon: Home },
-  { id: 'vault' as const, label: 'Vault', icon: FolderOpen },
-  { id: 'tasks' as const, label: 'Tasks', icon: CheckSquare },
-  { id: 'exams' as const, label: 'Exams', icon: GraduationCap },
-  { id: 'lab' as const, label: 'Lab', icon: Brain },
+const tabConfig = [
+  { id: 'pulse' as const, labelKey: 'nav.pulse', icon: Home },
+  { id: 'vault' as const, labelKey: 'nav.vault', icon: FolderOpen },
+  { id: 'tasks' as const, labelKey: 'nav.tasks', icon: CheckSquare },
+  { id: 'exams' as const, labelKey: 'nav.exams', icon: GraduationCap },
+  { id: 'lab' as const, labelKey: 'nav.lab', icon: Brain },
 ];
 
 export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   const haptics = useHaptics();
   const sounds = useSoundEffects();
+  const { t } = useTranslation();
 
   const handleTabClick = (id: NavTab) => {
     if (id !== activeTab) {
@@ -52,7 +54,7 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
           delay: 0.2
         }}
       >
-        {tabs.map(({ id, label, icon: Icon }) => {
+        {tabConfig.map(({ id, labelKey, icon: Icon }) => {
           const isActive = activeTab === id;
           // Add data attributes for tutorial targeting
           const tutorialAttr = id === 'pulse' 
@@ -85,7 +87,7 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
                 "text-[10px] font-medium ease-apple pointer-events-none",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}>
-                {label}
+                {t(labelKey)}
               </span>
               
               {/* Active indicator glow */}

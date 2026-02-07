@@ -9,6 +9,7 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "react-i18next";
 
 interface QuizQuestion {
   id: number;
@@ -48,6 +49,7 @@ export const PracticeZone = ({
 }: PracticeZoneProps) => {
   const { user } = useAuth();
   const haptics = useHaptics();
+  const { t } = useTranslation();
   
   // Quiz state
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -87,13 +89,13 @@ export const PracticeZone = ({
   // Generate Quiz
   const handleGenerateQuiz = async () => {
     if (!extractedText && !fileUrl) {
-      toast.error("Aucun contenu à analyser");
+      toast.error(t("studyHub.noContentToAnalyze"));
       return;
     }
 
     setLoadingQuiz(true);
     haptics.selection();
-    toast.loading("🧠 Génération du quiz...", { id: "quiz" });
+    toast.loading(`🧠 ${t("studyHub.generatingQuiz")}`, { id: "quiz" });
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-quiz', {
@@ -113,7 +115,7 @@ export const PracticeZone = ({
         setQuizAnswers([]);
         setQuizComplete(false);
         toast.dismiss("quiz");
-        toast.success(`✨ Quiz "${data.quiz.title}" généré !`);
+        toast.success(`✨ ${t("studyHub.quizGenerated")}`);
         haptics.success();
       } else {
         throw new Error('No quiz generated');
@@ -121,7 +123,7 @@ export const PracticeZone = ({
     } catch (error) {
       console.error('Error generating quiz:', error);
       toast.dismiss("quiz");
-      toast.error("Erreur lors de la génération du quiz");
+      toast.error(t("studyHub.quizError"));
     } finally {
       setLoadingQuiz(false);
     }
@@ -130,13 +132,13 @@ export const PracticeZone = ({
   // Generate Flashcards
   const handleGenerateFlashcards = async () => {
     if (!extractedText) {
-      toast.error("Aucun texte extrait pour générer des flashcards");
+      toast.error(t("studyHub.noTextForFlashcards"));
       return;
     }
 
     setLoadingFlashcards(true);
     haptics.selection();
-    toast.loading("🎴 Génération des flashcards...", { id: "flashcards" });
+    toast.loading(`🎴 ${t("studyHub.generatingFlashcards")}`, { id: "flashcards" });
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-flashcards', {
@@ -153,7 +155,7 @@ export const PracticeZone = ({
         setFlashcards(prev => [...data.flashcards, ...prev]);
         setCurrentCard(0);
         toast.dismiss("flashcards");
-        toast.success(`🎴 ${data.flashcards.length} flashcards créées !`);
+        toast.success(`🎴 ${data.flashcards.length} ${t("studyHub.flashcardsCreated")}`);
         haptics.success();
       } else {
         throw new Error('No flashcards generated');
@@ -161,7 +163,7 @@ export const PracticeZone = ({
     } catch (error) {
       console.error('Error generating flashcards:', error);
       toast.dismiss("flashcards");
-      toast.error("Erreur lors de la génération des flashcards");
+      toast.error(t("studyHub.flashcardsError"));
     } finally {
       setLoadingFlashcards(false);
     }
@@ -232,14 +234,14 @@ export const PracticeZone = ({
             className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm"
           >
             <HelpCircle className="w-4 h-4 mr-2" />
-            Quiz
+            {t("studyHub.quiz")}
           </TabsTrigger>
           <TabsTrigger 
             value="flashcards"
             className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm"
           >
             <BookOpen className="w-4 h-4 mr-2" />
-            Flashcards
+            {t("studyHub.flashcards")}
           </TabsTrigger>
         </TabsList>
 
@@ -251,10 +253,10 @@ export const PracticeZone = ({
                 <Brain className="w-8 h-8 text-primary" />
               </div>
               <h3 className="font-display font-semibold text-foreground mb-2">
-                Teste tes connaissances
+                {t("studyHub.testKnowledge")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Génère un QCM de 5 questions basé sur ce document
+                {t("studyHub.generateQuizDesc")}
               </p>
               <Button
                 onClick={handleGenerateQuiz}
@@ -266,7 +268,7 @@ export const PracticeZone = ({
                 ) : (
                   <Brain className="w-4 h-4 mr-2" />
                 )}
-                Générer le Quiz
+                {t("studyHub.generateQuiz")}
               </Button>
             </div>
           ) : quizComplete ? (
@@ -283,10 +285,10 @@ export const PracticeZone = ({
                 </span>
               </div>
               <h3 className="font-display font-semibold text-foreground mb-2">
-                {quizScore >= 80 ? "🎉 Excellent !" : quizScore >= 50 ? "👍 Pas mal !" : "💪 Continue !"}
+                {quizScore >= 80 ? `🎉 ${t("studyHub.excellent")}` : quizScore >= 50 ? `👍 ${t("studyHub.notBad")}` : `💪 ${t("studyHub.keepGoing")}`}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {quizAnswers.filter(Boolean).length}/{quizAnswers.length} réponses correctes
+                {quizAnswers.filter(Boolean).length}/{quizAnswers.length} {t("studyHub.correctAnswers")}
               </p>
               <Button
                 onClick={() => {
@@ -297,7 +299,7 @@ export const PracticeZone = ({
                 className="rounded-xl"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Nouveau Quiz
+                {t("studyHub.newQuiz")}
               </Button>
             </div>
           ) : (
@@ -387,7 +389,7 @@ export const PracticeZone = ({
                       onClick={handleNextQuestion}
                       className="w-full mt-4 gradient-primary text-primary-foreground rounded-xl"
                     >
-                      {currentQuestion < quiz.questions.length - 1 ? "Question suivante" : "Voir le score"}
+                      {currentQuestion < quiz.questions.length - 1 ? t("studyHub.nextQuestion") : t("studyHub.seeScore")}
                     </Button>
                   )}
                 </motion.div>
@@ -404,10 +406,10 @@ export const PracticeZone = ({
                 <BookOpen className="w-8 h-8 text-primary" />
               </div>
               <h3 className="font-display font-semibold text-foreground mb-2">
-                Crée des flashcards
+                {t("studyHub.createFlashcards")}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Génère des cartes de révision à partir de ce document
+                {t("studyHub.generateFlashcardsDesc")}
               </p>
               <Button
                 onClick={handleGenerateFlashcards}
@@ -419,7 +421,7 @@ export const PracticeZone = ({
                 ) : (
                   <BookOpen className="w-4 h-4 mr-2" />
                 )}
-                Générer les Flashcards
+                {t("studyHub.generateFlashcards")}
               </Button>
             </div>
           ) : (
@@ -427,7 +429,7 @@ export const PracticeZone = ({
               {/* Card counter */}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  Carte {currentCard + 1} / {flashcards.length}
+                  {t("studyHub.card")} {currentCard + 1} / {flashcards.length}
                 </span>
                 <Button
                   onClick={handleGenerateFlashcards}
@@ -437,7 +439,7 @@ export const PracticeZone = ({
                   className="rounded-lg"
                 >
                   <RefreshCw className={cn("w-4 h-4 mr-1", loadingFlashcards && "animate-spin")} />
-                  + Cartes
+                  {t("studyHub.moreCards")}
                 </Button>
               </div>
 

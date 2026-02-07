@@ -8,6 +8,7 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import { LatexRenderer, containsLatex } from "./LatexRenderer";
 import { generateAnchorsFromSummary, SectionAnchor } from "./SmartScrollContext";
+import { useTranslation } from "react-i18next";
 
 interface SummaryPanelProps {
   summary: string | null;
@@ -25,6 +26,7 @@ export const SummaryPanel = ({
   extractedText 
 }: SummaryPanelProps) => {
   const haptics = useHaptics();
+  const { t } = useTranslation();
   const [showFullTranscript, setShowFullTranscript] = useState(false);
   const [copied, setCopied] = useState(false);
   const [anchors, setAnchors] = useState<SectionAnchor[]>([]);
@@ -44,10 +46,10 @@ export const SummaryPanel = ({
       await navigator.clipboard.writeText(transcript);
       setCopied(true);
       haptics.success();
-      toast.success("Texte copié !");
+      toast.success(t("studyHub.textCopied"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Erreur lors de la copie");
+      toast.error(t("studyHub.copyError"));
     }
   };
 
@@ -83,7 +85,7 @@ export const SummaryPanel = ({
           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <h3 className="font-display font-semibold text-foreground">L'Essentiel</h3>
+          <h3 className="font-display font-semibold text-foreground">{t("studyHub.essentials")}</h3>
         </div>
 
         {isRegenerating ? (
@@ -141,7 +143,7 @@ export const SummaryPanel = ({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground italic">
-            Aucun résumé disponible. Clique sur le bouton de régénération pour analyser le document.
+            {t("studyHub.noSummary")}
           </p>
         )}
       </motion.div>
@@ -158,7 +160,7 @@ export const SummaryPanel = ({
             <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
               <FileText className="w-4 h-4 text-muted-foreground" />
             </div>
-            <h3 className="font-display font-semibold text-foreground">Transcription</h3>
+            <h3 className="font-display font-semibold text-foreground">{t("studyHub.transcript")}</h3>
           </div>
           
           {transcript && (
@@ -215,12 +217,12 @@ export const SummaryPanel = ({
                 {showFullTranscript ? (
                   <>
                     <ChevronUp className="w-4 h-4 mr-1" />
-                    Voir moins
+                    {t("studyHub.seeLessText")}
                   </>
                 ) : (
                   <>
                     <ChevronDown className="w-4 h-4 mr-1" />
-                    Voir tout le texte
+                    {t("studyHub.seeAllText")}
                   </>
                 )}
               </Button>
@@ -228,7 +230,7 @@ export const SummaryPanel = ({
           </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">
-            Aucun texte extrait. Le document sera analysé par OCR lors de la régénération.
+            {t("studyHub.noTranscript")}
           </p>
         )}
       </motion.div>
