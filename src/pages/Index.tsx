@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { BottomNav, NavTab } from "@/components/BottomNav";
 import { SwipeablePages } from "@/components/SwipeablePages";
 import { PulsePage } from "./PulsePage";
@@ -9,16 +9,14 @@ import { ExamsPage } from "./ExamsPage";
 import { ExamLabPage } from "./ExamLabPage";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { LogOut, Settings } from "lucide-react";
 import { SetupWizard } from "@/components/SetupWizard";
 import { OrbitOnboarding, useTutorial } from "@/components/onboarding";
+import { CollapsibleHeader } from "@/components/CollapsibleHeader";
 
 const Index = () => {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { signOut, user } = useAuth();
-  const { subjects, loading, getCurrentClass, getSubjectById, refetch } = useOrbitData();
+  const { subjects, loading, refetch } = useOrbitData();
   const [activeTab, setActiveTab] = useState<NavTab>('pulse');
   const [showSetup, setShowSetup] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -58,13 +56,6 @@ const Index = () => {
       }
     }
   }, [loading, user, needsSetup, subjects.length, showSetup]);
-
-  const currentClass = getCurrentClass();
-  const currentSubject = currentClass ? getSubjectById(currentClass.subject_id) : null;
-
-  const handleNoteCreated = () => {
-    refetch();
-  };
   
   // Handle tutorial step advancement based on user actions
   const handleTabChange = (tab: NavTab) => {
@@ -156,35 +147,16 @@ const Index = () => {
         />
       )}
 
-      {/* Header with logout */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white/60 backdrop-blur-lg border-b border-white/20">
-        <div className="container max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="font-display text-lg font-bold text-foreground">✨ Orbit</h1>
-          <div className="flex items-center gap-2">
-            {!needsSetup && !showSetup && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/settings')}
-                className="rounded-full"
-              >
-                <Settings className="w-5 h-5" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={signOut}
-              className="rounded-full text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Collapsible Header with Home Logo */}
+      <CollapsibleHeader
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        showSettings={!needsSetup && !showSetup}
+        onSignOut={signOut}
+      />
 
-      {/* Main Content */}
-      <main className="container max-w-lg mx-auto px-4 pb-32 pt-20 relative" style={{ zIndex: 1 }}>
+      {/* Main Content - pt-6 since CollapsibleHeader includes spacer */}
+      <main className="container max-w-lg mx-auto px-4 pb-32 pt-6 relative" style={{ zIndex: 1 }}>
         {renderPage()}
       </main>
 
