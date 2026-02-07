@@ -36,6 +36,8 @@ serve(async (req) => {
 
     const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de 5 questions à choix multiples.
 
+IMPORTANT : Tu dois générer tout le contenu en Français, sauf si le document source est un cours d'Anglais ou si le contenu est explicitement en anglais.
+
 Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 {
   "quiz": {

@@ -22,31 +22,33 @@ serve(async (req) => {
     let userPrompt = '';
 
     if (action === 'ocr') {
-      systemPrompt = `You are an OCR and scientific note analysis assistant for students in STAPS, medicine, engineering, and sciences. Extract all visible text from the image and provide a structured summary.
+      systemPrompt = `Tu es un assistant OCR et d'analyse de notes scientifiques pour étudiants en STAPS, médecine, ingénierie et sciences. Extrais tout le texte visible de l'image et fournis un résumé structuré.
 
-CRITICAL: For any mathematical, physical, or chemical expressions:
-- Wrap inline variables/symbols with single $: $\\alpha$, $x^2$, $\\Delta T$
-- Wrap complex equations with $$: $$f(x) = \\int_{-\\infty}^{\\infty} \\hat{f}(\\xi)e^{2\\pi i \\xi x} \\,d\\xi$$
+Tu dois générer tout le contenu en Français, sauf si le document source est un cours d'Anglais ou si le contenu est explicitement en anglais.
 
-Format your response as JSON with two fields:
-- "rawText": The complete extracted text with LaTeX formatting for any math/science notation
-- "aiSummary": 3-5 bullet points highlighting key concepts (use LaTeX for formulas). Each point should be on its own line starting with "• "
+CRITIQUE : Pour toute expression mathématique, physique ou chimique :
+- Encadre les variables/symboles en ligne avec un seul $ : $\\alpha$, $x^2$, $\\Delta T$
+- Encadre les équations complexes avec $$ : $$f(x) = \\int_{-\\infty}^{\\infty} \\hat{f}(\\xi)e^{2\\pi i \\xi x} \\,d\\xi$$
 
-Examples of LaTeX formatting:
-- Variables: $\\alpha$, $\\beta$, $\\theta$
-- Fractions: $\\frac{a}{b}$
-- Integrals: $\\int_a^b f(x)dx$
-- Sums: $\\sum_{i=1}^n x_i$
-- Greek letters: $\\Delta$, $\\Sigma$, $\\Omega$
+Formate ta réponse en JSON avec deux champs :
+- "rawText" : Le texte complet extrait avec formatage LaTeX pour toute notation math/science
+- "aiSummary" : 3-5 points clés mettant en avant les concepts essentiels (utilise LaTeX pour les formules). Chaque point doit être sur sa propre ligne commençant par "• "
 
-Be concise and focus on information useful for studying.`;
-      userPrompt = 'Please analyze this image, extract the text with proper LaTeX formatting for any mathematical or scientific notation, and summarize the key points for studying.';
+Exemples de formatage LaTeX :
+- Variables : $\\alpha$, $\\beta$, $\\theta$
+- Fractions : $\\frac{a}{b}$
+- Intégrales : $\\int_a^b f(x)dx$
+- Sommes : $\\sum_{i=1}^n x_i$
+- Lettres grecques : $\\Delta$, $\\Sigma$, $\\Omega$
+
+Sois concis et concentre-toi sur les informations utiles pour l'étude.`;
+      userPrompt = 'Analyse cette image, extrais le texte avec un formatage LaTeX approprié pour toute notation mathématique ou scientifique, et résume les points clés pour l\'étude.';
     } else if (action === 'decompose') {
-      systemPrompt = `You are a task decomposition assistant helping students with executive dysfunction. Break down large tasks into 3 smaller, actionable sub-tasks. Format your response as JSON with a "subtasks" array containing objects with:
-- "title": A clear, actionable task title
-- "energyLevel": Either "low", "medium", or "high" based on cognitive effort required
+      systemPrompt = `Tu es un assistant de décomposition de tâches aidant les étudiants avec des difficultés de fonctions exécutives. Décompose les grandes tâches en 3 sous-tâches plus petites et actionnables. Formate ta réponse en JSON avec un tableau "subtasks" contenant des objets avec :
+- "title" : Un titre de tâche clair et actionnable
+- "energyLevel" : Soit "low", "medium", ou "high" selon l'effort cognitif requis
 
-Make tasks specific, achievable, and progressive.`;
+Rends les tâches spécifiques, réalisables et progressives. Génère tout en français.`;
       userPrompt = imageBase64; // In decompose mode, this is the task title
     } else {
       throw new Error('Invalid action specified');

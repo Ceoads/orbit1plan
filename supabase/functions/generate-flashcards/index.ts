@@ -92,6 +92,8 @@ serve(async (req) => {
 2. Identifier les concepts clés et informations importantes
 3. Créer 5 à 10 flashcards de révision (Question/Réponse)
 
+IMPORTANT : Tu dois générer tout le contenu en Français, sauf si le document source est un cours d'Anglais ou si le contenu est explicitement en anglais.
+
 Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 {
   "flashcards": [

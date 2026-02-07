@@ -10,15 +10,12 @@ import { toast } from "sonner";
 import { Loader2, Mail, Lock, Sparkles, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
-
-const authSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+import { useTranslation } from "react-i18next";
 
 const AuthPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -28,6 +25,11 @@ const AuthPage = () => {
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  const authSchema = z.object({
+    email: z.string().email(t("auth.emailValidation")),
+    password: z.string().min(6, t("auth.passwordValidation")),
+  });
 
   // Auto-redirect if already logged in (returning user)
   useEffect(() => {
@@ -45,7 +47,7 @@ const AuthPage = () => {
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mt-4" />
-          <p className="text-muted-foreground mt-3">Welcome back...</p>
+          <p className="text-muted-foreground mt-3">{t("auth.welcomeBack")}</p>
         </div>
       </div>
     );
@@ -54,7 +56,7 @@ const AuthPage = () => {
   const validateForm = (emailOnly = false) => {
     try {
       if (emailOnly) {
-        z.string().email("Please enter a valid email address").parse(email);
+        z.string().email(t("auth.emailValidation")).parse(email);
       } else {
         authSchema.parse({ email, password });
       }
@@ -88,10 +90,10 @@ const AuthPage = () => {
       if (error) throw error;
 
       setResetEmailSent(true);
-      toast.success("Check your email for the reset link!");
+      toast.success(t("auth.resetEmailSuccess"));
     } catch (error: any) {
       console.error("Reset password error:", error);
-      toast.error(error.message || "Failed to send reset email");
+      toast.error(error.message || t("auth.resetEmailError"));
     } finally {
       setLoading(false);
     }
@@ -120,7 +122,7 @@ const AuthPage = () => {
           password,
         });
         if (error) throw error;
-        toast.success("Welcome back! 🎉");
+        toast.success(t("auth.welcomeBackToast"));
         navigate("/");
       } else {
         const { error } = await supabase.auth.signUp({
@@ -132,18 +134,18 @@ const AuthPage = () => {
         });
         if (error) {
           if (error.message.includes("already registered")) {
-            toast.error("This email is already registered. Try logging in instead.");
+            toast.error(t("auth.alreadyRegistered"));
           } else {
             throw error;
           }
           return;
         }
-        toast.success("Account created! Welcome to Orbit ✨");
+        toast.success(t("auth.accountCreated"));
         navigate("/");
       }
     } catch (error: any) {
       console.error("Auth error:", error);
-      toast.error(error.message || "Authentication failed");
+      toast.error(error.message || t("auth.authFailed"));
     } finally {
       setLoading(false);
     }
@@ -154,14 +156,14 @@ const AuthPage = () => {
     return (
       <div className="min-h-screen mesh-background flex items-center justify-center p-4">
         <div className="w-full max-w-md animate-fade-in text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/10 mb-6">
+            <CheckCircle className="w-10 h-10 text-success" />
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground mb-2">
-            Check Your Email
+            {t("auth.checkEmail")}
           </h1>
           <p className="text-muted-foreground mb-6">
-            We sent a password reset link to <strong>{email}</strong>
+            {t("auth.resetEmailSent")} <strong>{email}</strong>
           </p>
           <Button
             variant="outline"
@@ -172,7 +174,7 @@ const AuthPage = () => {
             className="rounded-xl"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Sign In
+            {t("auth.backToSignIn")}
           </Button>
         </div>
       </div>
@@ -189,17 +191,17 @@ const AuthPage = () => {
               <Sparkles className="w-8 h-8 text-white" />
             </div>
             <h1 className="font-display text-2xl font-bold text-foreground">
-              Reset Password
+              {t("auth.resetPassword")}
             </h1>
             <p className="text-muted-foreground mt-2">
-              Enter your email to receive a reset link
+              {t("auth.resetPasswordDescription")}
             </p>
           </div>
 
           <GlassCard variant="elevated" className="p-6">
             <form onSubmit={handleForgotPassword} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground">Email</Label>
+                <Label htmlFor="email" className="text-foreground">{t("auth.email")}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
@@ -225,7 +227,7 @@ const AuthPage = () => {
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  "Send Reset Link"
+                  t("auth.sendResetLink")
                 )}
               </Button>
             </form>
@@ -237,7 +239,7 @@ const AuthPage = () => {
                 className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
-                Back to Sign In
+                {t("auth.backToSignIn")}
               </button>
             </div>
           </GlassCard>
@@ -258,7 +260,7 @@ const AuthPage = () => {
             Orbit
           </h1>
           <p className="text-muted-foreground mt-2">
-            Your second school brain
+            {t("auth.tagline")}
           </p>
         </div>
 
@@ -266,7 +268,7 @@ const AuthPage = () => {
         <GlassCard variant="elevated" className="p-6">
           <form onSubmit={handleAuth} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground">Email</Label>
+              <Label htmlFor="email" className="text-foreground">{t("auth.email")}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -286,14 +288,14 @@ const AuthPage = () => {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-foreground">Password</Label>
+                <Label htmlFor="password" className="text-foreground">{t("auth.password")}</Label>
                 {isLogin && (
                   <button
                     type="button"
                     onClick={() => setIsForgotPassword(true)}
                     className="text-xs text-primary hover:text-primary/80 transition-colors"
                   >
-                    Forgot password?
+                    {t("auth.forgotPassword")}
                   </button>
                 )}
               </div>
@@ -313,7 +315,7 @@ const AuthPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-black/5"
                   disabled={loading}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                 >
                   {showPassword ? (
                     <EyeOff className="w-5 h-5 transition-transform duration-200" />
@@ -339,7 +341,7 @@ const AuthPage = () => {
                   htmlFor="rememberMe" 
                   className="text-sm text-muted-foreground cursor-pointer"
                 >
-                  Remember me on this device
+                  {t("auth.rememberMe")}
                 </Label>
               </div>
             )}
@@ -352,9 +354,9 @@ const AuthPage = () => {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : isLogin ? (
-                "Sign In"
+                t("auth.signIn")
               ) : (
-                "Create Account"
+                t("auth.signUp")
               )}
             </Button>
           </form>
@@ -366,9 +368,9 @@ const AuthPage = () => {
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               {isLogin ? (
-                <>Don't have an account? <span className="text-primary font-medium">Sign up</span></>
+                <>{t("auth.noAccount")} <span className="text-primary font-medium">{t("auth.signUpLink")}</span></>
               ) : (
-                <>Already have an account? <span className="text-primary font-medium">Sign in</span></>
+                <>{t("auth.haveAccount")} <span className="text-primary font-medium">{t("auth.signInLink")}</span></>
               )}
             </button>
           </div>
@@ -378,15 +380,15 @@ const AuthPage = () => {
         <div className="mt-8 grid grid-cols-3 gap-3 text-center">
           <div className="p-3 rounded-xl bg-white/40 backdrop-blur-sm">
             <span className="text-2xl">📸</span>
-            <p className="text-xs text-muted-foreground mt-1">Smart Capture</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("features.smartCapture")}</p>
           </div>
           <div className="p-3 rounded-xl bg-white/40 backdrop-blur-sm">
             <span className="text-2xl">🧠</span>
-            <p className="text-xs text-muted-foreground mt-1">AI Notes</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("features.aiNotes")}</p>
           </div>
           <div className="p-3 rounded-xl bg-white/40 backdrop-blur-sm">
             <span className="text-2xl">✅</span>
-            <p className="text-xs text-muted-foreground mt-1">Smart Tasks</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("features.smartTasks")}</p>
           </div>
         </div>
       </div>

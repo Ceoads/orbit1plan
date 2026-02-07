@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
+import { useTranslation } from "react-i18next";
 
 interface CalendarMonthViewProps {
   events: CalendarEvent[];
@@ -19,9 +20,12 @@ export const CalendarMonthView = ({
   onDateSelect,
   onMonthChange,
 }: CalendarMonthViewProps) => {
+  const { t, i18n } = useTranslation();
   const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
   
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysOfWeek = i18n.language === 'fr' 
+    ? ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
   const getMonthDays = (date: Date) => {
     const year = date.getFullYear();
@@ -88,7 +92,7 @@ export const CalendarMonthView = ({
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <h2 className="font-display font-semibold text-foreground text-lg">
-          {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {currentMonth.toLocaleDateString(i18n.language === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' })}
         </h2>
         <Button 
           variant="ghost" 

@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useOrbitData } from "@/hooks/useOrbitData";
+import { useTranslation } from "react-i18next";
 
 interface CalendarDayViewProps {
   date: Date;
@@ -38,6 +39,7 @@ export const CalendarDayView = ({
   onDateChange,
 }: CalendarDayViewProps) => {
   const { deleteEvent } = useOrbitData();
+  const { i18n } = useTranslation();
   const [direction, setDirection] = useState(0);
   const [showAddClass, setShowAddClass] = useState(false);
   const [selectedHour, setSelectedHour] = useState(9);
@@ -173,7 +175,9 @@ export const CalendarDayView = ({
     }),
   };
 
-  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const dayNames = i18n.language === 'fr' 
+    ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
+    : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   return (
     <div className="space-y-4">
@@ -189,7 +193,7 @@ export const CalendarDayView = ({
         </Button>
         <div className="flex-1">
           <h2 className="font-display font-semibold text-foreground text-lg">
-            {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {date.toLocaleDateString(i18n.language === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' })}
           </h2>
         </div>
       </div>
