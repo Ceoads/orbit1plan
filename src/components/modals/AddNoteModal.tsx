@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject, useOrbitData } from "@/hooks/useOrbitData";
+import { useTranslation } from "react-i18next";
 
 interface AddNoteModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ export const AddNoteModal = ({
   subjects,
   defaultSubjectId = null,
 }: AddNoteModalProps) => {
+  const { t } = useTranslation();
   const { createNote } = useOrbitData();
   const [subjectId, setSubjectId] = useState<string>(defaultSubjectId || "__none__");
   const [rawText, setRawText] = useState("");
@@ -48,17 +50,17 @@ export const AddNoteModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display">Add New Note</DialogTitle>
+          <DialogTitle className="font-display">{t('modals.addNote.title')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
+            <Label htmlFor="subject">{t('modals.addClass.subject')}</Label>
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a subject" />
+                <SelectValue placeholder={t('modals.addClass.selectSubject')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
+                <SelectItem value="__none__">{t('common.none')}</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.icon} {subject.name}
@@ -69,12 +71,12 @@ export const AddNoteModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Note Content</Label>
+            <Label htmlFor="content">{t('modals.addNote.content')}</Label>
             <Textarea
               id="content"
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder="Type your note here..."
+              placeholder={t('modals.addNote.contentPlaceholder')}
               className="min-h-[150px] resize-none"
               required
             />
@@ -82,10 +84,10 @@ export const AddNoteModal = ({
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading} className="flex-1 gradient-primary">
-              {loading ? "Adding..." : "Add Note"}
+              {loading ? t('common.adding') : t('modals.addNote.add')}
             </Button>
           </div>
         </form>

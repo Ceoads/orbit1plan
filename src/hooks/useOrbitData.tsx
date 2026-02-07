@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export interface Subject {
   id: string;
@@ -50,6 +51,7 @@ export interface Task {
 
 export const useOrbitData = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -82,7 +84,7 @@ export const useOrbitData = () => {
       setTasks(tasksRes.data as Task[] || []);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
+      toast.error(t('toasts.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -103,11 +105,12 @@ export const useOrbitData = () => {
       .single();
 
     if (error) {
-      toast.error('Failed to create subject');
+      toast.error(t('toasts.errorCreating'));
       return null;
     }
 
     setSubjects(prev => [...prev, newSubject]);
+    toast.success(t('toasts.subjectCreated'));
     return newSubject;
   };
 
@@ -122,11 +125,12 @@ export const useOrbitData = () => {
       .single();
 
     if (error) {
-      toast.error('Failed to create event');
+      toast.error(t('toasts.errorCreating'));
       return null;
     }
 
     setEvents(prev => [...prev, newEvent as CalendarEvent]);
+    toast.success(t('toasts.eventCreated'));
     // Refresh tasks in case exam triggers created new tasks
     fetchData();
     return newEvent;
@@ -143,11 +147,12 @@ export const useOrbitData = () => {
       .single();
 
     if (error) {
-      toast.error('Failed to create note');
+      toast.error(t('toasts.errorCreating'));
       return null;
     }
 
     setNotes(prev => [newNote as Note, ...prev]);
+    toast.success(t('toasts.noteCreated'));
     return newNote;
   };
 
@@ -172,11 +177,12 @@ export const useOrbitData = () => {
       .single();
 
     if (error) {
-      toast.error('Failed to create task');
+      toast.error(t('toasts.errorCreating'));
       return null;
     }
 
     setTasks(prev => [newTask as Task, ...prev]);
+    toast.success(t('toasts.taskCreated'));
     return newTask;
   };
 
@@ -193,7 +199,7 @@ export const useOrbitData = () => {
       .eq('id', taskId);
 
     if (error) {
-      toast.error('Failed to update task');
+      toast.error(t('toasts.errorUpdating'));
       return;
     }
 
@@ -210,14 +216,14 @@ export const useOrbitData = () => {
       .eq('id', eventId);
 
     if (error) {
-      toast.error('Failed to update event');
+      toast.error(t('toasts.errorUpdating'));
       return;
     }
 
     setEvents(prev => prev.map(e => 
       e.id === eventId ? { ...e, ...data } : e
     ));
-    toast.success('Event updated');
+    toast.success(t('toasts.eventUpdated'));
   };
 
   // Delete event
@@ -228,12 +234,12 @@ export const useOrbitData = () => {
       .eq('id', eventId);
 
     if (error) {
-      toast.error('Failed to delete event');
+      toast.error(t('toasts.errorDeleting'));
       return;
     }
 
     setEvents(prev => prev.filter(e => e.id !== eventId));
-    toast.success('Event deleted');
+    toast.success(t('toasts.eventDeleted'));
   };
 
   // Update subject
@@ -244,14 +250,14 @@ export const useOrbitData = () => {
       .eq('id', subjectId);
 
     if (error) {
-      toast.error('Failed to update subject');
+      toast.error(t('toasts.errorUpdating'));
       return;
     }
 
     setSubjects(prev => prev.map(s => 
       s.id === subjectId ? { ...s, ...data } : s
     ));
-    toast.success('Subject updated');
+    toast.success(t('toasts.subjectUpdated'));
   };
 
   // Delete subject
@@ -262,12 +268,12 @@ export const useOrbitData = () => {
       .eq('id', subjectId);
 
     if (error) {
-      toast.error('Failed to delete subject');
+      toast.error(t('toasts.errorDeleting'));
       return;
     }
 
     setSubjects(prev => prev.filter(s => s.id !== subjectId));
-    toast.success('Subject deleted');
+    toast.success(t('toasts.subjectDeleted'));
   };
 
   // Update note
@@ -278,14 +284,14 @@ export const useOrbitData = () => {
       .eq('id', noteId);
 
     if (error) {
-      toast.error('Failed to update note');
+      toast.error(t('toasts.errorUpdating'));
       return;
     }
 
     setNotes(prev => prev.map(n => 
       n.id === noteId ? { ...n, ...data } : n
     ));
-    toast.success('Note updated');
+    toast.success(t('toasts.noteUpdated'));
   };
 
   // Delete note
@@ -296,12 +302,12 @@ export const useOrbitData = () => {
       .eq('id', noteId);
 
     if (error) {
-      toast.error('Failed to delete note');
+      toast.error(t('toasts.errorDeleting'));
       return;
     }
 
     setNotes(prev => prev.filter(n => n.id !== noteId));
-    toast.success('Note deleted');
+    toast.success(t('toasts.noteDeleted'));
   };
 
   // Delete task
@@ -312,12 +318,12 @@ export const useOrbitData = () => {
       .eq('id', taskId);
 
     if (error) {
-      toast.error('Failed to delete task');
+      toast.error(t('toasts.errorDeleting'));
       return;
     }
 
     setTasks(prev => prev.filter(t => t.id !== taskId));
-    toast.success('Task deleted');
+    toast.success(t('toasts.taskDeleted'));
   };
 
   // Get current class based on time

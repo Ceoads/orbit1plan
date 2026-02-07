@@ -17,7 +17,10 @@
     "search": "Search",
     "noResults": "No results",
     "seeMore": "See more",
-    "seeLess": "See less"
+    "seeLess": "See less",
+    "none": "None",
+    "saving": "Saving...",
+    "adding": "Adding..."
   },
   "nav": {
     "pulse": "Pulse",
@@ -147,13 +150,13 @@
       "sunday": "SUN"
     },
     "daysLong": {
+      "sunday": "Sunday",
       "monday": "Monday",
       "tuesday": "Tuesday",
       "wednesday": "Wednesday",
       "thursday": "Thursday",
       "friday": "Friday",
-      "saturday": "Saturday",
-      "sunday": "Sunday"
+      "saturday": "Saturday"
     }
   },
   "studyHub": {
@@ -254,5 +257,82 @@
     "todaySchedule": "Your schedule",
     "quickCapture": "Quick capture",
     "recentActivity": "Recent activity"
+  },
+  "modals": {
+    "addClass": {
+      "title": "Add New Class",
+      "className": "Class Name",
+      "classPlaceholder": "e.g. Mathematics",
+      "subject": "Subject",
+      "subjectOptional": "Subject (optional)",
+      "selectSubject": "Select a subject",
+      "day": "Day",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "room": "Room",
+      "roomOptional": "Room (optional)",
+      "roomPlaceholder": "e.g. Room 101",
+      "add": "Add Class"
+    },
+    "editClass": {
+      "title": "Edit Class",
+      "save": "Save Changes"
+    },
+    "addExam": {
+      "title": "Add New Exam",
+      "examName": "Exam Name",
+      "examPlaceholder": "e.g. Final Exam",
+      "examDate": "Exam Date",
+      "roomPlaceholder": "e.g. Exam Hall A",
+      "add": "Add Exam"
+    },
+    "editExam": {
+      "title": "Edit Exam",
+      "save": "Save Changes"
+    },
+    "addNote": {
+      "title": "Add New Note",
+      "content": "Note Content",
+      "contentPlaceholder": "Type your note here...",
+      "add": "Add Note"
+    },
+    "editNote": {
+      "title": "Edit Note",
+      "save": "Save Changes"
+    },
+    "addSubject": {
+      "title": "Add New Subject",
+      "subjectName": "Subject Name",
+      "subjectPlaceholder": "e.g. Mathematics",
+      "teacher": "Teacher",
+      "teacherOptional": "Teacher (optional)",
+      "teacherPlaceholder": "e.g. Mr. Smith",
+      "icon": "Icon",
+      "color": "Color",
+      "add": "Add Subject"
+    },
+    "editSubject": {
+      "title": "Edit Subject",
+      "save": "Save Changes"
+    }
+  },
+  "toasts": {
+    "subjectCreated": "Subject created successfully",
+    "subjectUpdated": "Subject updated",
+    "subjectDeleted": "Subject deleted",
+    "eventCreated": "Event created successfully",
+    "eventUpdated": "Event updated",
+    "eventDeleted": "Event deleted",
+    "noteCreated": "Note created successfully",
+    "noteUpdated": "Note updated",
+    "noteDeleted": "Note deleted",
+    "taskCreated": "Task created successfully",
+    "taskUpdated": "Task updated",
+    "taskDeleted": "Task deleted",
+    "error": "An error occurred",
+    "errorLoading": "Error loading data",
+    "errorCreating": "Error creating",
+    "errorUpdating": "Error updating",
+    "errorDeleting": "Error deleting"
   }
 }
