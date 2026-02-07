@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
@@ -25,12 +25,29 @@ export const WeeklyTimeGrid = ({
   const navigate = useNavigate();
   const haptics = useHaptics();
   const sounds = useSoundEffects();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const timeSlots = useMemo(() => {
     return Array.from({ length: 13 }, (_, i) => i + 8); // 8am - 8pm
   }, []);
 
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+  // Auto-scroll to current time on mount
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      
+      if (currentHour >= 8 && currentHour <= 20) {
+        const scrollTarget = ((currentHour - 8) * 56) - 56; // Center the current hour
+        scrollContainerRef.current.scrollTo({
+          top: Math.max(0, scrollTarget),
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, []);
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -108,8 +125,18 @@ export const WeeklyTimeGrid = ({
   const currentMinute = now.getMinutes();
   const currentTimeOffset = ((currentHour - 8) * 60 + currentMinute) / 60;
 
+  // Handle touch events to prevent propagation to parent
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Allow touch events inside the grid but mark as calendar interaction
+    e.stopPropagation();
+  };
+
   return (
-    <div className="h-full flex flex-col">
+    <div 
+      className="h-full flex flex-col" 
+      data-calendar-container
+      onTouchStart={handleTouchStart}
+    >
       {/* Day Headers with Exam Dots */}
       <div className="flex border-b border-border/30 pb-2 mb-2">
         {/* Time axis spacer */}
@@ -138,7 +165,8 @@ export const WeeklyTimeGrid = ({
                   {dayNames[index]}
                 </span>
                 <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all hit-target",
+                  "w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all",
+                  "min-w-[44px] min-h-[44px] touch-manipulation",
                   today && "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                 )}>
                   <span className={cn(
@@ -153,7 +181,7 @@ export const WeeklyTimeGrid = ({
                 {hasExam && (
                   <motion.button
                     onClick={() => handleExamClick(examsOnDay[0])}
-                    className="mt-1.5 hit-target flex items-center justify-center"
+                    className="mt-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                     whileHover={{ scale: 1.4 }}
                     whileTap={{ scale: 0.9 }}
                   >
@@ -166,8 +194,19 @@ export const WeeklyTimeGrid = ({
         </div>
       </div>
 
-      {/* Scrollable Time Grid */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
+      {/* Scrollable Time Grid with iOS-style smooth scrolling */}
+      <div 
+        ref={scrollContainerRef}
+        className={cn(
+          "flex-1 overflow-y-auto overflow-x-hidden",
+          "calendar-scroll-container",
+          "scrollbar-ios"
+        )}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+        }}
+      >
         <div className="relative">
           {/* Current Time Indicator */}
           {currentHour >= 8 && currentHour <= 20 && (
@@ -218,7 +257,7 @@ export const WeeklyTimeGrid = ({
                             key={event.id}
                             className={cn(
                               "absolute inset-x-0 rounded-lg p-1.5 border-l-3 overflow-hidden cursor-pointer",
-                              "active:scale-95 transition-transform shadow-sm",
+                              "active:scale-95 transition-transform shadow-sm touch-manipulation",
                               colors.bg,
                               colors.border
                             )}

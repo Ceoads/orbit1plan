@@ -1,12 +1,15 @@
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useMemo, useRef } from "react";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { WeeklyTimeGrid } from "./WeeklyTimeGrid";
 import { ExamDetailModal } from "./ExamDetailModal";
 import { ChevronLeft, ChevronRight, Calendar, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { cn } from "@/lib/utils";
 
 interface CalendarPocketSpaceProps {
   isOpen: boolean;
@@ -25,6 +28,8 @@ export const CalendarPocketSpace = ({
 }: CalendarPocketSpaceProps) => {
   const haptics = useHaptics();
   const sounds = useSoundEffects();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastSwipeDirection = useRef<'left' | 'right' | null>(null);
   
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const now = new Date();
@@ -36,6 +41,7 @@ export const CalendarPocketSpace = ({
   });
   
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     haptics.selection();
@@ -58,6 +64,41 @@ export const CalendarPocketSpace = ({
     setCurrentWeekStart(start);
   };
 
+  const goToDate = (date: Date) => {
+    haptics.selection();
+    sounds.tap();
+    const dayOfWeek = date.getDay();
+    const start = new Date(date);
+    start.setDate(date.getDate() - dayOfWeek + 1);
+    start.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(start);
+    setDatePickerOpen(false);
+  };
+
+  // Handle horizontal swipe for week navigation
+  const handleHorizontalSwipe = (info: PanInfo) => {
+    const threshold = 80;
+    const velocity = Math.abs(info.velocity.x);
+    const offset = info.offset.x;
+    
+    // Only trigger if horizontal movement is significant
+    if (Math.abs(offset) > threshold || velocity > 400) {
+      if (offset > 0) {
+        // Swipe right -> previous week
+        if (lastSwipeDirection.current !== 'right') {
+          lastSwipeDirection.current = 'right';
+          navigateWeek('prev');
+        }
+      } else {
+        // Swipe left -> next week
+        if (lastSwipeDirection.current !== 'left') {
+          lastSwipeDirection.current = 'left';
+          navigateWeek('next');
+        }
+      }
+    }
+  };
+
   const weekDays = useMemo(() => {
     const days: Date[] = [];
     for (let i = 0; i < 7; i++) {
@@ -68,7 +109,7 @@ export const CalendarPocketSpace = ({
     return days;
   }, [currentWeekStart]);
 
-  const monthYear = currentWeekStart.toLocaleDateString('en-US', { 
+  const monthYear = currentWeekStart.toLocaleDateString('fr-FR', { 
     month: 'long', 
     year: 'numeric' 
   });
@@ -162,7 +203,10 @@ export const CalendarPocketSpace = ({
 
           {/* Pocket Space Container */}
           <motion.div
-            className="fixed inset-0 z-50 overflow-hidden pt-safe"
+            ref={containerRef}
+            className="fixed inset-0 z-50 overflow-hidden pt-safe calendar-pocket-space"
+            data-calendar-container
+            data-swipe-blocked
             variants={pocketVariants}
             initial="hidden"
             animate="visible"
@@ -171,11 +215,17 @@ export const CalendarPocketSpace = ({
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.15}
             onDragEnd={(_, info) => {
+              // Handle vertical swipe to close
               if (info.offset.y > 80 || info.velocity.y > 400) {
                 handleClose();
               }
+              // Reset swipe direction tracker
+              lastSwipeDirection.current = null;
             }}
-            style={{ willChange: 'transform' }}
+            style={{ 
+              willChange: 'transform',
+              touchAction: 'pan-y pinch-zoom',
+            }}
           >
             {/* Main Pocket Content */}
             <div className="h-full w-full pocket-space-bg overflow-hidden flex flex-col">
@@ -202,54 +252,89 @@ export const CalendarPocketSpace = ({
                     >
                       <Calendar className="w-5 h-5 text-primary" />
                     </motion.div>
-                    <div>
-                      <h1 className="font-display text-xl font-bold text-foreground">
-                        {monthYear}
-                      </h1>
-                    </div>
+                    
+                    {/* Month/Year with Date Picker */}
+                    <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                      <PopoverTrigger asChild>
+                        <button 
+                          className="text-left active:opacity-70 transition-opacity"
+                          onClick={() => {
+                            haptics.selection();
+                          }}
+                        >
+                          <h1 className="font-display text-xl font-bold text-foreground capitalize">
+                            {monthYear}
+                          </h1>
+                          <p className="text-xs text-muted-foreground">
+                            Tap to jump to date
+                          </p>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent 
+                        className="w-auto p-0 z-[60]" 
+                        align="start"
+                        sideOffset={8}
+                      >
+                        <CalendarPicker
+                          mode="single"
+                          selected={currentWeekStart}
+                          onSelect={(date) => date && goToDate(date)}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   
-                  <div className="flex items-center gap-1.5">
+                  {/* Navigation Controls - 44x44pt minimum */}
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={goToToday}
-                      className="rounded-full text-xs font-medium px-3 h-9 hit-target"
+                      className="rounded-full text-xs font-medium px-3 min-h-[44px] min-w-[44px]"
                     >
-                      Today
+                      Aujourd'hui
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => navigateWeek('prev')}
-                      className="rounded-full h-9 w-9 hit-target"
+                      className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
+                      aria-label="Semaine précédente"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-5 h-5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => navigateWeek('next')}
-                      className="rounded-full h-9 w-9 hit-target"
+                      className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
+                      aria-label="Semaine suivante"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-5 h-5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handleClose}
-                      className="rounded-full h-9 w-9 hit-target ml-1"
+                      className="rounded-full min-h-[44px] min-w-[44px] ml-1 touch-manipulation"
+                      aria-label="Fermer"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </Button>
                   </div>
                 </div>
               </motion.header>
 
-              {/* Weekly Time Grid */}
+              {/* Weekly Time Grid with Horizontal Swipe */}
               <motion.div 
-                className="flex-1 overflow-hidden px-2"
+                className="flex-1 overflow-hidden px-2 weekly-time-grid"
                 variants={gridVariants}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.1}
+                onDragEnd={(_, info) => handleHorizontalSwipe(info)}
               >
                 <WeeklyTimeGrid
                   weekDays={weekDays}
