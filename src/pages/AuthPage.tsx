@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/GlassCard";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, Sparkles, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2, Mail, Lock, Sparkles, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 
@@ -26,6 +26,7 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   // Auto-redirect if already logged in (returning user)
@@ -300,13 +301,26 @@ const AuthPage = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-12 bg-white/50 border-white/30 rounded-xl"
+                  className="pl-10 pr-12 h-12 bg-white/50 border-white/30 rounded-xl transition-all duration-200"
                   disabled={loading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-black/5"
+                  disabled={loading}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5 transition-transform duration-200" />
+                  ) : (
+                    <Eye className="w-5 h-5 transition-transform duration-200" />
+                  )}
+                </button>
               </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
