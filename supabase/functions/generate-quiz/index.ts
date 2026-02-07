@@ -31,8 +31,10 @@ serve(async (req) => {
     }
 
     console.log('Generating QCM from content...');
+    console.log('Has extractedText:', !!extractedText);
+    console.log('Has imageBase64:', !!imageBase64);
 
-    const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni (image de cours ou texte extrait), tu dois créer un quiz de 5 questions à choix multiples.
+    const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de 5 questions à choix multiples.
 
 Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 {
@@ -63,8 +65,23 @@ Règles:
       { role: 'system', content: systemPrompt }
     ];
 
-    // Use image if provided, otherwise use extracted text
-    if (imageBase64) {
+    // Determine if imageBase64 is actually a valid base64 string or a URL
+    const isValidBase64 = imageBase64 && (
+      imageBase64.startsWith('data:') || 
+      /^[A-Za-z0-9+/=]+$/.test(imageBase64.substring(0, 100))
+    );
+    const isUrl = imageBase64 && imageBase64.startsWith('http');
+
+    // PRIORITY: Use extractedText if available (more reliable than image processing)
+    if (extractedText && extractedText.length > 50) {
+      console.log('Using text mode with extracted content');
+      messages.push({
+        role: 'user',
+        content: `Génère un QCM de 5 questions basé sur ce contenu de cours:\n\n${extractedText}`
+      });
+    } else if (isValidBase64) {
+      // Use base64 image if it's valid
+      console.log('Using image mode with base64');
       messages.push({
         role: 'user',
         content: [
@@ -77,11 +94,28 @@ Règles:
           }
         ]
       });
-    } else {
+    } else if (isUrl) {
+      // If it's a URL, pass it directly to the AI (some models support URLs)
+      console.log('Using image mode with URL');
       messages.push({
         role: 'user',
-        content: `Génère un QCM de 5 questions basé sur ce contenu de cours:\n\n${extractedText}`
+        content: [
+          { type: 'text', text: 'Analyse cette image de cours et génère un QCM de 5 questions.' },
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageBase64
+            }
+          }
+        ]
       });
+    } else {
+      // Fallback to text if nothing valid
+      console.log('Fallback: no valid content');
+      return new Response(
+        JSON.stringify({ error: 'No valid content provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
