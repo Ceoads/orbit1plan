@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
+import { FilteredEvent } from "@/lib/eventFilter";
 import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -9,7 +10,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface WeeklyTimeGridProps {
   weekDays: Date[];
-  events: CalendarEvent[];
+  events: (CalendarEvent | FilteredEvent)[];
   subjects: Subject[];
   getExamsOnDate: (date: Date) => CalendarEvent[];
   onExamClick: (exam: CalendarEvent) => void;
@@ -264,6 +265,7 @@ export const WeeklyTimeGrid = ({
                             style={{
                               height: `${heightMultiplier * 56 - 4}px`,
                               zIndex: 10,
+                              opacity: (event as FilteredEvent).isOptional ? 0.4 : 1,
                             }}
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
