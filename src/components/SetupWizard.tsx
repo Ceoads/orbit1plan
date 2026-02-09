@@ -10,25 +10,25 @@ import { GroupSelector } from "./GroupSelector";
 import { QRCodeScanner } from "./QRCodeScanner";
 
 const SUBJECT_PRESETS = [
-  { name: "Mathematics", icon: "📐", colorKey: "math" },
+  { name: "Mathematique", icon: "📐", colorKey: "math" },
   { name: "History", icon: "📜", colorKey: "history" },
-  { name: "Physics", icon: "⚡", colorKey: "physics" },
+  { name: "Physique", icon: "⚡", colorKey: "physique" },
   { name: "English", icon: "📚", colorKey: "english" },
-  { name: "Chemistry", icon: "🧪", colorKey: "chemistry" },
-  { name: "Biology", icon: "🧬", colorKey: "physics" },
-  { name: "Geography", icon: "🌍", colorKey: "history" },
-  { name: "Art", icon: "🎨", colorKey: "english" },
+  { name: "Chimie", icon: "🧪", colorKey: "Chimie" },
+  { name: "Biologie", icon: "🧬", colorKey: "Bio" },
+  { name: "Geographie", icon: "🌍", colorKey: "Geo" },
+  { name: "Art", icon: "🎨", colorKey: "Art" },
 ];
 
 interface SetupWizardProps {
   onComplete: () => void;
 }
 
-type SetupStep = 'url' | 'group' | 'manual';
+type SetupStep = "url" | "group" | "manual";
 
 export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
   const { user } = useAuth();
-  const [step, setStep] = useState<SetupStep>('url');
+  const [step, setStep] = useState<SetupStep>("url");
   const [icalUrl, setIcalUrl] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<typeof SUBJECT_PRESETS>([]);
   const [loading, setLoading] = useState(false);
@@ -38,26 +38,23 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
   const isValidCalendarUrl = (url: string): boolean => {
     const lowered = url.toLowerCase();
     return (
-      lowered.includes('.ics') ||
-      lowered.includes('ical') ||
-      lowered.includes('vcal') ||
-      lowered.includes('calendar') ||
-      lowered.includes('planning') ||
-      lowered.includes('webcal://') ||
-      lowered.includes('hyperplanning') ||
-      lowered.includes('celcat') ||
-      lowered.includes('ade') ||
-      (lowered.startsWith('http') && (
-        lowered.includes('export') ||
-        lowered.includes('subscribe')
-      ))
+      lowered.includes(".ics") ||
+      lowered.includes("ical") ||
+      lowered.includes("vcal") ||
+      lowered.includes("calendar") ||
+      lowered.includes("planning") ||
+      lowered.includes("webcal://") ||
+      lowered.includes("hyperplanning") ||
+      lowered.includes("celcat") ||
+      lowered.includes("ade") ||
+      (lowered.startsWith("http") && (lowered.includes("export") || lowered.includes("subscribe")))
     );
   };
 
   const normalizeCalendarUrl = (url: string): string => {
     // Convert webcal:// to https://
-    if (url.startsWith('webcal://')) {
-      return url.replace('webcal://', 'https://');
+    if (url.startsWith("webcal://")) {
+      return url.replace("webcal://", "https://");
     }
     return url;
   };
@@ -71,11 +68,11 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
     });
   };
 
-  const toggleSubject = (subject: typeof SUBJECT_PRESETS[0]) => {
-    setSelectedSubjects(prev => {
-      const exists = prev.some(s => s.name === subject.name);
+  const toggleSubject = (subject: (typeof SUBJECT_PRESETS)[0]) => {
+    setSelectedSubjects((prev) => {
+      const exists = prev.some((s) => s.name === subject.name);
       if (exists) {
-        return prev.filter(s => s.name !== subject.name);
+        return prev.filter((s) => s.name !== subject.name);
       }
       if (prev.length >= 5) {
         toast.info("Maximum 5 subjects for now");
@@ -87,11 +84,11 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
 
   const handleUrlSubmit = async () => {
     if (!user || !icalUrl) return;
-    
+
     // Normalize the URL first
     const normalizedUrl = normalizeCalendarUrl(icalUrl.trim());
     setIcalUrl(normalizedUrl);
-    
+
     // Basic URL validation for iCal and vCal formats
     if (!isValidCalendarUrl(normalizedUrl)) {
       toast.error("URL de calendrier non reconnue", {
@@ -101,35 +98,36 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
     }
 
     // Save the URL first
-    await supabase
-      .from('user_settings')
-      .upsert({
+    await supabase.from("user_settings").upsert(
+      {
         user_id: user.id,
         ical_url: icalUrl,
-      }, { onConflict: 'user_id' });
+      },
+      { onConflict: "user_id" },
+    );
 
     // Move to group selection step
-    setStep('group');
+    setStep("group");
   };
 
   const handleGroupSelected = async (group: string) => {
     if (!user) return;
-    
+
     setSyncing(true);
     try {
       // Trigger sync with the selected group
-      const { data, error } = await supabase.functions.invoke('sync-calendar', {
+      const { data, error } = await supabase.functions.invoke("sync-calendar", {
         body: { userId: user.id, icalUrl, filterGroup: group },
       });
-      
+
       if (error) throw error;
-      
+
       const result = data.results?.[0];
       if (result?.success) {
         toast.success(`${result.eventsSynced} cours importés !`, {
           description: `${result.newSubjects} matières découvertes • Filtre: ${group}`,
         });
-        
+
         // Create welcome tasks
         await supabase.from("tasks").insert([
           {
@@ -140,13 +138,13 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
             due_date: new Date().toISOString(),
           },
         ]);
-        
+
         onComplete();
       } else {
-        throw new Error(result?.error || 'Sync failed');
+        throw new Error(result?.error || "Sync failed");
       }
     } catch (error: any) {
-      console.error('Sync error:', error);
+      console.error("Sync error:", error);
       toast.error("Échec de la synchronisation", {
         description: "Essaye la configuration manuelle",
       });
@@ -157,22 +155,22 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
 
   const handleSkipGroupFilter = async () => {
     if (!user) return;
-    
+
     setSyncing(true);
     try {
       // Sync without group filter
-      const { data, error } = await supabase.functions.invoke('sync-calendar', {
+      const { data, error } = await supabase.functions.invoke("sync-calendar", {
         body: { userId: user.id, icalUrl },
       });
-      
+
       if (error) throw error;
-      
+
       const result = data.results?.[0];
       if (result?.success) {
         toast.success(`${result.eventsSynced} cours importés !`, {
           description: `${result.newSubjects} matières découvertes`,
         });
-        
+
         await supabase.from("tasks").insert([
           {
             user_id: user.id,
@@ -182,13 +180,13 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
             due_date: new Date().toISOString(),
           },
         ]);
-        
+
         onComplete();
       } else {
-        throw new Error(result?.error || 'Sync failed');
+        throw new Error(result?.error || "Sync failed");
       }
     } catch (error: any) {
-      console.error('Sync error:', error);
+      console.error("Sync error:", error);
       toast.error("Échec de la synchronisation");
     } finally {
       setSyncing(false);
@@ -212,7 +210,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           })
           .select()
           .single();
-        
+
         if (error) throw error;
         return data;
       });
@@ -222,18 +220,16 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       // Create sample schedule (Monday classes)
       const schedulePromises = createdSubjects.map(async (subject, index) => {
         const startHour = 9 + index;
-        const { error } = await supabase
-          .from("calendar_events")
-          .insert({
-            user_id: user.id,
-            title: subject.name,
-            subject_id: subject.id,
-            start_time: `${startHour.toString().padStart(2, "0")}:00`,
-            end_time: `${(startHour + 1).toString().padStart(2, "0")}:00`,
-            day_of_week: 1,
-            event_type: "class",
-          });
-        
+        const { error } = await supabase.from("calendar_events").insert({
+          user_id: user.id,
+          title: subject.name,
+          subject_id: subject.id,
+          start_time: `${startHour.toString().padStart(2, "0")}:00`,
+          end_time: `${(startHour + 1).toString().padStart(2, "0")}:00`,
+          day_of_week: 1,
+          event_type: "class",
+        });
+
         if (error) throw error;
       });
 
@@ -243,7 +239,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       if (createdSubjects[0]) {
         const examDate = new Date();
         examDate.setDate(examDate.getDate() + 7);
-        
+
         await supabase.from("calendar_events").insert({
           user_id: user.id,
           title: `${createdSubjects[0].name} Exam`,
@@ -292,18 +288,18 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           <Sparkles className="w-8 h-8 text-white" />
         </div>
         <h1 className="font-display text-2xl font-bold text-foreground">
-          {step === 'url' && "Connecte ton Emploi du Temps"}
-          {step === 'group' && "Sélectionne ton Groupe"}
-          {step === 'manual' && "Choisis tes Matières"}
+          {step === "url" && "Connecte ton Emploi du Temps"}
+          {step === "group" && "Sélectionne ton Groupe"}
+          {step === "manual" && "Choisis tes Matières"}
         </h1>
         <p className="text-muted-foreground mt-2">
-          {step === 'url' && "Colle l'URL iCal de ton école pour une synchronisation automatique"}
-          {step === 'group' && "On a détecté plusieurs groupes, choisis le tien"}
-          {step === 'manual' && "Configure manuellement tes matières"}
+          {step === "url" && "Colle l'URL iCal de ton école pour une synchronisation automatique"}
+          {step === "group" && "On a détecté plusieurs groupes, choisis le tien"}
+          {step === "manual" && "Configure manuellement tes matières"}
         </p>
       </div>
 
-      {step === 'url' && (
+      {step === "url" && (
         <>
           {/* iCal URL Input */}
           <GlassCard variant="elevated" className="p-5">
@@ -312,7 +308,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
                 <Calendar className="w-5 h-5 text-primary" />
                 <h2 className="font-display font-semibold">URL du Calendrier</h2>
               </div>
-              
+
               {/* QR Code Scanner Button */}
               <Button
                 variant="ghost"
@@ -336,7 +332,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
                   className="pl-10 h-12 bg-white/50 border-white/30 rounded-xl"
                 />
               </div>
-              
+
               <p className="text-xs text-muted-foreground">
                 💡 Formats supportés: iCal (.ics), vCal, Hyperplanning, CELCAT, ADE, webcal://
               </p>
@@ -361,25 +357,16 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           </div>
 
           {/* Manual Setup */}
-          <Button
-            variant="outline"
-            onClick={() => setStep('manual')}
-            className="w-full h-12 rounded-xl"
-          >
+          <Button variant="outline" onClick={() => setStep("manual")} className="w-full h-12 rounded-xl">
             Configuration Manuelle
           </Button>
 
           {/* QR Scanner Modal */}
-          {showQRScanner && (
-            <QRCodeScanner
-              onScan={handleQRScan}
-              onClose={() => setShowQRScanner(false)}
-            />
-          )}
+          {showQRScanner && <QRCodeScanner onScan={handleQRScan} onClose={() => setShowQRScanner(false)} />}
         </>
       )}
 
-      {step === 'group' && (
+      {step === "group" && (
         <>
           {syncing ? (
             <GlassCard variant="elevated" className="p-6">
@@ -388,60 +375,46 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
                   <Loader2 className="w-8 h-8 text-white animate-spin" />
                 </div>
                 <div className="text-center">
-                  <p className="font-display font-semibold text-foreground">
-                    Synchronisation en cours...
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Import et nettoyage de ton emploi du temps
-                  </p>
+                  <p className="font-display font-semibold text-foreground">Synchronisation en cours...</p>
+                  <p className="text-sm text-muted-foreground mt-1">Import et nettoyage de ton emploi du temps</p>
                 </div>
               </div>
             </GlassCard>
           ) : (
-            <GroupSelector
-              icalUrl={icalUrl}
-              onGroupSelected={handleGroupSelected}
-              onSkip={handleSkipGroupFilter}
-            />
+            <GroupSelector icalUrl={icalUrl} onGroupSelected={handleGroupSelected} onSkip={handleSkipGroupFilter} />
           )}
 
           {/* Back button */}
-          <Button
-            variant="ghost"
-            onClick={() => setStep('url')}
-            disabled={syncing}
-            className="w-full"
-          >
+          <Button variant="ghost" onClick={() => setStep("url")} disabled={syncing} className="w-full">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour
           </Button>
         </>
       )}
 
-      {step === 'manual' && (
+      {step === "manual" && (
         <>
           {/* Subject Selection */}
           <GlassCard variant="elevated" className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <BookOpen className="w-5 h-5 text-primary" />
               <h2 className="font-display font-semibold">Tes Matières</h2>
-              <span className="text-sm text-muted-foreground ml-auto">
-                {selectedSubjects.length}/5 sélectionnées
-              </span>
+              <span className="text-sm text-muted-foreground ml-auto">{selectedSubjects.length}/5 sélectionnées</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               {SUBJECT_PRESETS.map((subject) => {
-                const isSelected = selectedSubjects.some(s => s.name === subject.name);
+                const isSelected = selectedSubjects.some((s) => s.name === subject.name);
                 return (
                   <button
                     key={subject.name}
                     onClick={() => toggleSubject(subject)}
                     className={`
                       p-3 rounded-xl border-2 transition-all text-left
-                      ${isSelected 
-                        ? "border-primary bg-primary/10" 
-                        : "border-white/30 bg-white/50 hover:border-primary/50"
+                      ${
+                        isSelected
+                          ? "border-primary bg-primary/10"
+                          : "border-white/30 bg-white/50 hover:border-primary/50"
                       }
                     `}
                   >
@@ -470,11 +443,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           </Button>
 
           {/* Back button */}
-          <Button
-            variant="ghost"
-            onClick={() => setStep('url')}
-            className="w-full"
-          >
+          <Button variant="ghost" onClick={() => setStep("url")} className="w-full">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour à l'import automatique
           </Button>
