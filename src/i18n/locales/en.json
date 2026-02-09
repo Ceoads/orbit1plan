@@ -123,9 +123,11 @@
     "today": "Today",
     "week": "Week",
     "month": "Month",
-    "noClasses": "No classes today",
+    "noClasses": "No more classes today",
     "nextClass": "Next class",
     "room": "Room",
+    "tapToViewFull": "Tap to view full calendar",
+    "jumpToDate": "Jump to date",
     "months": {
       "january": "January",
       "february": "February",

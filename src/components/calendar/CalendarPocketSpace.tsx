@@ -1,15 +1,16 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { WeeklyTimeGrid } from "./WeeklyTimeGrid";
 import { ExamDetailModal } from "./ExamDetailModal";
-import { ChevronLeft, ChevronRight, Calendar, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface CalendarPocketSpaceProps {
   isOpen: boolean;
@@ -26,10 +27,15 @@ export const CalendarPocketSpace = ({
   subjects,
   originRect,
 }: CalendarPocketSpaceProps) => {
+  const { t } = useTranslation();
   const haptics = useHaptics();
   const sounds = useSoundEffects();
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastSwipeDirection = useRef<'left' | 'right' | null>(null);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
+  const [showTopShadow, setShowTopShadow] = useState(true);
+  const wasAtTop = useRef(true);
   
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const now = new Date();
@@ -42,6 +48,45 @@ export const CalendarPocketSpace = ({
   
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+
+  // Track scroll position for conditional dismiss
+  const handleGridScroll = useCallback((e: Event) => {
+    const target = e.target as HTMLDivElement;
+    const scrollTop = target.scrollTop;
+    const atTop = scrollTop <= 2;
+    
+    setIsScrolledDown(!atTop);
+    setShowTopShadow(atTop);
+    
+    // Haptic feedback when returning to top (dismiss becomes available)
+    if (atTop && !wasAtTop.current) {
+      haptics.selection();
+      wasAtTop.current = true;
+    } else if (!atTop) {
+      wasAtTop.current = false;
+    }
+  }, [haptics]);
+
+  // Attach scroll listener to the WeeklyTimeGrid's scroll container
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    // Find the scroll container inside WeeklyTimeGrid
+    const timer = setTimeout(() => {
+      const scrollEl = containerRef.current?.querySelector('.calendar-scroll-container');
+      if (scrollEl) {
+        scrollContainerRef.current = scrollEl as HTMLDivElement;
+        scrollEl.addEventListener('scroll', handleGridScroll, { passive: true });
+      }
+    }, 300);
+    
+    return () => {
+      clearTimeout(timer);
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.removeEventListener('scroll', handleGridScroll);
+      }
+    };
+  }, [isOpen, handleGridScroll]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     haptics.selection();
@@ -81,16 +126,13 @@ export const CalendarPocketSpace = ({
     const velocity = Math.abs(info.velocity.x);
     const offset = info.offset.x;
     
-    // Only trigger if horizontal movement is significant
     if (Math.abs(offset) > threshold || velocity > 400) {
       if (offset > 0) {
-        // Swipe right -> previous week
         if (lastSwipeDirection.current !== 'right') {
           lastSwipeDirection.current = 'right';
           navigateWeek('prev');
         }
       } else {
-        // Swipe left -> next week
         if (lastSwipeDirection.current !== 'left') {
           lastSwipeDirection.current = 'left';
           navigateWeek('next');
@@ -211,90 +253,100 @@ export const CalendarPocketSpace = ({
             initial="hidden"
             animate="visible"
             exit="exit"
-            drag="y"
+            // Conditional drag: only allow dismiss when at top
+            drag={isScrolledDown ? false : "y"}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.15}
             onDragEnd={(_, info) => {
-              // Handle vertical swipe to close
-              if (info.offset.y > 80 || info.velocity.y > 400) {
+              if (!isScrolledDown && (info.offset.y > 80 || info.velocity.y > 400)) {
                 handleClose();
               }
-              // Reset swipe direction tracker
               lastSwipeDirection.current = null;
             }}
             style={{ 
               willChange: 'transform',
-              touchAction: 'pan-y pinch-zoom',
+              touchAction: isScrolledDown ? 'auto' : 'pan-y pinch-zoom',
+              overscrollBehaviorY: 'contain',
             }}
           >
             {/* Main Pocket Content */}
             <div className="h-full w-full pocket-space-bg overflow-hidden flex flex-col">
-              {/* Swipe Indicator */}
+              {/* Swipe Indicator - only visible when at top */}
               <motion.div 
-                className="flex justify-center pt-3 pb-2"
+                className="flex justify-center pt-2 pb-1"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.25 }}
+                animate={{ opacity: isScrolledDown ? 0.2 : 1 }}
+                transition={{ duration: 0.2 }}
               >
                 <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
               </motion.div>
 
-              {/* Header */}
+              {/* Compact Header */}
               <motion.header 
-                className="px-4 pb-4"
+                className="px-4 pb-2"
                 variants={headerVariants}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <motion.div 
-                      className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center"
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Calendar className="w-5 h-5 text-primary" />
-                    </motion.div>
-                    
-                    {/* Month/Year with Date Picker */}
-                    <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                      <PopoverTrigger asChild>
-                        <button 
-                          className="text-left active:opacity-70 transition-opacity"
-                          onClick={() => {
-                            haptics.selection();
-                          }}
-                        >
-                          <h1 className="font-display text-xl font-bold text-foreground capitalize">
-                            {monthYear}
-                          </h1>
-                          <p className="text-xs text-muted-foreground">
-                            Tap to jump to date
-                          </p>
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent 
-                        className="w-auto p-0 z-[60]" 
-                        align="start"
-                        sideOffset={8}
-                      >
-                        <CalendarPicker
-                          mode="single"
-                          selected={currentWeekStart}
-                          onSelect={(date) => date && goToDate(date)}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                {/* Row 1: Sparkle icon + Close */}
+                <div className="flex items-center justify-between mb-1">
+                  <motion.button
+                    onClick={handleClose}
+                    className="flex items-center gap-2 min-w-[44px] min-h-[44px] touch-manipulation"
+                    whileTap={{ scale: 0.95 }}
+                    aria-label="Retour à Pulse"
+                  >
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <span className="font-display text-sm font-bold text-foreground">Orbit</span>
+                  </motion.button>
                   
-                  {/* Navigation Controls - 44x44pt minimum */}
-                  <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleClose}
+                    className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
+                    aria-label={t('common.close')}
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* Row 2: Month/Year + Navigation arrows */}
+                <div className="flex items-center justify-between">
+                  {/* Month/Year with Date Picker */}
+                  <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <button 
+                        className="text-left active:opacity-70 transition-opacity min-h-[44px] flex items-center touch-manipulation"
+                        onClick={() => haptics.selection()}
+                      >
+                        <h1 className="font-display text-lg font-bold text-foreground capitalize">
+                          {monthYear}
+                        </h1>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent 
+                      className="w-auto p-0 z-[60]" 
+                      align="start"
+                      sideOffset={8}
+                    >
+                      <CalendarPicker
+                        mode="single"
+                        selected={currentWeekStart}
+                        onSelect={(date) => date && goToDate(date)}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  
+                  {/* Navigation Controls - 44x44pt */}
+                  <div className="flex items-center gap-0.5">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={goToToday}
-                      className="rounded-full text-xs font-medium px-3 min-h-[44px] min-w-[44px]"
+                      className="rounded-full text-xs font-medium px-2.5 min-h-[44px] min-w-[44px]"
                     >
-                      Aujourd'hui
+                      {t('calendar.today')}
                     </Button>
                     <Button
                       variant="ghost"
@@ -314,18 +366,23 @@ export const CalendarPocketSpace = ({
                     >
                       <ChevronRight className="w-5 h-5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleClose}
-                      className="rounded-full min-h-[44px] min-w-[44px] ml-1 touch-manipulation"
-                      aria-label="Fermer"
-                    >
-                      <X className="w-5 h-5" />
-                    </Button>
                   </div>
                 </div>
               </motion.header>
+
+              {/* Inner shadow indicator at top of calendar */}
+              <motion.div
+                className="relative z-10 h-3 pointer-events-none -mb-3"
+                animate={{ opacity: showTopShadow ? 1 : 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <div 
+                  className="h-full"
+                  style={{
+                    background: 'linear-gradient(to bottom, hsl(var(--foreground) / 0.06), transparent)',
+                  }}
+                />
+              </motion.div>
 
               {/* Weekly Time Grid with Horizontal Swipe */}
               <motion.div 

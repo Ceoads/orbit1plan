@@ -123,9 +123,11 @@
     "today": "Aujourd'hui",
     "week": "Semaine",
     "month": "Mois",
-    "noClasses": "Pas de cours aujourd'hui",
+    "noClasses": "Plus de cours aujourd'hui",
     "nextClass": "Prochain cours",
     "room": "Salle",
+    "tapToViewFull": "Voir le calendrier complet",
+    "jumpToDate": "Aller à une date",
     "months": {
       "january": "Janvier",
       "february": "Février",
