@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { filterEventsByGroup, FilteredEvent } from "@/lib/eventFilter";
 
 export interface Subject {
   id: string;
@@ -56,6 +57,7 @@ export const useOrbitData = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [userGroup, setUserGroup] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch all data
@@ -66,11 +68,12 @@ export const useOrbitData = () => {
     }
 
     try {
-      const [subjectsRes, eventsRes, notesRes, tasksRes] = await Promise.all([
+      const [subjectsRes, eventsRes, notesRes, tasksRes, settingsRes] = await Promise.all([
         supabase.from('subjects').select('*').order('name'),
         supabase.from('calendar_events').select('*').order('day_of_week, start_time'),
         supabase.from('notes_vault').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('*').order('priority_score', { ascending: false }),
+        supabase.from('user_settings').select('ical_filter_group').maybeSingle(),
       ]);
 
       if (subjectsRes.error) throw subjectsRes.error;
@@ -82,6 +85,7 @@ export const useOrbitData = () => {
       setEvents(eventsRes.data as CalendarEvent[] || []);
       setNotes(notesRes.data as Note[] || []);
       setTasks(tasksRes.data as Task[] || []);
+      setUserGroup(settingsRes.data?.ical_filter_group || null);
     } catch (error: any) {
       console.error('Error fetching data:', error);
       toast.error(t('toasts.errorLoading'));
@@ -89,6 +93,12 @@ export const useOrbitData = () => {
       setLoading(false);
     }
   };
+
+  // Filter events by user's group
+  const filteredEvents: FilteredEvent[] = useMemo(
+    () => filterEventsByGroup(events, userGroup),
+    [events, userGroup]
+  );
 
   useEffect(() => {
     fetchData();
@@ -334,7 +344,7 @@ export const useOrbitData = () => {
     const currentTime = currentHour * 60 + currentMinute;
     const currentDay = now.getDay();
 
-    const todayClasses = events.filter(e => e.day_of_week === currentDay && e.event_type === 'class');
+    const todayClasses = filteredEvents.filter(e => e.day_of_week === currentDay && e.event_type === 'class');
 
     for (const event of todayClasses) {
       const [startHour, startMin] = event.start_time.split(':').map(Number);
@@ -358,7 +368,7 @@ export const useOrbitData = () => {
     const currentTime = currentHour * 60 + currentMinute;
     const currentDay = now.getDay();
 
-    const todayClasses = events
+    const todayClasses = filteredEvents
       .filter(e => e.day_of_week === currentDay && e.event_type === 'class')
       .sort((a, b) => {
         const [aH, aM] = a.start_time.split(':').map(Number);
@@ -377,7 +387,7 @@ export const useOrbitData = () => {
 
     // Return first class of next day
     const tomorrow = (currentDay + 1) % 7;
-    const tomorrowClasses = events.filter(e => e.day_of_week === tomorrow && e.event_type === 'class');
+    const tomorrowClasses = filteredEvents.filter(e => e.day_of_week === tomorrow && e.event_type === 'class');
     return tomorrowClasses[0] || null;
   };
 
@@ -402,7 +412,7 @@ export const useOrbitData = () => {
   // Get upcoming exams
   const getUpcomingExams = (): CalendarEvent[] => {
     const today = new Date();
-    return events
+    return filteredEvents
       .filter(e => e.event_type === 'exam' && e.exam_date && new Date(e.exam_date) >= today)
       .sort((a, b) => new Date(a.exam_date!).getTime() - new Date(b.exam_date!).getTime());
   };
@@ -412,7 +422,7 @@ export const useOrbitData = () => {
     const today = new Date();
     const currentDay = today.getDay();
     
-    return events
+    return filteredEvents
       .filter(e => e.day_of_week === currentDay)
       .sort((a, b) => {
         const [aH, aM] = a.start_time.split(':').map(Number);
@@ -423,10 +433,12 @@ export const useOrbitData = () => {
 
   return {
     subjects,
-    events,
+    events: filteredEvents,
+    allEvents: events, // unfiltered, for cases that need it
     notes,
     tasks,
     loading,
+    userGroup,
     createSubject,
     createEvent,
     createNote,

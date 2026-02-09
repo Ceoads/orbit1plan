@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
+import { FilteredEvent } from "@/lib/eventFilter";
 import { GlassCard } from "@/components/GlassCard";
 import { SwipeableItem } from "@/components/SwipeableItem";
 import { Clock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -346,7 +347,8 @@ export const CalendarDayView = ({
                               className={cn(
                                 "w-full text-left rounded-xl p-3 border-l-4 transition-all hover:scale-[1.01]",
                                 getSubjectBorderColor(colorKey),
-                                getSubjectBgColor(colorKey)
+                                getSubjectBgColor(colorKey),
+                                (event as FilteredEvent).isOptional && "opacity-40"
                               )}
                             >
                               <div className="flex items-center gap-3">
