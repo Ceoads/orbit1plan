@@ -6,6 +6,7 @@ import { Calendar, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useTranslation } from "react-i18next";
 
 interface ScheduleWidgetProps {
   events: CalendarEvent[];
@@ -18,6 +19,7 @@ export const ScheduleWidget = ({
   subjects,
   className,
 }: ScheduleWidgetProps) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const widgetRef = useRef<HTMLButtonElement>(null);
   const [originRect, setOriginRect] = useState<DOMRect | undefined>();
@@ -103,10 +105,10 @@ export const ScheduleWidget = ({
             </div>
             <div>
               <h3 className="font-display font-semibold text-foreground">
-                Today's Schedule
+                {t('pulse.todaySchedule')}
               </h3>
               <p className="text-xs text-muted-foreground">
-                {todayEvents.length} classes • {upcomingExams.length} exams upcoming
+                {todayEvents.length} {t('calendar.noClasses').toLowerCase().includes('cours') ? 'cours' : 'classes'} • {upcomingExams.length} {t('exams.upcoming').toLowerCase()}
               </p>
             </div>
           </div>
@@ -146,13 +148,13 @@ export const ScheduleWidget = ({
           </div>
         ) : (
           <div className="text-center py-4 text-muted-foreground text-sm">
-            No more classes today 🎉
+            {t('calendar.noClasses')} 🎉
           </div>
         )}
 
         {/* Tap Hint */}
         <p className="text-[10px] text-muted-foreground text-center mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          Tap to view full calendar
+          {t('calendar.tapToViewFull', 'Voir le calendrier complet')}
         </p>
       </motion.button>
 
