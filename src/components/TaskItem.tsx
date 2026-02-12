@@ -4,6 +4,7 @@ import { Check, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { SubjectDot } from "./SubjectBadge";
 import { useState } from "react";
 import { Button } from "./ui/button";
+import { useHaptics } from "@/hooks/useHaptics";
 
 interface TaskItemProps {
   task: Task;
@@ -20,14 +21,20 @@ const energyColors = {
 };
 
 const energyLabels = {
-  low: "🌙 Low energy",
-  medium: "☀️ Medium energy",
-  high: "⚡ High energy",
+  low: "🌙 Zen",
+  medium: "☀️ Moyen",
+  high: "⚡ Max",
 };
 
 export const TaskItem = ({ task, subject, onToggle, onDecompose, subtasks = [] }: TaskItemProps) => {
   const [showSubtasks, setShowSubtasks] = useState(false);
+  const haptics = useHaptics();
   
+  const handleToggle = (taskId: string) => {
+    haptics.success();
+    onToggle(taskId);
+  };
+
   const getDaysUntil = (dateStr: string): number => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -43,15 +50,16 @@ export const TaskItem = ({ task, subject, onToggle, onDecompose, subtasks = [] }
       <div 
         className={cn(
           "bg-white/70 backdrop-blur-lg rounded-xl border border-white/30 shadow-soft",
-          "p-4 border-l-4 transition-all duration-200",
-          energyColors[task.energy_level],
-          task.status === 'done' && "opacity-60"
+        "p-4 border-l-4 transition-all duration-200",
+        energyColors[task.energy_level],
+        task.status === 'done' && "opacity-60",
+        isOverdue && task.status !== 'done' && "ring-1 ring-destructive/30"
         )}
       >
         <div className="flex items-start gap-3">
           {/* Checkbox */}
           <button
-            onClick={() => onToggle(task.id)}
+            onClick={() => handleToggle(task.id)}
             className={cn(
               "w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all",
               task.status === 'done' 
