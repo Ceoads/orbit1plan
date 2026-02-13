@@ -115,9 +115,14 @@ export const SmartVaultCapture = ({ onFileCaptured }: SmartVaultCaptureProps) =>
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("notes")
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 3600);
+      
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw new Error("Failed to get signed URL");
+      }
+      const publicUrl = signedUrlData.signedUrl;
 
       // Get context for smart filing
       const classHistory = getTodayClassHistory();
