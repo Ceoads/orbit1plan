@@ -121,7 +121,7 @@ export const ExamDetailModal = ({
                     {subject?.icon || '📝'}
                   </motion.div>
                   <div className="flex-1">
-                    <p className="text-white/80 text-sm font-medium">Upcoming Exam</p>
+                    <p className="text-white/80 text-sm font-medium">Examen à venir</p>
                     <h2 className="font-display text-xl font-bold mt-0.5">
                       {subject?.name || exam.title}
                     </h2>
@@ -140,7 +140,7 @@ export const ExamDetailModal = ({
                 >
                   <span className="text-5xl font-bold leading-none">{daysUntil}</span>
                   <span className="text-white/80 text-lg pb-1">
-                    {daysUntil === 1 ? 'day left' : 'days left'}
+                    {daysUntil === 1 ? 'jour restant' : 'jours restants'}
                   </span>
                 </motion.div>
               </div>
@@ -161,12 +161,12 @@ export const ExamDetailModal = ({
                     <p className="text-xs text-muted-foreground">Date</p>
                     <p className="font-medium text-foreground">
                       {exam.exam_date 
-                        ? new Date(exam.exam_date).toLocaleDateString('en-US', {
+                        ? new Date(exam.exam_date).toLocaleDateString('fr-FR', {
                             weekday: 'long',
                             month: 'long',
                             day: 'numeric'
                           })
-                        : 'Not set'
+                        : 'Non définie'
                       }
                     </p>
                   </div>
@@ -183,7 +183,7 @@ export const ExamDetailModal = ({
                     <Clock className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Time & Duration</p>
+                    <p className="text-xs text-muted-foreground">Horaire & Durée</p>
                     <p className="font-medium text-foreground">
                       {exam.start_time.slice(0, 5)} - {exam.end_time.slice(0, 5)}
                       <span className="text-muted-foreground ml-2">({getDuration()})</span>
@@ -203,7 +203,7 @@ export const ExamDetailModal = ({
                       <MapPin className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Location</p>
+                      <p className="text-xs text-muted-foreground">Salle</p>
                       <p className="font-medium text-foreground">{exam.room_number}</p>
                     </div>
                   </motion.div>
@@ -220,7 +220,7 @@ export const ExamDetailModal = ({
                     onClick={handleStudyClick}
                   >
                     <BookOpen className="w-4 h-4 mr-2" />
-                    Start Studying
+                    Commencer à réviser
                   </Button>
                 </motion.div>
               </div>

@@ -350,7 +350,7 @@ const PulseDashboard = ({ showNotification, expandWidget }: { showNotification: 
               <Bell className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="text-xs font-semibold text-gray-900">Good evening!</p>
+              <p className="text-xs font-semibold text-gray-900">Bonsoir !</p>
               <p className="text-[10px] text-gray-600">Tu as 3 cours demain</p>
             </div>
           </motion.div>

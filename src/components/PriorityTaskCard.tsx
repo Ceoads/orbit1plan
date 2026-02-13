@@ -79,9 +79,9 @@ export const PriorityTaskCard = ({ onTaskComplete }: PriorityTaskCardProps) => {
             urgencyLevel === 'soon' ? "text-warning" :
             "text-muted-foreground"
           )}>
-            {daysUntil === 0 ? 'Due today' :
-             daysUntil === 1 ? 'Due tomorrow' :
-             `${daysUntil} days left`}
+            {daysUntil === 0 ? "Aujourd'hui" :
+             daysUntil === 1 ? 'Demain' :
+             `${daysUntil} jours restants`}
           </span>
         </div>
         

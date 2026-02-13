@@ -47,7 +47,7 @@ export const CurrentClassCard = () => {
           <div className="flex items-center gap-2">
             <SubjectDot subject={subject} />
             <span className="text-sm font-medium text-muted-foreground">
-              {isCurrentlyInClass ? 'Currently in' : 'Up next'}
+              {isCurrentlyInClass ? 'En cours' : 'Prochain cours'}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">

@@ -98,9 +98,9 @@ export const PulsePage = () => {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) return "Bonjour";
+    if (hour < 18) return "Bon après-midi";
+    return "Bonsoir";
   };
 
   const getDaysUntil = (dateStr: string): number => {
@@ -118,7 +118,7 @@ export const PulsePage = () => {
       {/* Header */}
       <div className="pt-4">
         <p className="text-muted-foreground text-sm font-medium">
-          {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          {today.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
         <h1 className="font-display text-3xl font-bold text-foreground mt-1">
           {getGreeting()}! ✨
@@ -133,7 +133,7 @@ export const PulsePage = () => {
               <MapPin className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-muted-foreground">Class in {minutesToClass} min</p>
+              <p className="text-sm text-muted-foreground">Cours dans {minutesToClass} min</p>
               <p className="font-display font-bold text-foreground text-lg">📍 {nextClass.room_number}</p>
             </div>
             <Bell className="w-5 h-5 text-primary animate-bounce" />
@@ -159,8 +159,8 @@ export const PulsePage = () => {
               <BookOpen className="w-7 h-7 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-muted-foreground text-sm">No classes scheduled</p>
-              <p className="font-display font-semibold text-lg">Enjoy your free time! 🎉</p>
+              <p className="text-muted-foreground text-sm">Aucun cours prévu</p>
+              <p className="font-display font-semibold text-lg">Profite de ton temps libre ! 🎉</p>
             </div>
           </div>
         </div>
@@ -179,7 +179,7 @@ export const PulsePage = () => {
         <section>
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-warning" />
-            <h2 className="font-display font-semibold text-foreground">Focus on this</h2>
+            <h2 className="font-display font-semibold text-foreground">À réviser maintenant</h2>
           </div>
           <div className="soft-card p-5 border-l-4 border-l-primary">
             <div className="flex items-center justify-between">
@@ -198,14 +198,14 @@ export const PulsePage = () => {
               <CalendarDays className="w-6 h-6 text-warning" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-muted-foreground">Upcoming exam</p>
+              <p className="text-sm text-muted-foreground">Examen à venir</p>
               <p className="font-display font-semibold text-foreground">
                 {examSubject.icon} {nextExam.title}
               </p>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-warning">{getDaysUntil(nextExam.exam_date)}</p>
-              <p className="text-xs text-muted-foreground">days</p>
+              <p className="text-xs text-muted-foreground">jours</p>
             </div>
           </div>
         </div>
@@ -219,11 +219,11 @@ export const PulsePage = () => {
         </div>
         <div className="soft-card p-4 text-center">
           <p className="text-2xl font-bold text-success">{doneCount}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Done</p>
+          <p className="text-xs text-muted-foreground font-medium mt-1">Terminées</p>
         </div>
         <div className="soft-card p-4 text-center">
           <p className="text-2xl font-bold text-warning">{upcomingExams.length}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Exams</p>
+          <p className="text-xs text-muted-foreground font-medium mt-1">Examens</p>
         </div>
       </section>
     </div>

@@ -109,13 +109,13 @@ export const ScheduleCalendar = ({
             <p className="text-2xl font-bold text-primary">
               {events.filter(e => e.event_type === 'class').length}
             </p>
-            <p className="text-xs text-muted-foreground">Weekly Classes</p>
+            <p className="text-xs text-muted-foreground">Cours hebdo</p>
           </GlassCard>
           <GlassCard variant="subtle" className="p-4 text-center">
             <p className="text-2xl font-bold text-warning">
               {upcomingExamCount}
             </p>
-            <p className="text-xs text-muted-foreground">Upcoming Exams</p>
+            <p className="text-xs text-muted-foreground">Examens à venir</p>
           </GlassCard>
         </div>
       )}

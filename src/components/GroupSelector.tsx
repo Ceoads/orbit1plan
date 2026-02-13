@@ -193,7 +193,7 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
           </div>
           <div className="text-center w-full max-w-xs">
             <p className="font-display font-semibold text-foreground mb-2">
-              Magic Scan en cours...
+              Analyse en cours...
             </p>
             <Progress value={(loadingStep + 1) / loadingMessages.length * 100} className="h-2 mb-2" />
             <p className="text-sm text-muted-foreground animate-pulse">

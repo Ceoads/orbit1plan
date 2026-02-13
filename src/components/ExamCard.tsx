@@ -48,9 +48,9 @@ export const ExamCard = ({ exam }: ExamCardProps) => {
           urgencyLevel === 'soon' ? "bg-warning/10 text-warning" :
           "bg-muted text-muted-foreground"
         )}>
-          {exam.daysUntil === 0 ? 'Today!' :
-           exam.daysUntil === 1 ? 'Tomorrow' :
-           `${exam.daysUntil} days`}
+          {exam.daysUntil === 0 ? "Aujourd'hui !" :
+           exam.daysUntil === 1 ? 'Demain' :
+           `${exam.daysUntil} jours`}
         </div>
       </div>
 
@@ -62,7 +62,7 @@ export const ExamCard = ({ exam }: ExamCardProps) => {
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
           <Calendar className="w-4 h-4" />
           <span>
-            {new Date(exam.exam_date).toLocaleDateString('en-US', { 
+          {new Date(exam.exam_date).toLocaleDateString('fr-FR', { 
               weekday: 'short', 
               month: 'short', 
               day: 'numeric' 
@@ -76,7 +76,7 @@ export const ExamCard = ({ exam }: ExamCardProps) => {
         <div className="flex items-center justify-between text-sm">
           <span className="flex items-center gap-1.5 text-muted-foreground">
             <FileText className="w-4 h-4" />
-            Readiness
+            Préparation
           </span>
           <span className={cn(
             "font-medium",
@@ -97,7 +97,7 @@ export const ExamCard = ({ exam }: ExamCardProps) => {
           )}
         />
         <p className="text-xs text-muted-foreground">
-          {exam.notesCount} notes captured
+          {exam.notesCount} notes capturées
         </p>
       </div>
     </GlassCard>
