@@ -142,7 +142,7 @@ export const PostCaptureActionMenu = ({
                 <div className="mt-3 relative rounded-xl overflow-hidden h-32 bg-muted">
                   <img
                     src={capturedNote.thumbnail_url || capturedNote.file_url}
-                    alt="Captured note"
+                    alt="Note capturée"
                     className="w-full h-full object-cover"
                   />
                   {/* AI Processing Overlay */}

@@ -106,9 +106,9 @@ export const TheVaultPage = () => {
           toast.dismiss("flashcards");
           if (flashcardsResult?.flashcards?.length > 0) {
             toast.success(`🎴 ${flashcardsResult.flashcards.length} flashcards créées !`, {
-              description: "Va dans Exam Lab pour réviser",
+              description: "Va dans le Lab pour réviser",
               action: {
-                label: "Exam Lab",
+                label: "Lab",
                 onClick: () => window.location.href = "/exam-lab",
               }
             });

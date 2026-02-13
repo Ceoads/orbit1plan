@@ -10,7 +10,7 @@ interface SearchBarProps {
 }
 
 export const SearchBar = ({ 
-  placeholder = "Search notes...", 
+  placeholder = "Rechercher dans les notes...", 
   value, 
   onChange,
   className 

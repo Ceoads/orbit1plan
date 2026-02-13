@@ -10,10 +10,10 @@ import { Loader2, Lock, Sparkles, CheckCircle } from "lucide-react";
 import { z } from "zod";
 
 const passwordSchema = z.object({
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Les mots de passe ne correspondent pas",
   path: ["confirmPassword"],
 });
 
@@ -32,7 +32,7 @@ const ResetPasswordPage = () => {
     const type = hashParams.get('type');
     
     if (!accessToken || type !== 'recovery') {
-      toast.error("Invalid or expired reset link");
+      toast.error("Lien de réinitialisation invalide ou expiré");
       navigate("/auth");
     }
   }, [navigate]);
@@ -70,7 +70,7 @@ const ResetPasswordPage = () => {
       if (error) throw error;
 
       setSuccess(true);
-      toast.success("Password updated successfully!");
+      toast.success("Mot de passe mis à jour !");
       
       // Redirect to home after 2 seconds
       setTimeout(() => {
@@ -78,7 +78,7 @@ const ResetPasswordPage = () => {
       }, 2000);
     } catch (error: any) {
       console.error("Reset password error:", error);
-      toast.error(error.message || "Failed to reset password");
+      toast.error(error.message || "Échec de la réinitialisation du mot de passe");
     } finally {
       setLoading(false);
     }
@@ -92,10 +92,10 @@ const ResetPasswordPage = () => {
             <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground mb-2">
-            Password Reset!
+            Mot de passe réinitialisé !
           </h1>
           <p className="text-muted-foreground">
-            Redirecting you to the app...
+            Redirection vers l'application...
           </p>
         </div>
       </div>
@@ -111,10 +111,10 @@ const ResetPasswordPage = () => {
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground">
-            Set New Password
+            Nouveau mot de passe
           </h1>
           <p className="text-muted-foreground mt-2">
-            Choose a strong password for your account
+            Choisis un mot de passe sécurisé pour ton compte
           </p>
         </div>
 
@@ -122,7 +122,7 @@ const ResetPasswordPage = () => {
         <GlassCard variant="elevated" className="p-6">
           <form onSubmit={handleResetPassword} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground">New Password</Label>
+              <Label htmlFor="password" className="text-foreground">Nouveau mot de passe</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -141,7 +141,7 @@ const ResetPasswordPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-foreground">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-foreground">Confirmer le mot de passe</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -167,7 +167,7 @@ const ResetPasswordPage = () => {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                "Update Password"
+                "Mettre à jour le mot de passe"
               )}
             </Button>
           </form>
