@@ -10,13 +10,13 @@ import { GroupSelector } from "./GroupSelector";
 import { QRCodeScanner } from "./QRCodeScanner";
 
 const SUBJECT_PRESETS = [
-  { name: "Mathematique", icon: "📐", colorKey: "math" },
-  { name: "History", icon: "📜", colorKey: "history" },
+  { name: "Mathématiques", icon: "📐", colorKey: "math" },
+  { name: "Histoire", icon: "📜", colorKey: "history" },
   { name: "Physique", icon: "⚡", colorKey: "physique" },
-  { name: "English", icon: "📚", colorKey: "english" },
+  { name: "Anglais", icon: "📚", colorKey: "english" },
   { name: "Chimie", icon: "🧪", colorKey: "Chimie" },
   { name: "Biologie", icon: "🧬", colorKey: "Bio" },
-  { name: "Geographie", icon: "🌍", colorKey: "Geo" },
+  { name: "Géographie", icon: "🌍", colorKey: "Geo" },
   { name: "Art", icon: "🎨", colorKey: "Art" },
 ];
 
@@ -75,7 +75,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
         return prev.filter((s) => s.name !== subject.name);
       }
       if (prev.length >= 5) {
-        toast.info("Maximum 5 subjects for now");
+        toast.info("Maximum 5 matières pour le moment");
         return prev;
       }
       return [...prev, subject];

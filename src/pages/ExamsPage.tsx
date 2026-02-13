@@ -57,14 +57,14 @@ export const ExamsPage = () => {
       {/* Upcoming Exams */}
       <section>
         <h2 className="font-display font-semibold text-foreground mb-3">
-          Coming Up
+          Examens à venir
         </h2>
         <div className="space-y-4">
           {upcomingExams.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No upcoming exams 🎉</p>
+              <p className="text-muted-foreground">Aucun examen planifié 🎉</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Tap the + button to add an exam
+                Appuie sur + pour ajouter un examen
               </p>
             </div>
           ) : (
@@ -81,7 +81,7 @@ export const ExamsPage = () => {
                   <ExamCard 
                     exam={{
                       ...exam,
-                      subjectName: subject?.name || 'Unknown',
+                      subjectName: subject?.name || 'Inconnu',
                       subjectIcon: subject?.icon || '📚',
                       subjectColorKey: (subject?.color_key || 'math') as any,
                       notesCount,
@@ -112,15 +112,15 @@ export const ExamsPage = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete exam?</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer cet examen ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+              Es-tu sûr de vouloir supprimer « {deleteTarget?.name} » ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

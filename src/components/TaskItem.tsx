@@ -104,10 +104,10 @@ export const TaskItem = ({ task, subject, onToggle, onDecompose, subtasks = [] }
                   daysUntil <= 1 ? "text-warning" :
                   "text-muted-foreground"
                 )}>
-                  {isOverdue ? 'Overdue' :
-                   daysUntil === 0 ? 'Due today' :
-                   daysUntil === 1 ? 'Tomorrow' :
-                   `${daysUntil} days`}
+                  {isOverdue ? 'En retard' :
+                   daysUntil === 0 ? "Aujourd'hui" :
+                   daysUntil === 1 ? 'Demain' :
+                   `${daysUntil} jours`}
                 </span>
               )}
             </div>
