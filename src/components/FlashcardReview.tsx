@@ -112,6 +112,7 @@ export const FlashcardReview = ({
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [sessionComplete, setSessionComplete] = useState(false);
 
   const currentCard = flashcards[currentIndex];
   const progress = flashcards.length > 0 ? ((currentIndex + 1) / flashcards.length) * 100 : 0;
@@ -129,6 +130,8 @@ export const FlashcardReview = ({
       setImageLoaded(false);
       if (currentIndex < flashcards.length - 1) {
         setCurrentIndex(currentIndex + 1);
+      } else {
+        setSessionComplete(true);
       }
     }, 300);
   };
@@ -146,6 +149,7 @@ export const FlashcardReview = ({
     setCurrentIndex(0);
     setIsFlipped(false);
     setImageLoaded(false);
+    setSessionComplete(false);
   };
 
   if (flashcards.length === 0) {
@@ -164,9 +168,7 @@ export const FlashcardReview = ({
     );
   }
 
-  const isComplete = currentIndex >= flashcards.length - 1 && exitDirection;
-
-  if (isComplete || (currentIndex === flashcards.length && !currentCard)) {
+  if (sessionComplete) {
     const visualCount = flashcards.filter(f => f.image_url).length;
     
     return (
