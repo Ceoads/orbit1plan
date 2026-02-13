@@ -65,6 +65,7 @@ export const PracticeZone = ({
   const [loadingFlashcards, setLoadingFlashcards] = useState(false);
   const [currentCard, setCurrentCard] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   // Fetch existing flashcards for this note
   useEffect(() => {
@@ -496,8 +497,12 @@ export const PracticeZone = ({
                     {flashcards[currentCard]?.image_url && (
                       <img
                         src={flashcards[currentCard].image_url}
-                        alt=""
-                        className="w-24 h-24 object-contain mb-4 rounded-xl"
+                        alt="Illustration du concept"
+                        className="w-full min-h-[200px] max-h-[240px] object-contain mb-4 rounded-xl bg-white/50 shadow-soft"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFullscreenImage(flashcards[currentCard].image_url!);
+                        }}
                       />
                     )}
                     <p className="font-medium text-foreground">
@@ -573,6 +578,34 @@ export const PracticeZone = ({
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Fullscreen image overlay */}
+      <AnimatePresence>
+        {fullscreenImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setFullscreenImage(null)}
+          >
+            <motion.img
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={fullscreenImage}
+              alt="Image en plein écran"
+              className="max-w-full max-h-full object-contain rounded-2xl"
+            />
+            <button
+              className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white"
+              onClick={() => setFullscreenImage(null)}
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
