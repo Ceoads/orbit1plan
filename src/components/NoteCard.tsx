@@ -22,7 +22,7 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
           {hasImage ? (
             <img 
               src={note.media_url!} 
-              alt="Note" 
+              alt="Note de cours" 
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';

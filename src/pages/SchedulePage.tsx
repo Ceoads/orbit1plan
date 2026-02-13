@@ -17,18 +17,18 @@ export const SchedulePage = () => {
       const subject = subjects.find(s => s.id === event.subject_id);
       
       if (notes.length > 0) {
-        toast.success(`Found ${notes.length} notes for ${subject?.name || 'this subject'}`, {
-          description: "Opening your study materials...",
+        toast.success(`${notes.length} notes trouvées pour ${subject?.name || 'cette matière'}`, {
+          description: "Ouverture de tes notes...",
           action: {
-            label: "View",
+            label: "Voir",
             onClick: () => navigate('/vault'),
           },
         });
       } else {
-        toast.info("No notes yet for this class", {
-          description: "Add notes to build your study materials",
+        toast.info("Aucune note pour ce cours", {
+          description: "Ajoute des notes pour créer tes supports de révision",
           action: {
-            label: "Add Note",
+            label: "Ajouter",
             onClick: () => navigate('/vault'),
           },
         });

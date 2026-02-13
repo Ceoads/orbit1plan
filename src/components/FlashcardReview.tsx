@@ -306,7 +306,7 @@ export const FlashcardReview = ({
 
       {/* Instructions */}
       <p className="text-center text-xs text-muted-foreground pb-2 mb-safe-dock">
-        Swipe ← à revoir • Swipe → maîtrisé
+        ← à revoir • → maîtrisé
       </p>
     </div>
   );
