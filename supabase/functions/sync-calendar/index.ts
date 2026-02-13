@@ -115,15 +115,13 @@ function getSmartIconAndColor(subjectName: string): { icon: string; color: strin
     }
   }
   
-  // Fallback: generic book icon
   return { icon: '📚', color: 'english' };
 }
 
-// Check if event should be excluded (vacations, holidays, cancellations, etc.)
+// Check if event should be excluded
 function isExcludedEvent(title: string): boolean {
   const lowerTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   
-  // Special check for prefix patterns (most common cancellation format)
   const prefixPatterns = [
     /^annulation\s*[:\-–]/i,
     /^annule\s*[:\-–]/i,
@@ -138,37 +136,125 @@ function isExcludedEvent(title: string): boolean {
     }
   }
   
-  // Check for excluded keywords anywhere in title
   return EXCLUDED_EVENT_KEYWORDS.some(keyword => {
     const normalizedKeyword = keyword.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     return lowerTitle.includes(normalizedKeyword);
   });
 }
 
-// Group code patterns for detection - broader patterns
+// Group code patterns for detection
 const GROUP_PATTERNS = [
-  /\b(TC\d+\s*G?\d*\s*[A-Z]?)\b/gi,            // TC2, TC2 G1 A, TC1G2
-  /\b(L[1-3]\s*[-]?\s*[A-Z0-9]*)\b/gi,          // L3-A, L1 B, L2
-  /\b(M[1-2]\s*[-]?\s*[A-Z0-9]+)\b/gi,          // M1-A, M2 Info
-  /\b(INFO[-\s]?S?\d+)\b/gi,                     // INFO-S3, INFO S2, INFO3
-  /\b(Groupe\s*\d+[A-Z]?)\b/gi,                 // Groupe 1A
-  /\b(G\d+\s*[A-Z]?)\b/gi,                       // G1A, G2 B
-  /\b(S\d+[-\s]?[A-Z0-9]*)\b/gi,                 // S3, S3-A, S5 Info
-  /\b(TP\d+[A-Z]?)\b/gi,                         // TP1, TP2A
-  /\b(TD\d+[A-Z]?)\b/gi,                         // TD1, TD2B
-  /\b([A-Z]{2,6}\d+[-\s]?[A-Z0-9]*)\b/g,         // MIAGE2A, BUT1, GEII2
-  /\b(\d{4}[-_][A-Z0-9]+)\b/gi,                  // 2024-INFO, 2025_M1
-  /\[\s*([^\]]+)\s*\]/g,                          // [Anything in brackets]
-  /\(([A-Z0-9][-A-Z0-9\s]{1,15})\)/g,            // (Anything in parentheses with letters/numbers)
+  /\b(TC\d+\s*G?\d*\s*[A-Z]?)\b/gi,
+  /\b(L[1-3]\s*[-]?\s*[A-Z0-9]*)\b/gi,
+  /\b(M[1-2]\s*[-]?\s*[A-Z0-9]+)\b/gi,
+  /\b(INFO[-\s]?S?\d+)\b/gi,
+  /\b(Groupe\s*\d+[A-Z]?)\b/gi,
+  /\b(G\d+\s*[A-Z]?)\b/gi,
+  /\b(S\d+[-\s]?[A-Z0-9]*)\b/gi,
+  /\b(TP\d+[A-Z]?)\b/gi,
+  /\b(TD\d+[A-Z]?)\b/gi,
+  /\b([A-Z]{2,6}\d+[-\s]?[A-Z0-9]*)\b/g,
+  /\b(\d{4}[-_][A-Z0-9]+)\b/gi,
+  /\[\s*([^\]]+)\s*\]/g,
+  /\(([A-Z0-9][-A-Z0-9\s]{1,15})\)/g,
 ];
 
-// Parse iCal format
+/**
+ * Force-decode a potentially mis-encoded string to proper UTF-8.
+ * Handles common Latin-1 → UTF-8 mojibake (e.g. "MathÃ©matiques" → "Mathématiques").
+ */
+function forceUtf8(text: string): string {
+  try {
+    // Detect mojibake patterns (common Latin-1 interpreted as UTF-8)
+    if (/Ã[©¨ª«¯°²³´µ¹º¼½¾¿]|Ã\u0083|Ã\u0082/.test(text)) {
+      // Try to re-encode as Latin-1 then decode as UTF-8
+      const bytes = new Uint8Array(text.split('').map(c => c.charCodeAt(0)));
+      const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      if (decoded && !decoded.includes('\uFFFD')) {
+        return decoded;
+      }
+    }
+  } catch (_) {
+    // fallback to original
+  }
+  return text;
+}
+
+/**
+ * Parse iCal date with proper timezone handling.
+ * Supports: 20240115T090000Z (UTC), 20240115T090000 (local/floating),
+ * and TZID parameter dates. Normalizes everything to Europe/Paris.
+ */
+function parseICalDate(dateStr: string, tzid?: string): Date | null {
+  try {
+    const isUtc = dateStr.endsWith('Z');
+    const clean = dateStr.replace(/[Z]/g, '');
+    
+    if (clean.length < 8) return null;
+    
+    const year = parseInt(clean.substring(0, 4));
+    const month = parseInt(clean.substring(4, 6)) - 1;
+    const day = parseInt(clean.substring(6, 8));
+    const hour = clean.length >= 10 ? parseInt(clean.substring(8, 10)) : 0;
+    const minute = clean.length >= 12 ? parseInt(clean.substring(10, 12)) : 0;
+    const second = clean.length >= 14 ? parseInt(clean.substring(12, 14)) : 0;
+    
+    if (isUtc) {
+      // UTC date — convert to Europe/Paris local time
+      const utcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
+      // Use Intl to get the Paris offset
+      const parisStr = utcDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
+      return new Date(parisStr);
+    }
+    
+    // Check if TZID is Europe/Paris or similar — treat as local
+    if (tzid && /europe\/paris/i.test(tzid)) {
+      return new Date(year, month, day, hour, minute, second);
+    }
+    
+    // If TZID is another timezone, try to convert
+    if (tzid) {
+      try {
+        const srcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
+        // Get offset for source timezone
+        const srcStr = srcDate.toLocaleString('en-US', { timeZone: tzid });
+        const srcLocal = new Date(srcStr);
+        const srcOffset = srcDate.getTime() - srcLocal.getTime();
+        
+        // Get offset for Paris
+        const parisStr = srcDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
+        const parisLocal = new Date(parisStr);
+        const parisOffset = srcDate.getTime() - parisLocal.getTime();
+        
+        // Adjust: subtract source offset, add paris offset
+        const adjusted = new Date(srcDate.getTime() + srcOffset - parisOffset);
+        const finalStr = adjusted.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
+        return new Date(finalStr);
+      } catch (_) {
+        // Unknown timezone, treat as local
+        return new Date(year, month, day, hour, minute, second);
+      }
+    }
+    
+    // Floating time (no Z, no TZID) — assume Europe/Paris local
+    return new Date(year, month, day, hour, minute, second);
+  } catch (e) {
+    console.error('Error parsing date:', dateStr, e);
+    return null;
+  }
+}
+
+// Parse iCal format with improved encoding & timezone handling
 function parseICalData(icalData: string): any[] {
+  // Force UTF-8 cleanup on entire input
+  const cleanData = forceUtf8(icalData);
+  
   const events: any[] = [];
-  const lines = icalData.split(/\r?\n/);
+  const lines = cleanData.split(/\r?\n/);
   let currentEvent: any = null;
   let currentKey = '';
   let currentValue = '';
+  let currentParams = '';
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
@@ -181,82 +267,72 @@ function parseICalData(icalData: string): any[] {
     
     // Process previous key-value pair
     if (currentKey && currentEvent) {
-      processKeyValue(currentEvent, currentKey, currentValue);
+      processKeyValue(currentEvent, currentKey, currentValue, currentParams);
     }
     
-    // Check for BEGIN:VEVENT and END:VEVENT first
     if (line === 'BEGIN:VEVENT') {
       currentEvent = {};
       currentKey = '';
       currentValue = '';
+      currentParams = '';
       continue;
     } else if (line === 'END:VEVENT' && currentEvent) {
-      // Process any remaining key-value pair
       if (currentKey) {
-        processKeyValue(currentEvent, currentKey, currentValue);
+        processKeyValue(currentEvent, currentKey, currentValue, currentParams);
       }
       events.push(currentEvent);
       currentEvent = null;
       currentKey = '';
       currentValue = '';
+      currentParams = '';
       continue;
     }
     
-    // Parse new line - handle both "KEY:value" and "KEY;param=x:value"
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) continue;
     
     let rawKey = line.substring(0, colonIndex);
     currentValue = line.substring(colonIndex + 1);
     
-    // Extract base key (remove parameters like ;LANGUAGE=fr or ;TZID=Europe/Paris)
+    // Extract base key and parameters (e.g. DTSTART;TZID=Europe/Paris)
     const semicolonIndex = rawKey.indexOf(';');
-    currentKey = semicolonIndex !== -1 ? rawKey.substring(0, semicolonIndex) : rawKey;
+    if (semicolonIndex !== -1) {
+      currentKey = rawKey.substring(0, semicolonIndex);
+      currentParams = rawKey.substring(semicolonIndex + 1);
+    } else {
+      currentKey = rawKey;
+      currentParams = '';
+    }
   }
 
   return events;
 }
 
-function processKeyValue(event: any, key: string, value: string) {
+function processKeyValue(event: any, key: string, value: string, params: string = '') {
+  // Extract TZID from parameters if present
+  const tzidMatch = params.match(/TZID=([^;:]+)/i);
+  const tzid = tzidMatch ? tzidMatch[1] : undefined;
+  
   switch (key) {
     case 'UID':
       event.uid = value;
       break;
     case 'SUMMARY':
-      event.summary = value.replace(/\\,/g, ',').replace(/\\n/g, '\n');
+      event.summary = forceUtf8(value.replace(/\\,/g, ',').replace(/\\n/g, '\n').replace(/\\;/g, ';'));
       break;
     case 'DESCRIPTION':
-      event.description = value.replace(/\\,/g, ',').replace(/\\n/g, '\n');
+      event.description = forceUtf8(value.replace(/\\,/g, ',').replace(/\\n/g, '\n').replace(/\\;/g, ';'));
       break;
     case 'LOCATION':
-      event.location = value.replace(/\\,/g, ',');
+      event.location = forceUtf8(value.replace(/\\,/g, ','));
       break;
     case 'DTSTART':
-      event.start = parseICalDate(value);
+      event.start = parseICalDate(value, tzid);
       break;
     case 'DTEND':
-      event.end = parseICalDate(value);
+      event.end = parseICalDate(value, tzid);
       break;
   }
-}
-
-function parseICalDate(dateStr: string): Date | null {
-  try {
-    // Format: 20240115T090000Z or 20240115T090000
-    const clean = dateStr.replace(/[TZ]/g, '');
-    if (clean.length >= 8) {
-      const year = parseInt(clean.substring(0, 4));
-      const month = parseInt(clean.substring(4, 6)) - 1;
-      const day = parseInt(clean.substring(6, 8));
-      const hour = clean.length >= 10 ? parseInt(clean.substring(8, 10)) : 0;
-      const minute = clean.length >= 12 ? parseInt(clean.substring(10, 12)) : 0;
-      
-      return new Date(year, month, day, hour, minute);
-    }
-  } catch (e) {
-    console.error('Error parsing date:', dateStr, e);
-  }
-  return null;
 }
 
 // Extract room number from location or description
@@ -272,6 +348,10 @@ function extractRoomNumber(location: string | undefined, description: string | u
     const match = text.match(pattern);
     if (match) return match[1];
   }
+  // If location is short (likely a room name), return it directly
+  if (location && location.trim().length > 0 && location.trim().length <= 30) {
+    return location.trim();
+  }
   return null;
 }
 
@@ -281,6 +361,8 @@ function extractTeacher(description: string | undefined): string | null {
   const patterns = [
     /(?:prof(?:esseur)?|teacher|enseignant|intervenant)[:\s]+([^,\n]+)/i,
     /(?:by|par)[:\s]+([^,\n]+)/i,
+    // Pronote pattern: teacher name often on first or last line
+    /^([A-Z][a-zéèêëàâäîïôöùûü]+ [A-Z][a-zéèêëàâäîïôöùûü]+)/m,
   ];
   
   for (const pattern of patterns) {
@@ -316,7 +398,6 @@ function extractGroupCodes(text: string): string[] {
 // Detect groups from first N events
 function detectGroupsFromEvents(events: any[], limit: number = 100): Map<string, number> {
   const groupCounts: Map<string, number> = new Map();
-  
   const eventsToScan = events.slice(0, limit);
   
   for (const event of eventsToScan) {
@@ -333,29 +414,24 @@ function detectGroupsFromEvents(events: any[], limit: number = 100): Map<string,
 
 // Check if event matches the user's group filter
 function eventMatchesGroup(event: any, filterGroup: string | null): boolean {
-  if (!filterGroup) return true; // No filter, include all
+  if (!filterGroup) return true;
   
   const textToCheck = `${event.summary || ''} ${event.description || ''}`.toUpperCase();
   const normalizedFilter = filterGroup.toUpperCase().replace(/\s+/g, '').trim();
-  
-  // Check if the filter group appears in the event
-  // Also try with spaces removed for flexible matching
   const textNoSpaces = textToCheck.replace(/\s+/g, '');
   
   return textNoSpaces.includes(normalizedFilter) || 
          textToCheck.includes(filterGroup.toUpperCase());
 }
 
-// Extract clean subject name from event title (remove group codes)
+// Extract clean subject name from event title
 function extractSubjectName(title: string, filterGroup: string | null): string {
   let clean = title;
   
-  // Remove detected group codes
   for (const pattern of GROUP_PATTERNS) {
     clean = clean.replace(pattern, '');
   }
   
-  // Remove common prefixes/suffixes
   clean = clean
     .replace(/\s*-\s*(S\d+|Groupe\s*\d+|G\d+|TP|TD|CM|Cours|Amphi).*$/i, '')
     .replace(/^\s*(CM|TD|TP|Cours)\s*-?\s*/i, '')
@@ -363,7 +439,6 @@ function extractSubjectName(title: string, filterGroup: string | null): string {
     .replace(/^\s*[-–]\s*/g, '')
     .trim();
   
-  // If still too long, take first meaningful part
   if (clean.length > 30) {
     clean = clean.split(/[-–]/)[0].trim();
   }
@@ -375,6 +450,57 @@ function extractSubjectName(title: string, filterGroup: string | null): string {
 function formatDayFr(date: Date): string {
   const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   return days[date.getDay()];
+}
+
+/**
+ * Fetch iCal data with proper encoding handling.
+ * Handles webcal:// protocol, forces UTF-8 decoding, and provides
+ * clear error messages for expired links (401/403).
+ */
+async function fetchICalData(url: string): Promise<string> {
+  // Normalize webcal:// to https://
+  const normalizedUrl = url.replace(/^webcal:\/\//i, 'https://');
+  
+  const response = await fetch(normalizedUrl, {
+    headers: { 
+      'User-Agent': 'OrbitPlan-Calendar-Sync/2.0',
+      'Accept': 'text/calendar, text/plain, */*',
+      'Accept-Charset': 'utf-8',
+    },
+  });
+  
+  if (response.status === 401 || response.status === 403) {
+    throw new Error('ICAL_EXPIRED: Ton lien iCal a expiré. Régénère-le dans ton ENT (Pronote, Hyperplanning, etc.).');
+  }
+  
+  if (response.status === 404) {
+    throw new Error('ICAL_NOT_FOUND: Ce lien iCal est introuvable. Vérifie l\'URL dans les paramètres de ton école.');
+  }
+  
+  if (!response.ok) {
+    throw new Error(`ICAL_FETCH_ERROR: Erreur ${response.status} lors de la récupération du calendrier.`);
+  }
+  
+  // Try to get content as ArrayBuffer for proper encoding handling
+  const contentType = response.headers.get('content-type') || '';
+  
+  // Check if charset is specified
+  if (contentType.includes('charset=') && !contentType.includes('utf-8')) {
+    // Read as bytes and decode with proper charset
+    const buffer = await response.arrayBuffer();
+    // Try UTF-8 first
+    const utf8Text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+    // Check for replacement characters indicating bad decode
+    if (!utf8Text.includes('\uFFFD')) {
+      return utf8Text;
+    }
+    // Fallback to latin-1
+    return new TextDecoder('iso-8859-1').decode(buffer);
+  }
+  
+  // Default: read as text (browser default UTF-8)
+  const text = await response.text();
+  return text;
 }
 
 serve(async (req) => {
@@ -393,33 +519,22 @@ serve(async (req) => {
     if (scanOnly && icalUrl) {
       console.log('Scanning for groups (proxy mode)...');
       
-      const response = await fetch(icalUrl, {
-        headers: { 'User-Agent': 'OrbitPlan-Calendar-Sync/1.0' },
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch iCal: ${response.status}`);
-      }
-      
-      const icalData = await response.text();
+      const icalData = await fetchICalData(icalUrl);
       const events = parseICalData(icalData);
       
-      // Log first 10 event titles for debugging
       const sampleTitles = events.slice(0, 10).map(e => e.summary).filter(Boolean);
       console.log('Sample event titles:', JSON.stringify(sampleTitles));
       
-      // Scan 100 first events for groups
       const groupCounts = detectGroupsFromEvents(events, 100);
       
-      // Sort by count (most common first) and filter noise
       const detectedGroups = Array.from(groupCounts.entries())
-        .filter(([_, count]) => count >= 2) // At least 2 occurrences
+        .filter(([_, count]) => count >= 2)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 15) // Top 15 groups
+        .slice(0, 15)
         .map(([code, count]) => ({ code, count }));
       
       console.log(`Detected ${detectedGroups.length} groups from ${events.length} events`);
       
-      // If no groups detected, return event summaries as hint for user
       const eventSummaries = events.slice(0, 5).map(e => e.summary).filter(Boolean);
       
       return new Response(JSON.stringify({ 
@@ -431,16 +546,11 @@ serve(async (req) => {
       });
     }
     
-    // Mode: Preview only - show next few events for a group
+    // Mode: Preview only
     if (previewOnly && icalUrl && filterGroup) {
       console.log(`Previewing events for group: ${filterGroup}`);
       
-      const response = await fetch(icalUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch iCal: ${response.status}`);
-      }
-      
-      const icalData = await response.text();
+      const icalData = await fetchICalData(icalUrl);
       const events = parseICalData(icalData);
       
       const now = new Date();
@@ -465,7 +575,6 @@ serve(async (req) => {
     let usersToSync: { user_id: string; ical_url: string; ical_filter_group: string | null }[] = [];
     
     if (syncAll) {
-      // Cron job mode: sync all users with valid iCal URLs
       const { data: settings, error } = await supabase
         .from('user_settings')
         .select('user_id, ical_url, ical_filter_group')
@@ -475,7 +584,6 @@ serve(async (req) => {
       if (error) throw error;
       usersToSync = settings || [];
     } else if (userId && icalUrl) {
-      // Single user sync mode - get their filter group
       const { data: userSettings } = await supabase
         .from('user_settings')
         .select('ical_filter_group')
@@ -500,41 +608,26 @@ serve(async (req) => {
       try {
         console.log(`Syncing calendar for user ${user_id}, filter: ${ical_filter_group || 'none'}`);
         
-        // Fetch iCal feed
-        const response = await fetch(ical_url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch iCal: ${response.status}`);
-        }
-        
-        const icalData = await response.text();
+        const icalData = await fetchICalData(ical_url);
         const allEvents = parseICalData(icalData);
         
-        // Current date for filtering
         const now = new Date();
         
-        // Apply group filter, time filter, AND exclude non-course events
         const events = allEvents.filter(e => {
-          // Skip events without titles
           if (!e.summary) return false;
-          
-          // Exclude vacations, holidays, study days, etc.
           if (isExcludedEvent(e.summary)) {
             console.log(`Excluding non-course event: ${e.summary}`);
             return false;
           }
-          
-          // Time filter: only keep events ending after now
           if (e.end) {
             const endDate = new Date(e.end);
             if (endDate < now) return false;
           }
-          // Group filter: flexible case-insensitive matching
           return eventMatchesGroup(e, ical_filter_group);
         });
         
         console.log(`Parsed ${allEvents.length} events, ${events.length} after filtering`);
         
-        // Get existing subjects for this user
         const { data: existingSubjects } = await supabase
           .from('subjects')
           .select('id, name')
@@ -544,10 +637,7 @@ serve(async (req) => {
           (existingSubjects || []).map(s => [s.name.toLowerCase(), s.id])
         );
         
-        // Track new subjects to create
         const newSubjectsToCreate: Set<string> = new Set();
-        
-        // Process events
         let syncedCount = 0;
         let examsFound = 0;
         
@@ -558,7 +648,6 @@ serve(async (req) => {
           const subjectName = extractSubjectName(title, ical_filter_group);
           const isExam = isExamEvent(title);
           
-          // Check if we need to create this subject
           if (!subjectMap.has(subjectName.toLowerCase())) {
             newSubjectsToCreate.add(subjectName);
           }
@@ -566,7 +655,6 @@ serve(async (req) => {
           if (isExam) examsFound++;
         }
         
-        // Create new subjects with SMART icons based on subject name
         for (const subjectName of newSubjectsToCreate) {
           const { icon, color } = getSmartIconAndColor(subjectName);
           
@@ -587,7 +675,6 @@ serve(async (req) => {
           }
         }
         
-        // Now upsert all events
         const eventsToInsert = [];
         
         for (const event of events) {
@@ -603,7 +690,6 @@ serve(async (req) => {
           const startDate = new Date(event.start);
           const endDate = new Date(event.end);
           
-          // Validate dates
           if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
             console.log(`Skipping event with invalid dates: ${title}`);
             continue;
@@ -614,7 +700,7 @@ serve(async (req) => {
           eventsToInsert.push({
             user_id: user_id,
             external_id: externalId,
-            title: subjectName, // Use clean subject name instead of raw title
+            title: subjectName,
             subject_id: subjectId,
             start_time: `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`,
             end_time: `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`,
@@ -628,7 +714,7 @@ serve(async (req) => {
         
         console.log(`Prepared ${eventsToInsert.length} events for insertion`);
         
-        // Delete existing synced events for this user and insert fresh
+        // Delete existing synced events and insert fresh (deduplicated by UID)
         const { error: deleteError } = await supabase
           .from('calendar_events')
           .delete()
@@ -639,10 +725,16 @@ serve(async (req) => {
           console.error('Error deleting old events:', deleteError);
         }
         
-        // Insert in batches of 100
+        // Deduplicate by external_id before insertion
+        const uniqueEvents = new Map<string, any>();
+        for (const event of eventsToInsert) {
+          uniqueEvents.set(event.external_id, event);
+        }
+        const deduplicatedEvents = Array.from(uniqueEvents.values());
+        
         const batchSize = 100;
-        for (let i = 0; i < eventsToInsert.length; i += batchSize) {
-          const batch = eventsToInsert.slice(i, i + batchSize);
+        for (let i = 0; i < deduplicatedEvents.length; i += batchSize) {
+          const batch = deduplicatedEvents.slice(i, i + batchSize);
           const { error: insertError } = await supabase
             .from('calendar_events')
             .insert(batch);
@@ -656,7 +748,6 @@ serve(async (req) => {
         
         console.log(`Successfully synced ${syncedCount} events`);
         
-        // Update last synced timestamp
         await supabase
           .from('user_settings')
           .update({ last_synced_at: new Date().toISOString() })
@@ -691,8 +782,12 @@ serve(async (req) => {
   } catch (error: unknown) {
     console.error('Error in sync-calendar function:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Return user-friendly error for known error types
+    const status = message.startsWith('ICAL_') ? 400 : 500;
+    
     return new Response(JSON.stringify({ error: message }), {
-      status: 500,
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
