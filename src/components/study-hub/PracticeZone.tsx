@@ -69,14 +69,16 @@ export const PracticeZone = ({
   // Fetch existing flashcards for this note
   useEffect(() => {
     const fetchFlashcards = async () => {
-      if (!user || !subjectId) return;
+      if (!user || !fileId) return;
 
-      const { data, error } = await supabase
+      const query = supabase
         .from('flashcards')
         .select('*')
-        .eq('subject_id', subjectId)
+        .eq('note_id', fileId)
         .order('created_at', { ascending: false })
         .limit(20);
+
+      const { data, error } = await query;
 
       if (!error && data) {
         setFlashcards(data as Flashcard[]);
@@ -84,7 +86,7 @@ export const PracticeZone = ({
     };
 
     fetchFlashcards();
-  }, [user, subjectId]);
+  }, [user, fileId]);
 
   // Generate Quiz
   const handleGenerateQuiz = async () => {
@@ -152,10 +154,35 @@ export const PracticeZone = ({
       if (error) throw error;
 
       if (data?.flashcards?.length > 0) {
-        setFlashcards(prev => [...data.flashcards, ...prev]);
+        // Save flashcards to Supabase for persistence (Lab reads from DB)
+        const savedFlashcards: Flashcard[] = [];
+        for (const card of data.flashcards) {
+          const { data: saved, error: saveError } = await supabase
+            .from('flashcards')
+            .insert({
+              user_id: user.id,
+              question: card.question,
+              answer: card.answer,
+              image_url: card.image_url || null,
+              image_prompt: card.image_prompt || null,
+              subject_id: subjectId,
+              note_id: fileId,
+              mastered: false,
+            })
+            .select()
+            .single();
+
+          if (!saveError && saved) {
+            savedFlashcards.push(saved as Flashcard);
+          } else {
+            console.error('Error saving flashcard:', saveError);
+          }
+        }
+
+        setFlashcards(prev => [...savedFlashcards, ...prev]);
         setCurrentCard(0);
         toast.dismiss("flashcards");
-        toast.success(`🎴 ${data.flashcards.length} ${t("studyHub.flashcardsCreated")}`);
+        toast.success(`🎴 ${savedFlashcards.length} ${t("studyHub.flashcardsCreated")}`);
         haptics.success();
       } else {
         throw new Error('No flashcards generated');
