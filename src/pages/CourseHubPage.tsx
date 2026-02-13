@@ -117,9 +117,14 @@ export const CourseHubPage = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("notes")
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 3600);
+      
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw new Error("Failed to get signed URL");
+      }
+      const publicUrl = signedUrlData.signedUrl;
 
       // Process with AI for OCR
       const { data: aiResult, error: aiError } = await supabase.functions.invoke("process-note", {
