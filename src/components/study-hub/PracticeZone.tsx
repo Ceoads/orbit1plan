@@ -167,7 +167,7 @@ export const PracticeZone = ({
               image_url: card.image_url || null,
               image_prompt: card.image_prompt || null,
               subject_id: subjectId,
-              note_id: fileId,
+              note_id: null, // fileId is from vault_files, not notes_vault
               mastered: false,
             })
             .select()
