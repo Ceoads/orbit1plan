@@ -123,9 +123,18 @@ const SettingsPage = () => {
   const handleSaveUrl = async () => {
     if (!user) return;
     
-    // Basic URL validation
-    if (icalUrl && !icalUrl.includes('.ics') && !icalUrl.includes('ical') && !icalUrl.includes('calendar')) {
-      toast.error("Cette URL ne semble pas être une URL iCal. Elle devrait contenir '.ics' ou 'ical'");
+    // Normalize webcal:// to https:// for display
+    let normalizedUrl = icalUrl;
+    if (normalizedUrl.startsWith('webcal://')) {
+      normalizedUrl = normalizedUrl.replace('webcal://', 'https://');
+      setIcalUrl(normalizedUrl);
+    }
+    
+    // Broader URL validation for French school platforms
+    if (normalizedUrl && !normalizedUrl.includes('.ics') && !normalizedUrl.includes('ical') && !normalizedUrl.includes('calendar') && !normalizedUrl.includes('webcal') && !normalizedUrl.includes('planning') && !normalizedUrl.includes('pronote') && !normalizedUrl.includes('hyperplanning') && !normalizedUrl.includes('celcat') && !normalizedUrl.includes('ade')) {
+      toast.error("Oups, ce lien ne semble pas être un calendrier valide", {
+        description: "L'URL doit provenir de Pronote, Hyperplanning, ADE, CELCAT ou contenir .ics",
+      });
       return;
     }
     
@@ -187,9 +196,21 @@ const SettingsPage = () => {
       }
     } catch (error: any) {
       console.error('Sync error:', error);
-      toast.error("Échec de la synchronisation", {
-        description: error.message || "Vérifie ton URL iCal",
-      });
+      const errorMsg = error.message || '';
+      if (errorMsg.includes('ICAL_EXPIRED')) {
+        toast.error("🔑 Lien expiré", {
+          description: "Ton lien iCal a expiré. Régénère-le dans ton ENT (Pronote, Hyperplanning...).",
+          duration: 8000,
+        });
+      } else if (errorMsg.includes('ICAL_NOT_FOUND')) {
+        toast.error("🔍 Lien introuvable", {
+          description: "Vérifie l'URL dans les paramètres de ton école.",
+        });
+      } else {
+        toast.error("Échec de la synchronisation", {
+          description: "Vérifie ton URL iCal et ta connexion internet",
+        });
+      }
     } finally {
       setSyncing(false);
     }
@@ -291,7 +312,7 @@ const SettingsPage = () => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                📱 Scanne un QR code ou entre l'URL manuellement (Hyperplanning, CELCAT, ADE, Google Calendar...)
+                📱 Compatible avec <span className="font-medium text-foreground">Pronote</span>, <span className="font-medium text-foreground">Hyperplanning</span>, <span className="font-medium text-foreground">ADE</span>, <span className="font-medium text-foreground">CELCAT</span>, <span className="font-medium text-foreground">EDT</span> et Google Calendar
               </p>
             </div>
 
