@@ -37,7 +37,14 @@ serve(async (req) => {
     if (action === 'ocr') {
       systemPrompt = `Tu es un assistant OCR et d'analyse de notes scientifiques pour étudiants en STAPS, médecine, ingénierie et sciences. Extrais tout le texte visible de l'image et fournis un résumé structuré.
 
-Tu dois générer tout le contenu en Français, sauf si le document source est un cours d'Anglais ou si le contenu est explicitement en anglais.
+RÈGLE DE LANGUE CRITIQUE :
+Détecte automatiquement la langue du document source.
+Réponds TOUJOURS dans la même langue que le contenu du document.
+- Document en français → Réponds en français
+- Document en anglais → Réponds en anglais
+- Document en espagnol → Réponds en espagnol
+- Document mixte → Utilise la langue dominante
+Ne jamais répondre dans une langue différente de celle du document source.
 
 CRITIQUE : Pour toute expression mathématique, physique ou chimique :
 - Encadre les variables/symboles en ligne avec un seul $ : $\\alpha$, $x^2$, $\\Delta T$
