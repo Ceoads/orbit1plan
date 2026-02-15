@@ -131,11 +131,11 @@ If the content clearly matches a recent class, suggest that subject with high co
       ? `Today's schedule: ${todayClasses.map((c: any) => `${c.title} (${c.start_time}-${c.end_time})`).join(', ')}`
       : 'No classes scheduled today';
 
-    const systemPrompt = `You are an intelligent document filing assistant for students. Your job is to:
-1. Extract ALL text from the image using OCR
-2. Analyze the content to determine which subject/course it belongs to
-3. Use location and schedule context to improve accuracy
-4. Provide a confidence score for your subject detection
+    const systemPrompt = `Tu es un assistant intelligent de classement de documents pour étudiants. RÉPONDS UNIQUEMENT EN FRANÇAIS. Ton travail :
+1. Extraire TOUT le texte de l'image via OCR
+2. Analyser le contenu pour déterminer la matière/le cours correspondant
+3. Utiliser le contexte de localisation et d'emploi du temps pour améliorer la précision
+4. Fournir un score de confiance pour ta détection de matière
 
 Available subjects:
 ${subjectList}
@@ -165,10 +165,12 @@ Look for:
 - Legal terms (→ Law)
 - Economic graphs, terms (→ Economics)
 
-Respond with JSON only:
+IMPORTANT : Tous les champs textuels (rawText, aiSummary, reasoning, tags) DOIVENT être rédigés en FRANÇAIS.
+
+Réponds avec du JSON uniquement :
 {
-  "rawText": "Complete extracted text from the image",
-  "aiSummary": "A brief 1-2 sentence summary of the key concepts",
+  "rawText": "Texte complet extrait de l'image",
+  "aiSummary": "Un bref résumé en 1-2 phrases des concepts clés, EN FRANÇAIS",
   "detectedSubject": {
     "name": "Most likely subject name",
     "confidence": 0.0-1.0,
@@ -183,7 +185,7 @@ Respond with JSON only:
   "classHistoryUsed": true/false
 }`;
 
-    const userPrompt = 'Analyze this document image. Extract all text, determine the subject using all available context (location, schedule, content), and provide structured metadata.';
+    const userPrompt = 'Analyse cette image de document. Extrais tout le texte, détermine la matière en utilisant tout le contexte disponible (localisation, emploi du temps, contenu), et fournis les métadonnées structurées. Réponds UNIQUEMENT en français.';
 
     console.log('Calling AI for smart filing with geolocation context:', {
       contextMode,
