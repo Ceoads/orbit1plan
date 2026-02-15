@@ -105,7 +105,14 @@ serve(async (req) => {
 2. Identifier les concepts clés et informations importantes
 3. Créer 5 à 10 flashcards de révision (Question/Réponse)
 
-IMPORTANT : Tu dois générer tout le contenu en Français, sauf si le document source est un cours d'Anglais ou si le contenu est explicitement en anglais.
+RÈGLE DE LANGUE CRITIQUE :
+Détecte automatiquement la langue du document/contenu source.
+Réponds TOUJOURS dans la même langue que le contenu du document.
+- Document en français → Génère questions et réponses en français
+- Document en anglais → Génère questions et réponses en anglais
+- Document en espagnol → Génère questions et réponses en espagnol
+- Document mixte → Utilise la langue dominante
+Ne jamais répondre dans une langue différente de celle du document source.
 
 Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 {

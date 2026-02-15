@@ -49,7 +49,14 @@ serve(async (req) => {
 
     const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de 5 questions à choix multiples.
 
-IMPORTANT : Tu dois générer tout le contenu en Français, sauf si le document source est un cours d'Anglais ou si le contenu est explicitement en anglais.
+RÈGLE DE LANGUE CRITIQUE :
+Détecte automatiquement la langue du document/contenu source.
+Réponds TOUJOURS dans la même langue que le contenu du document.
+- Document en français → Génère le quiz en français
+- Document en anglais → Génère le quiz en anglais
+- Document en espagnol → Génère le quiz en espagnol
+- Document mixte → Utilise la langue dominante
+Ne jamais répondre dans une langue différente de celle du document source.
 
 Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 {

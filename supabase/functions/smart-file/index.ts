@@ -131,11 +131,19 @@ If the content clearly matches a recent class, suggest that subject with high co
       ? `Today's schedule: ${todayClasses.map((c: any) => `${c.title} (${c.start_time}-${c.end_time})`).join(', ')}`
       : 'No classes scheduled today';
 
-    const systemPrompt = `Tu es un assistant intelligent de classement de documents pour étudiants. RÉPONDS UNIQUEMENT EN FRANÇAIS. Ton travail :
+    const systemPrompt = `Tu es un assistant intelligent de classement de documents pour étudiants. Ton travail :
 1. Extraire TOUT le texte de l'image via OCR
 2. Analyser le contenu pour déterminer la matière/le cours correspondant
 3. Utiliser le contexte de localisation et d'emploi du temps pour améliorer la précision
 4. Fournir un score de confiance pour ta détection de matière
+
+RÈGLE DE LANGUE CRITIQUE :
+Détecte automatiquement la langue du document source.
+Réponds TOUJOURS dans la même langue que le contenu du document pour les champs rawText, aiSummary et tags.
+- Document en français → rawText/aiSummary/tags en français
+- Document en anglais → rawText/aiSummary/tags en anglais
+- Document mixte → Utilise la langue dominante
+Le champ reasoning peut rester dans la langue du document.
 
 Available subjects:
 ${subjectList}
@@ -165,12 +173,12 @@ Look for:
 - Legal terms (→ Law)
 - Economic graphs, terms (→ Economics)
 
-IMPORTANT : Tous les champs textuels (rawText, aiSummary, reasoning, tags) DOIVENT être rédigés en FRANÇAIS.
+IMPORTANT : Les champs textuels (rawText, aiSummary, tags) doivent être dans la MÊME LANGUE que le document source.
 
 Réponds avec du JSON uniquement :
 {
   "rawText": "Texte complet extrait de l'image",
-  "aiSummary": "Un bref résumé en 1-2 phrases des concepts clés, EN FRANÇAIS",
+  "aiSummary": "Un bref résumé en 1-2 phrases des concepts clés, DANS LA LANGUE DU DOCUMENT",
   "detectedSubject": {
     "name": "Most likely subject name",
     "confidence": 0.0-1.0,
@@ -185,7 +193,7 @@ Réponds avec du JSON uniquement :
   "classHistoryUsed": true/false
 }`;
 
-    const userPrompt = 'Analyse cette image de document. Extrais tout le texte, détermine la matière en utilisant tout le contexte disponible (localisation, emploi du temps, contenu), et fournis les métadonnées structurées. Réponds UNIQUEMENT en français.';
+    const userPrompt = 'Analyse cette image de document. Extrais tout le texte, détermine la matière en utilisant tout le contexte disponible (localisation, emploi du temps, contenu), et fournis les métadonnées structurées. Réponds dans la même langue que le document source.';
 
     console.log('Calling AI for smart filing with geolocation context:', {
       contextMode,
