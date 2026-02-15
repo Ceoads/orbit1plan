@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, ChevronDown, Sparkles } from "lucide-react";
+import { Check, X, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { VaultFile, Subject } from "@/hooks/useVaultData";
@@ -34,16 +34,26 @@ export const FilingConfirmationBanner = ({
   onConfirm,
   onDismiss,
 }: FilingConfirmationBannerProps) => {
-  const [showAlternatives, setShowAlternatives] = useState(false);
+  const [showAlternatives, setShowAlternatives] = useState(!suggestedSubjectId);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(suggestedSubjectId);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  // Update selectedSubjectId if suggestedSubjectId arrives later
+  useEffect(() => {
+    if (suggestedSubjectId && !selectedSubjectId) {
+      setSelectedSubjectId(suggestedSubjectId);
+      setShowAlternatives(false);
+    }
+  }, [suggestedSubjectId]);
 
   const suggestedSubject = subjects.find(s => s.id === suggestedSubjectId);
   const bgStyle = suggestedSubject 
     ? colorStyles[suggestedSubject.color_key] || colorStyles.math
     : "from-muted/50 to-muted/20 border-muted";
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (selectedSubjectId) {
+      setIsConfirming(true);
       onConfirm(selectedSubjectId, selectedSubjectId === suggestedSubjectId);
     }
   };
@@ -55,6 +65,8 @@ export const FilingConfirmationBanner = ({
 
   const confidencePercent = Math.round(confidence * 100);
   const confidenceColor = confidence >= 0.8 ? 'text-success' : confidence >= 0.6 ? 'text-warning' : 'text-muted-foreground';
+
+  const hasSelection = !!selectedSubjectId;
 
   return (
     <AnimatePresence>
@@ -92,10 +104,14 @@ export const FilingConfirmationBanner = ({
         {/* Suggested Subject */}
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">Suggéré:</span>
-            <span className={cn("text-xs font-medium", confidenceColor)}>
-              {confidencePercent}% confiance
+            <span className="text-xs text-muted-foreground">
+              {suggestedSubjectId ? 'Suggéré:' : 'Choisis une matière:'}
             </span>
+            {suggestedSubjectId && (
+              <span className={cn("text-xs font-medium", confidenceColor)}>
+                {confidencePercent}% confiance
+              </span>
+            )}
           </div>
 
           <button
@@ -103,12 +119,15 @@ export const FilingConfirmationBanner = ({
             className={cn(
               "w-full flex items-center gap-3 p-3 rounded-xl",
               "bg-background/60 hover:bg-background/80 transition-colors",
-              "border border-border/50"
+              "border border-border/50",
+              !hasSelection && "border-dashed border-primary/40"
             )}
           >
-            <span className="text-2xl">{suggestedSubjectIcon || '📁'}</span>
-            <span className="flex-1 text-left font-medium text-foreground">
-              {suggestedSubjectName || 'Sélectionner une matière'}
+            <span className="text-2xl">{hasSelection ? (subjects.find(s => s.id === selectedSubjectId)?.icon || suggestedSubjectIcon || '📁') : '📁'}</span>
+            <span className={cn("flex-1 text-left font-medium", hasSelection ? "text-foreground" : "text-muted-foreground")}>
+              {hasSelection 
+                ? (subjects.find(s => s.id === selectedSubjectId)?.name || suggestedSubjectName || 'Matière sélectionnée')
+                : 'Sélectionner une matière ↓'}
             </span>
             <ChevronDown className={cn(
               "w-4 h-4 text-muted-foreground transition-transform",
@@ -126,7 +145,7 @@ export const FilingConfirmationBanner = ({
                 className="mt-2 space-y-1 overflow-hidden"
               >
                 {subjects
-                  .filter(s => s.id !== suggestedSubjectId)
+                  .filter(s => s.id !== selectedSubjectId)
                   .map(subject => (
                     <button
                       key={subject.id}
@@ -151,11 +170,22 @@ export const FilingConfirmationBanner = ({
         <div className="flex gap-2 mt-4">
           <Button
             onClick={handleConfirm}
-            disabled={!selectedSubjectId}
+            disabled={!hasSelection || isConfirming}
             className="flex-1 gradient-primary"
           >
-            <Check className="w-4 h-4 mr-2" />
-            Confirmer
+            {isConfirming ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Classement...
+              </>
+            ) : hasSelection ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Confirmer ✓
+              </>
+            ) : (
+              'Choisis une matière'
+            )}
           </Button>
           <Button
             variant="outline"
