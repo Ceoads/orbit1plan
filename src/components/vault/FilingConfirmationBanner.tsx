@@ -34,7 +34,7 @@ export const FilingConfirmationBanner = ({
   onConfirm,
   onDismiss,
 }: FilingConfirmationBannerProps) => {
-  const [showAlternatives, setShowAlternatives] = useState(!suggestedSubjectId);
+  const [showAlternatives, setShowAlternatives] = useState(!suggestedSubjectId || confidence < 0.5);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(suggestedSubjectId);
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -42,7 +42,7 @@ export const FilingConfirmationBanner = ({
   useEffect(() => {
     if (suggestedSubjectId && !selectedSubjectId) {
       setSelectedSubjectId(suggestedSubjectId);
-      setShowAlternatives(false);
+      setShowAlternatives(confidence < 0.5);
     }
   }, [suggestedSubjectId]);
 
@@ -181,7 +181,7 @@ export const FilingConfirmationBanner = ({
             ) : hasSelection ? (
               <>
                 <Check className="w-4 h-4 mr-2" />
-                Confirmer ✓
+                {confidence >= 0.8 ? 'Confirmer ✓' : confidence >= 0.5 ? 'Confirmer ?' : 'Confirmer ↓'}
               </>
             ) : (
               'Choisis une matière'
