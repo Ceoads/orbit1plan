@@ -143,6 +143,11 @@ export const CalendarMonthView = ({
                     {date.getDate()}
                   </span>
                   
+                  {/* Exam emoji indicator */}
+                  {hasExam && (
+                    <span className="absolute top-0.5 right-0.5 text-[10px] leading-none">📚</span>
+                  )}
+                  
                   {/* Event Dots - Orange for classes, Red for exams */}
                   {(hasEvents || hasExam) && (
                     <div className="flex gap-0.5 mt-0.5 absolute bottom-1">

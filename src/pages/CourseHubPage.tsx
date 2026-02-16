@@ -665,6 +665,33 @@ export const CourseHubPage = () => {
                 <FolderOpen className="w-4 h-4" />
                 <span>Voir toutes les notes de ce cours</span>
               </motion.button>
+
+              {/* Exam Link - only if an exam is associated with this subject */}
+              {(() => {
+                const relatedExam = events.find(e => 
+                  e.event_type === 'exam' && 
+                  e.subject_id === event.subject_id && 
+                  e.exam_date && 
+                  new Date(e.exam_date) >= new Date()
+                );
+                if (!relatedExam) return null;
+                return (
+                  <>
+                    <div className="border-t border-border/30" />
+                    <motion.button
+                      onClick={() => {
+                        haptics.selection();
+                        navigate('/exams');
+                      }}
+                      className="w-full p-3 rounded-xl flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <span>📚 Voir l'examen →</span>
+                    </motion.button>
+                  </>
+                );
+              })()}
             </GlassCard>
           </motion.div>
 
