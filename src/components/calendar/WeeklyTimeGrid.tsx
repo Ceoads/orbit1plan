@@ -275,7 +275,7 @@ export const WeeklyTimeGrid = ({
                             onClick={() => handleEventClick(event)}
                           >
                             <div className="flex flex-col h-full overflow-hidden">
-                              <span className="text-[10px] font-bold leading-tight line-clamp-2 text-gray-900">
+                              <span className="text-[10px] font-bold leading-tight text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap max-w-full block">
                                 {subject?.name || event.title}
                               </span>
                               <span className="text-[9px] text-gray-700 flex items-center gap-0.5 mt-0.5 font-medium">
