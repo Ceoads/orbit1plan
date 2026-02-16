@@ -10,11 +10,23 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-tabs'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+        },
+      },
+    },
+    target: 'es2020',
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    // Prevent duplicate React instances that can break hooks and event handling
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
 }));
