@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,6 +50,7 @@ export const PracticeZone = ({
 }: PracticeZoneProps) => {
   const { user } = useAuth();
   const haptics = useHaptics();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   
   // Quiz state
@@ -118,7 +120,9 @@ export const PracticeZone = ({
         setQuizAnswers([]);
         setQuizComplete(false);
         toast.dismiss("quiz");
-        toast.success(`✨ ${t("studyHub.quizGenerated")}`);
+        toast.success(`✨ Quiz généré ! Bonne chance 🎯`, {
+          duration: 4000,
+        });
         haptics.success();
       } else {
         throw new Error('No quiz generated');
@@ -183,7 +187,18 @@ export const PracticeZone = ({
         setFlashcards(prev => [...savedFlashcards, ...prev]);
         setCurrentCard(0);
         toast.dismiss("flashcards");
-        toast.success(`🎴 ${savedFlashcards.length} ${t("studyHub.flashcardsCreated")}`);
+        
+        // Clickable toast that navigates to Lab
+        toast.success(
+          `🎴 ${savedFlashcards.length} flashcards créées ! Tap pour réviser →`,
+          {
+            duration: 6000,
+            action: {
+              label: "Ouvrir le Lab",
+              onClick: () => navigate('/lab'),
+            },
+          }
+        );
         haptics.success();
       } else {
         throw new Error('No flashcards generated');
