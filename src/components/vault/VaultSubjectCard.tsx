@@ -1,4 +1,4 @@
-import { ChevronRight, Image } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Subject, VaultFile } from "@/hooks/useVaultData";
 
@@ -7,6 +7,7 @@ interface VaultSubjectCardProps {
   fileCount: number;
   recentFiles: VaultFile[];
   onClick: () => void;
+  newCount?: number;
 }
 
 const colorStyles: Record<string, { bg: string; border: string; accent: string }> = {
@@ -20,11 +21,10 @@ const colorStyles: Record<string, { bg: string; border: string; accent: string }
 export const VaultSubjectCard = ({
   subject,
   fileCount,
-  recentFiles,
   onClick,
+  newCount = 0,
 }: VaultSubjectCardProps) => {
   const styles = colorStyles[subject.color_key] || colorStyles.math;
-  const hasMore = fileCount > 3;
 
   return (
     <button
@@ -37,59 +37,19 @@ export const VaultSubjectCard = ({
         styles.border
       )}
     >
-      {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="text-3xl">{subject.icon}</div>
-        <div className="flex-1">
-          <h3 className="font-display font-semibold text-foreground">{subject.name}</h3>
+        <div className="text-4xl leading-none">{subject.icon}</div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display font-semibold text-foreground truncate">{subject.name}</h3>
           <p className="text-sm text-muted-foreground">
             {fileCount} {fileCount === 1 ? 'fichier' : 'fichiers'}
+            {newCount > 0 && (
+              <span className="text-primary font-medium"> • {newCount} nouveau{newCount > 1 ? 'x' : ''}</span>
+            )}
           </p>
         </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
       </div>
-
-      {/* Thumbnails */}
-      {recentFiles.length > 0 && (
-        <>
-          <div className="mt-3 flex gap-2 items-center">
-            {recentFiles.slice(0, 3).map(file => (
-              <div
-                key={file.id}
-                className="w-[60px] h-[60px] rounded-lg overflow-hidden bg-background/50 border border-border/50 flex-shrink-0"
-              >
-                {file.file_url ? (
-                  <img
-                    src={file.file_url}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Image className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {hasMore && (
-              <div className="w-[60px] h-[60px] rounded-lg bg-muted border border-border/50 flex items-center justify-center flex-shrink-0">
-                <span className="text-base font-semibold text-muted-foreground">
-                  +{fileCount - 3}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* "Voir tous" link only when > 3 files */}
-          {hasMore && (
-            <div className="mt-3 flex items-center gap-1 text-primary text-sm font-medium py-1">
-              <span>Voir tous</span>
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          )}
-        </>
-      )}
     </button>
   );
 };
