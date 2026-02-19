@@ -199,13 +199,8 @@ export const StudyHubPage = () => {
 
   return (
     <motion.div
-      className="min-h-screen mesh-background"
-      drag={isMobile ? "y" : false}
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={0.2}
-      onDrag={(_, info) => setDragY(info.offset.y)}
-      onDragEnd={handleDragEnd}
-      style={{ y: dragY > 0 ? dragY * 0.3 : 0 }}
+      className="min-h-screen mesh-background overflow-y-auto"
+      style={{ WebkitOverflowScrolling: 'touch' as any }}
     >
       {/* Swipe indicator */}
       {isMobile && (
@@ -272,7 +267,7 @@ export const StudyHubPage = () => {
 
       {/* Main content */}
       <main className={cn(
-        "max-w-6xl mx-auto p-4 pb-safe",
+        "max-w-6xl mx-auto p-4 pb-32",
         isMobile ? "space-y-4" : "grid grid-cols-2 gap-6"
       )}>
         {/* Document Viewer - Left/Top */}
