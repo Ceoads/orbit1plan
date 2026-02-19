@@ -195,7 +195,7 @@ export const PracticeZone = ({
             duration: 6000,
             action: {
               label: "Ouvrir le Lab",
-              onClick: () => navigate('/lab'),
+              onClick: () => navigate('/?tab=lab'),
             },
           }
         );
