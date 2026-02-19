@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useVaultData, VaultFile, Subject } from "@/hooks/useVaultData";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { SearchBar } from "@/components/SearchBar";
 import { SwipeableItem } from "@/components/SwipeableItem";
 import { VaultSubjectCard, VaultFileCard, FilingConfirmationBanner } from "@/components/vault";
+import { VaultSubjectDetailView } from "@/components/vault/VaultSubjectDetailView";
 import { SmartVaultCapture } from "@/components/vault/SmartVaultCapture";
 import { ArrowLeft, FolderOpen, Search, Sparkles, Plus, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -290,7 +291,7 @@ export const TheVaultPage = () => {
 
       {/* Files list (subject view) */}
       {selectedSubject && !isSearchMode && (
-        <div className="space-y-3">
+        <>
           {displayedFiles.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Aucun fichier dans cette matière</p>
@@ -299,22 +300,12 @@ export const TheVaultPage = () => {
               </p>
             </div>
           ) : (
-            displayedFiles
-              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-              .map(file => (
-                <SwipeableItem
-                  key={file.id}
-                  onDelete={() => setDeleteTarget({ 
-                    type: 'file', 
-                    id: file.id, 
-                    name: file.ai_summary?.substring(0, 30) || 'Fichier' 
-                  })}
-                >
-                  <VaultFileCard file={file} />
-                </SwipeableItem>
-              ))
+            <VaultSubjectDetailView
+              files={displayedFiles}
+              onDeleteFile={(id, name) => setDeleteTarget({ type: 'file', id, name })}
+            />
           )}
-        </div>
+        </>
       )}
 
       {/* Smart Capture Button */}
