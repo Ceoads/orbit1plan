@@ -26,15 +26,18 @@ const Index = () => {
   // Check if user needs onboarding
   const needsSetup = !loading && subjects.length === 0;
   
-  // Check for URL parameter to restart tutorial from "welcome"
+  // Check for URL parameter to restart tutorial from "welcome" or navigate to a tab
   useEffect(() => {
     const restartTutorial = searchParams.get("restart_tutorial");
+    const tabParam = searchParams.get("tab") as NavTab | null;
+
     if (restartTutorial === "full" && user && !loading) {
-      // Clear the URL param
       setSearchParams({});
-      // Start tutorial from welcome step
       setTutorialActive(true);
       tutorial.startTutorial();
+    } else if (tabParam && ['pulse', 'vault', 'tasks', 'exams', 'lab'].includes(tabParam)) {
+      setActiveTab(tabParam);
+      setSearchParams({});
     }
   }, [searchParams, user, loading]);
   
