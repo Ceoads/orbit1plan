@@ -75,7 +75,34 @@ export const useVaultData = () => {
       if (yearsRes.error) throw yearsRes.error;
       if (semestersRes.error) throw semestersRes.error;
 
-      setFiles(filesRes.data as VaultFile[] || []);
+      // Re-sign expired URLs
+      const rawFiles = (filesRes.data || []) as VaultFile[];
+      const refreshedFiles = await Promise.all(
+        rawFiles.map(async (file) => {
+          try {
+            // Extract storage path from signed URL
+            const match = file.file_url.match(/\/object\/sign\/([^?]+)/);
+            if (!match) return file;
+            const storagePath = decodeURIComponent(match[1]);
+            const bucketAndPath = storagePath.split('/');
+            const bucket = bucketAndPath[0];
+            const path = bucketAndPath.slice(1).join('/');
+            
+            const { data } = await supabase.storage
+              .from(bucket)
+              .createSignedUrl(path, 60 * 60 * 24); // 24h
+            
+            if (data?.signedUrl) {
+              return { ...file, file_url: data.signedUrl };
+            }
+            return file;
+          } catch {
+            return file;
+          }
+        })
+      );
+
+      setFiles(refreshedFiles);
       setSubjects(subjectsRes.data as Subject[] || []);
       setAcademicYears(yearsRes.data || []);
       setSemesters(semestersRes.data || []);
