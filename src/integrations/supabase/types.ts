@@ -400,6 +400,51 @@ export type Database = {
           },
         ]
       }
+      timeline_tasks: {
+        Row: {
+          category: string
+          color: string | null
+          completed: boolean | null
+          created_at: string | null
+          estimated_duration: number
+          icon: string | null
+          id: string
+          note: string | null
+          priority: string | null
+          scheduled_at: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          color?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          estimated_duration: number
+          icon?: string | null
+          id?: string
+          note?: string | null
+          priority?: string | null
+          scheduled_at: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          estimated_duration?: number
+          icon?: string | null
+          id?: string
+          note?: string | null
+          priority?: string | null
+          scheduled_at?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           campus_latitude: number | null
