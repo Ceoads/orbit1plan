@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { AddTaskModal } from "@/components/modals/AddTaskModal";
+import { TimelineWidget } from "@/components/timeline";
 
 type EnergyFilter = 'all' | 'high' | 'medium' | 'low';
 type SortMode = 'priority' | 'exam';
@@ -196,6 +197,9 @@ export const TasksPage = () => {
           {t('tasks.examPriority')}
         </button>
       </div>
+
+      {/* Timeline Widget */}
+      <TimelineWidget />
 
       {/* AI Suggestion Card */}
       <GlassCard variant="subtle" className="p-4">
