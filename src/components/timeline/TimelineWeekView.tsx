@@ -37,7 +37,7 @@ const taskVariants = {
   hidden: { opacity: 0, scale: 0.85, y: 6 },
   visible: { 
     opacity: 1, scale: 1, y: 0,
-    transition: { type: 'spring', stiffness: 400, damping: 25 }
+    transition: { type: 'spring' as const, stiffness: 400, damping: 25 }
   },
   exit: { opacity: 0, scale: 0.9, transition: { duration: 0.15 } }
 };
@@ -46,7 +46,7 @@ const dayPillVariants = {
   hidden: { opacity: 0, y: -12 },
   visible: (i: number) => ({
     opacity: 1, y: 0,
-    transition: { delay: i * 0.04, type: 'spring', stiffness: 300, damping: 20 }
+    transition: { delay: i * 0.04, type: 'spring' as const, stiffness: 300, damping: 20 }
   })
 };
 
