@@ -44,93 +44,152 @@ export const TimelineFullScreen = ({ open, onClose }: Props) => {
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop with blur */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
             className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999]"
             onClick={onClose}
           />
 
-          {/* Full screen panel */}
+          {/* Full screen panel with spring slide */}
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            initial={{ y: '100%', borderRadius: '24px 24px 0 0' }}
+            animate={{ y: 0, borderRadius: '0px' }}
+            exit={{ y: '100%', borderRadius: '24px 24px 0 0' }}
+            transition={{ type: 'spring' as const, damping: 28, stiffness: 280 }}
             className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden"
           >
-            {/* Top Bar */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 flex-shrink-0 bg-background/80 backdrop-blur-xl">
-              <button onClick={onClose} className="p-2 -ml-1 rounded-xl hover:bg-muted/50 transition-colors">
+            {/* Top Bar with staggered children */}
+            <motion.div 
+              className="flex items-center justify-between px-4 py-3 border-b border-border/15 flex-shrink-0 bg-background/90 backdrop-blur-xl"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+            >
+              <motion.button 
+                onClick={onClose} 
+                className="p-2 -ml-1 rounded-xl hover:bg-muted/50 active:bg-muted transition-colors"
+                whileTap={{ scale: 0.85, x: -3 }}
+              >
                 <ArrowLeft className="w-5 h-5 text-foreground" />
-              </button>
+              </motion.button>
 
-              <h2 className="font-display font-bold text-base text-foreground">Timeline</h2>
+              <motion.h2 
+                className="font-display font-bold text-base text-foreground"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                Timeline
+              </motion.h2>
 
               <div className="flex items-center gap-2">
-                {/* View toggle - reference style */}
-                <div className="flex bg-muted/60 rounded-xl p-0.5 border border-border/20">
+                {/* View toggle with indicator animation */}
+                <div className="flex bg-muted/50 rounded-xl p-0.5 border border-border/15 relative">
                   {(['week', 'day'] as const).map(mode => (
-                    <button
+                    <motion.button
                       key={mode}
-                      onClick={() => setViewMode(mode === 'week' ? 'week' : 'day')}
-                      className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                        (mode === 'week' ? 'week' : 'day') === viewMode
-                          ? 'bg-card shadow-sm text-foreground'
+                      onClick={() => setViewMode(mode)}
+                      whileTap={{ scale: 0.92 }}
+                      className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all relative z-10 ${
+                        mode === viewMode
+                          ? 'text-foreground'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      {mode === 'week' ? 'Semaine' : 'Jour'}
-                    </button>
+                      {mode === viewMode && (
+                        <motion.div
+                          layoutId="viewToggle"
+                          className="absolute inset-0 bg-card shadow-sm rounded-lg"
+                          transition={{ type: 'spring' as const, stiffness: 400, damping: 28 }}
+                        />
+                      )}
+                      <span className="relative z-10">
+                        {mode === 'week' ? 'Semaine' : 'Jour'}
+                      </span>
+                    </motion.button>
                   ))}
                 </div>
-                <button onClick={() => handleAddTask()} className="p-2 rounded-xl hover:bg-muted/50 transition-colors">
+                <motion.button 
+                  onClick={() => handleAddTask()} 
+                  className="p-2 rounded-xl hover:bg-muted/50 active:bg-muted transition-colors"
+                  whileTap={{ scale: 0.85, rotate: 90 }}
+                  whileHover={{ scale: 1.1 }}
+                >
                   <Plus className="w-5 h-5 text-primary" />
-                </button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Category Filters */}
-            <div className="flex gap-2 px-4 py-2.5 flex-shrink-0 overflow-x-auto">
-              {CATEGORY_FILTERS.map(f => (
-                <button
+            {/* Category Filters with staggered entrance */}
+            <motion.div 
+              className="flex gap-2 px-4 py-2.5 flex-shrink-0 overflow-x-auto scrollbar-hide"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25, duration: 0.3 }}
+            >
+              {CATEGORY_FILTERS.map((f, i) => (
+                <motion.button
                   key={f.id}
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 + i * 0.05 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => setCategoryFilter(f.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all relative ${
                     categoryFilter === f.id
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted border border-border/20'
+                      ? 'text-primary-foreground shadow-sm'
+                      : 'bg-muted/40 text-muted-foreground hover:bg-muted border border-border/15'
                   }`}
                 >
-                  {f.label}
-                </button>
+                  {categoryFilter === f.id && (
+                    <motion.div
+                      layoutId="categoryPill"
+                      className="absolute inset-0 bg-primary rounded-full"
+                      transition={{ type: 'spring' as const, stiffness: 400, damping: 28 }}
+                    />
+                  )}
+                  <span className="relative z-10">{f.label}</span>
+                </motion.button>
               ))}
-            </div>
+            </motion.div>
 
-            {/* Content */}
+            {/* Content with view transition */}
             <div className="flex-1 overflow-hidden">
-              {viewMode === 'day' ? (
-                <TimelineDayView
-                  tasks={tasks}
-                  selectedDate={selectedDate}
-                  onDateChange={setSelectedDate}
-                  onAddTask={handleAddTask}
-                  onTaskClick={setEditingTask}
-                  onToggleComplete={toggleComplete}
-                  categoryFilter={categoryFilter}
-                />
-              ) : (
-                <TimelineWeekView
-                  tasks={tasks}
-                  weekStart={weekStart}
-                  onWeekChange={setWeekStart}
-                  onTaskClick={setEditingTask}
-                  onAddTask={handleAddTask}
-                  categoryFilter={categoryFilter}
-                />
-              )}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={viewMode}
+                  initial={{ opacity: 0, x: viewMode === 'week' ? -30 : 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: viewMode === 'week' ? 30 : -30 }}
+                  transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                  className="h-full"
+                >
+                  {viewMode === 'day' ? (
+                    <TimelineDayView
+                      tasks={tasks}
+                      selectedDate={selectedDate}
+                      onDateChange={setSelectedDate}
+                      onAddTask={handleAddTask}
+                      onTaskClick={setEditingTask}
+                      onToggleComplete={toggleComplete}
+                      categoryFilter={categoryFilter}
+                    />
+                  ) : (
+                    <TimelineWeekView
+                      tasks={tasks}
+                      weekStart={weekStart}
+                      onWeekChange={setWeekStart}
+                      onTaskClick={setEditingTask}
+                      onAddTask={handleAddTask}
+                      categoryFilter={categoryFilter}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
 
