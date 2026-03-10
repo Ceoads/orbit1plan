@@ -181,11 +181,41 @@ function forceUtf8(text: string): string {
 }
 
 /**
- * Parse iCal date with proper timezone handling.
- * Supports: 20240115T090000Z (UTC), 20240115T090000 (local/floating),
- * and TZID parameter dates. Normalizes everything to Europe/Paris.
+ * Get Europe/Paris UTC offset in minutes for a given UTC timestamp.
+ * Handles CET (UTC+1) and CEST (UTC+2) transitions.
  */
-function parseICalDate(dateStr: string, tzid?: string): Date | null {
+function getParisOffsetMinutes(utcMs: number): number {
+  // Use Intl to reliably determine the offset
+  try {
+    const date = new Date(utcMs);
+    const utcStr = date.toLocaleString('en-US', { timeZone: 'UTC' });
+    const parisStr = date.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
+    const utcDate = new Date(utcStr);
+    const parisDate = new Date(parisStr);
+    return (parisDate.getTime() - utcDate.getTime()) / 60000;
+  } catch (_) {
+    // Fallback: assume CET (UTC+1)
+    return 60;
+  }
+}
+
+/**
+ * Parse iCal date and return Paris time components directly.
+ * Returns an object with { year, month, day, hour, minute, second, dayOfWeek }
+ * all in Europe/Paris timezone.
+ */
+interface ParsedDate {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  dayOfWeek: number;
+  toDate(): Date;
+}
+
+function parseICalDate(dateStr: string, tzid?: string): ParsedDate | null {
   try {
     const isUtc = dateStr.endsWith('Z');
     const clean = dateStr.replace(/[Z]/g, '');
@@ -198,46 +228,73 @@ function parseICalDate(dateStr: string, tzid?: string): Date | null {
     const hour = clean.length >= 10 ? parseInt(clean.substring(8, 10)) : 0;
     const minute = clean.length >= 12 ? parseInt(clean.substring(10, 12)) : 0;
     const second = clean.length >= 14 ? parseInt(clean.substring(12, 14)) : 0;
+
+    const makeParsedDate = (h: number, m: number, s: number, y: number, mo: number, d: number): ParsedDate => {
+      const dateObj = new Date(Date.UTC(y, mo, d, h, m, s));
+      return {
+        year: y, month: mo, day: d, hour: h, minute: m, second: s,
+        dayOfWeek: dateObj.getUTCDay(),
+        toDate() { return dateObj; }
+      };
+    };
     
     if (isUtc) {
       // UTC date — convert to Europe/Paris local time
-      const utcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
-      // Use Intl to get the Paris offset
-      const parisStr = utcDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
-      return new Date(parisStr);
+      const utcMs = Date.UTC(year, month, day, hour, minute, second);
+      const offsetMin = getParisOffsetMinutes(utcMs);
+      const parisMs = utcMs + offsetMin * 60000;
+      const parisDate = new Date(parisMs);
+      return {
+        year: parisDate.getUTCFullYear(),
+        month: parisDate.getUTCMonth(),
+        day: parisDate.getUTCDate(),
+        hour: parisDate.getUTCHours(),
+        minute: parisDate.getUTCMinutes(),
+        second: parisDate.getUTCSeconds(),
+        dayOfWeek: parisDate.getUTCDay(),
+        toDate() { return new Date(utcMs); }
+      };
     }
     
-    // Check if TZID is Europe/Paris or similar — treat as local
-    if (tzid && /europe\/paris/i.test(tzid)) {
-      return new Date(year, month, day, hour, minute, second);
+    // Check if TZID is Europe/Paris or similar — already local Paris time
+    if (!tzid || (tzid && /europe\/paris/i.test(tzid))) {
+      return makeParsedDate(hour, minute, second, year, month, day);
     }
     
-    // If TZID is another timezone, try to convert
-    if (tzid) {
-      try {
-        const srcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
-        // Get offset for source timezone
-        const srcStr = srcDate.toLocaleString('en-US', { timeZone: tzid });
-        const srcLocal = new Date(srcStr);
-        const srcOffset = srcDate.getTime() - srcLocal.getTime();
-        
-        // Get offset for Paris
-        const parisStr = srcDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
-        const parisLocal = new Date(parisStr);
-        const parisOffset = srcDate.getTime() - parisLocal.getTime();
-        
-        // Adjust: subtract source offset, add paris offset
-        const adjusted = new Date(srcDate.getTime() + srcOffset - parisOffset);
-        const finalStr = adjusted.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
-        return new Date(finalStr);
-      } catch (_) {
-        // Unknown timezone, treat as local
-        return new Date(year, month, day, hour, minute, second);
-      }
+    // If TZID is another timezone, convert to Paris
+    try {
+      const srcUtcMs = Date.UTC(year, month, day, hour, minute, second);
+      // The given time is in the source timezone, so we need to find the UTC equivalent first
+      // srcTime = UTC + srcOffset, so UTC = srcTime - srcOffset
+      const srcOffsetMin = getParisOffsetMinutes(srcUtcMs); // approximate
+      // Use Intl for source timezone offset
+      const srcDate = new Date(srcUtcMs);
+      const srcStr = srcDate.toLocaleString('en-US', { timeZone: tzid });
+      const srcLocal = new Date(srcStr);
+      const utcStr = srcDate.toLocaleString('en-US', { timeZone: 'UTC' });
+      const utcLocal = new Date(utcStr);
+      const srcTzOffset = (srcLocal.getTime() - utcLocal.getTime()) / 60000;
+      
+      // Convert source local time to UTC
+      const realUtcMs = srcUtcMs - srcTzOffset * 60000;
+      // Then convert UTC to Paris
+      const parisOffset = getParisOffsetMinutes(realUtcMs);
+      const parisMs = realUtcMs + parisOffset * 60000;
+      const parisDate = new Date(parisMs);
+      
+      return {
+        year: parisDate.getUTCFullYear(),
+        month: parisDate.getUTCMonth(),
+        day: parisDate.getUTCDate(),
+        hour: parisDate.getUTCHours(),
+        minute: parisDate.getUTCMinutes(),
+        second: parisDate.getUTCSeconds(),
+        dayOfWeek: parisDate.getUTCDay(),
+        toDate() { return new Date(realUtcMs); }
+      };
+    } catch (_) {
+      return makeParsedDate(hour, minute, second, year, month, day);
     }
-    
-    // Floating time (no Z, no TZID) — assume Europe/Paris local
-    return new Date(year, month, day, hour, minute, second);
   } catch (e) {
     console.error('Error parsing date:', dateStr, e);
     return null;
@@ -573,14 +630,14 @@ serve(async (req) => {
       const now = new Date();
       const filteredEvents = events
         .filter(e => e.summary && e.start && eventMatchesGroup(e, filterGroup))
-        .filter(e => new Date(e.start) >= now)
-        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+        .filter(e => e.start.toDate() >= now)
+        .sort((a, b) => a.start.toDate().getTime() - b.start.toDate().getTime())
         .slice(0, 5);
       
       const previewEvents = filteredEvents.map(e => ({
         title: extractSubjectName(e.summary, filterGroup),
-        time: `${new Date(e.start).getHours().toString().padStart(2, '0')}:${new Date(e.start).getMinutes().toString().padStart(2, '0')}`,
-        day: formatDayFr(new Date(e.start)),
+        time: `${e.start.hour.toString().padStart(2, '0')}:${e.start.minute.toString().padStart(2, '0')}`,
+        day: formatDayFr(e.start.toDate()),
       }));
       
       return new Response(JSON.stringify({ previewEvents }), {
@@ -637,7 +694,7 @@ serve(async (req) => {
             return false;
           }
           if (e.end) {
-            const endDate = new Date(e.end);
+            const endDate = e.end.toDate();
             if (endDate < now) return false;
           }
           return eventMatchesGroup(e, ical_filter_group);
@@ -704,26 +761,26 @@ serve(async (req) => {
           const teacherName = extractTeacher(event.description);
           const subjectId = subjectMap.get(subjectName.toLowerCase()) || null;
           
-          const startDate = new Date(event.start);
-          const endDate = new Date(event.end);
+          const startParsed = event.start;
+          const endParsed = event.end;
           
-          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-            console.log(`Skipping event with invalid dates: ${title}`);
-            continue;
-          }
+          const externalId = event.uid || `${title}-${startParsed.toDate().toISOString()}`;
           
-          const externalId = event.uid || `${title}-${startDate.toISOString()}`;
+          // Format exam_date using Paris date components
+          const examDateStr = isExam 
+            ? `${startParsed.year}-${(startParsed.month + 1).toString().padStart(2, '0')}-${startParsed.day.toString().padStart(2, '0')}`
+            : null;
           
           eventsToInsert.push({
             user_id: user_id,
             external_id: externalId,
             title: subjectName,
             subject_id: subjectId,
-            start_time: `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`,
-            end_time: `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`,
-            day_of_week: startDate.getDay(),
+            start_time: `${startParsed.hour.toString().padStart(2, '0')}:${startParsed.minute.toString().padStart(2, '0')}`,
+            end_time: `${endParsed.hour.toString().padStart(2, '0')}:${endParsed.minute.toString().padStart(2, '0')}`,
+            day_of_week: startParsed.dayOfWeek,
             event_type: isExam ? 'exam' : 'class',
-            exam_date: isExam ? startDate.toISOString().split('T')[0] : null,
+            exam_date: examDateStr,
             room_number: roomNumber,
             teacher_name: teacherName,
           });
