@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -25,6 +25,21 @@ const CATEGORY_FILTERS = [
 
 export const TimelineFullScreen = ({ open, onClose }: Props) => {
   const { tasks, createTask, toggleComplete, updateTask, deleteTask } = useTimelineTasks();
+
+  // Intercept browser back button when open
+  useEffect(() => {
+    if (!open) return;
+    
+    window.history.pushState({ timelineOpen: true }, '', window.location.href);
+    
+    const handlePopState = (e: PopStateEvent) => {
+      // Re-push state to stay on current page, don't close
+      window.history.pushState({ timelineOpen: true }, '', window.location.href);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [open]);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { locale: fr, weekStartsOn: 1 }));
