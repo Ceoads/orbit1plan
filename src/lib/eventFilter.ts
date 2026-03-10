@@ -69,11 +69,23 @@ export const filterEventsByGroup = (
     return events;
   }
 
-  // Extract the group parts from the user's full group string
-  // e.g., "TC2 G1 A" → we extract ["TC2 G1 A", "G1 A"] for matching
-  const userGroups = extractGroups(userGroup);
-  // Also use the full string as a match candidate
-  const allUserPatterns = [userGroup, ...userGroups];
+  // Support comma-separated multi-group: "TP1,TD1" → ["TP1", "TD1"]
+  const userGroupList = userGroup
+    .split(",")
+    .map((g) => g.trim())
+    .filter(Boolean);
+
+  if (userGroupList.length === 0) {
+    return events;
+  }
+
+  // Build all match patterns from each user group
+  const allUserPatterns: string[] = [];
+  for (const ug of userGroupList) {
+    allUserPatterns.push(ug);
+    const extracted = extractGroups(ug);
+    allUserPatterns.push(...extracted);
+  }
 
   return events.reduce<FilteredEvent[]>((acc, event) => {
     const title = event.title || "";

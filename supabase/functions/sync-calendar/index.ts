@@ -469,16 +469,29 @@ function detectGroupsFromEvents(events: any[], limit: number = 100): Map<string,
   return groupCounts;
 }
 
-// Check if event matches the user's group filter
+// Check if event matches the user's group filter (supports comma-separated multi-group)
 function eventMatchesGroup(event: any, filterGroup: string | null): boolean {
   if (!filterGroup) return true;
   
   const textToCheck = `${event.summary || ''} ${event.description || ''}`.toUpperCase();
-  const normalizedFilter = filterGroup.toUpperCase().replace(/\s+/g, '').trim();
   const textNoSpaces = textToCheck.replace(/\s+/g, '');
-  
-  return textNoSpaces.includes(normalizedFilter) || 
-         textToCheck.includes(filterGroup.toUpperCase());
+
+  // Support comma-separated groups: "TP1,TD1"
+  const filters = filterGroup.split(',').map(f => f.trim()).filter(Boolean);
+  if (filters.length === 0) return true;
+
+  // Extract group codes from the event text
+  const eventCodes = extractGroupCodes(textToCheck);
+
+  // If the event has NO group codes at all → full-class event, always show
+  if (eventCodes.length === 0) return true;
+
+  // Event matches if ANY of the user's groups is found in the event
+  return filters.some(f => {
+    const normalizedFilter = f.toUpperCase().replace(/\s+/g, '');
+    return textNoSpaces.includes(normalizedFilter) || 
+           textToCheck.includes(f.toUpperCase());
+  });
 }
 
 // Extract clean subject name from event title

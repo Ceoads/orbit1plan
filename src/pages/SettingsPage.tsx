@@ -309,12 +309,12 @@ const SettingsPage = () => {
               </p>
             </div>
 
-            {/* Group Filter - Guided Section */}
+            {/* Group Filter - Multi-group Section */}
             <div className="space-y-3 border-t border-border/40 pt-4">
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  Groupe de TP / TD
+                  Groupes de TP / TD
                 </Label>
                 <Button
                   variant="outline"
@@ -332,18 +332,28 @@ const SettingsPage = () => {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Sélectionne ton groupe pour ne voir que tes cours et éviter ceux des autres TP/TD.
+                Sélectionne ton groupe de <strong>TP</strong> et ton groupe de <strong>TD</strong> pour ne voir que tes cours.
               </p>
 
-              {/* Detected groups as clickable badges */}
+              {/* Detected groups as multi-select clickable badges */}
               {detectedGroups.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {detectedGroups.map((group) => {
-                    const isActive = filterGroup === group.code;
+                    const activeGroups = filterGroup.split(",").map(g => g.trim()).filter(Boolean);
+                    const isActive = activeGroups.includes(group.code);
                     return (
                       <button
                         key={group.code}
-                        onClick={() => setFilterGroup(isActive ? "" : group.code)}
+                        onClick={() => {
+                          const current = filterGroup.split(",").map(g => g.trim()).filter(Boolean);
+                          let next: string[];
+                          if (isActive) {
+                            next = current.filter(g => g !== group.code);
+                          } else {
+                            next = [...current, group.code];
+                          }
+                          setFilterGroup(next.join(","));
+                        }}
                         className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
                           isActive
                             ? 'border-primary bg-primary/10 text-primary'
@@ -361,7 +371,7 @@ const SettingsPage = () => {
 
               {/* Manual input always visible */}
               <Input
-                placeholder="Ou entre ton groupe : TP1, TD2, TC2 G1 A..."
+                placeholder="Ou entre tes groupes : TP1, TD1..."
                 value={filterGroup}
                 onChange={(e) => setFilterGroup(e.target.value)}
                 className="bg-background/50 border-border"
@@ -370,7 +380,9 @@ const SettingsPage = () => {
               {filterGroup && (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
                   <Check className="w-4 h-4 text-primary" />
-                  <span className="text-sm text-primary font-medium">Filtre actif : {filterGroup}</span>
+                  <span className="text-sm text-primary font-medium">
+                    Filtres actifs : {filterGroup.split(",").map(g => g.trim()).filter(Boolean).join(" + ")}
+                  </span>
                 </div>
               )}
             </div>
