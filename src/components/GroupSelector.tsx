@@ -3,6 +3,7 @@ import { GlassCard } from "./GlassCard";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -10,13 +11,6 @@ import {
   Loader2, Users, Check, 
   Calendar, AlertCircle, Eye, Sparkles, CheckCircle2
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 
 interface GroupSelectorProps {
@@ -63,7 +57,6 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     }
   }, [icalUrl]);
 
-  // Animate loading steps
   useEffect(() => {
     if (loading && loadingStep < loadingMessages.length - 1) {
       const timer = setTimeout(() => {
@@ -78,13 +71,8 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     setLoadingStep(0);
     try {
       const { data, error } = await supabase.functions.invoke('sync-calendar', {
-        body: { 
-          userId: user?.id, 
-          icalUrl, 
-          scanOnly: true
-        },
+        body: { userId: user?.id, icalUrl, scanOnly: true },
       });
-
       if (error) throw error;
 
       const groups = data.detectedGroups || [];
@@ -110,20 +98,12 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
 
   const fetchPreview = async (groupCode: string) => {
     if (!groupCode) return;
-    
     setLoadingPreview(true);
     try {
       const { data, error } = await supabase.functions.invoke('sync-calendar', {
-        body: { 
-          userId: user?.id, 
-          icalUrl, 
-          previewOnly: true,
-          filterGroup: groupCode
-        },
+        body: { userId: user?.id, icalUrl, previewOnly: true, filterGroup: groupCode },
       });
-
       if (error) throw error;
-
       setPreviewEvents(data.previewEvents || []);
     } catch (error) {
       console.error('Error fetching preview:', error);
@@ -132,17 +112,17 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     }
   };
 
-  const handleGroupChange = (value: string) => {
-    setSelectedGroup(value);
-    fetchPreview(value);
+  const handleGroupSelect = (code: string) => {
+    const newValue = selectedGroup === code ? "" : code;
+    setSelectedGroup(newValue);
+    setManualGroup("");
+    if (newValue) fetchPreview(newValue);
   };
 
   const handleConfirm = async () => {
     const groupToSave = selectedGroup || manualGroup;
-    
     setSyncing(true);
     try {
-      // Save the group filter
       await supabase
         .from('user_settings')
         .upsert({
@@ -151,15 +131,9 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
           ical_url: icalUrl,
         }, { onConflict: 'user_id' });
 
-      // Trigger full sync
       const { data, error } = await supabase.functions.invoke('sync-calendar', {
-        body: { 
-          userId: user?.id, 
-          icalUrl, 
-          filterGroup: groupToSave || undefined
-        },
+        body: { userId: user?.id, icalUrl, filterGroup: groupToSave || undefined },
       });
-
       if (error) throw error;
 
       const result = data.results?.[0];
@@ -168,18 +142,13 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
         toast.success(`${result.eventsSynced} cours synchronisés !`, {
           description: groupToSave ? `Filtré par: ${groupToSave}` : 'Tous les cours importés',
         });
-        
-        setTimeout(() => {
-          onGroupSelected(groupToSave || '');
-        }, 1000);
+        setTimeout(() => { onGroupSelected(groupToSave || ''); }, 1000);
       } else {
         throw new Error(result?.error || 'Sync failed');
       }
     } catch (error: any) {
       console.error('Error saving group:', error);
-      toast.error("Erreur lors de la synchronisation", {
-        description: error.message,
-      });
+      toast.error("Erreur lors de la synchronisation", { description: error.message });
       setSyncing(false);
     }
   };
@@ -188,17 +157,13 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     return (
       <GlassCard variant="elevated" className="p-6">
         <div className="flex flex-col items-center justify-center py-8 gap-4">
-          <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center relative">
+          <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center">
             <Sparkles className="w-8 h-8 text-white animate-pulse" />
           </div>
           <div className="text-center w-full max-w-xs">
-            <p className="font-display font-semibold text-foreground mb-2">
-              Analyse en cours...
-            </p>
+            <p className="font-display font-semibold text-foreground mb-2">Analyse en cours...</p>
             <Progress value={(loadingStep + 1) / loadingMessages.length * 100} className="h-2 mb-2" />
-            <p className="text-sm text-muted-foreground animate-pulse">
-              {loadingMessages[loadingStep]}
-            </p>
+            <p className="text-sm text-muted-foreground animate-pulse">{loadingMessages[loadingStep]}</p>
           </div>
         </div>
       </GlassCard>
@@ -213,12 +178,8 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
             <CheckCircle2 className="w-8 h-8 text-success" />
           </div>
           <div className="text-center">
-            <p className="font-display font-semibold text-foreground">
-              Synchronisation réussie !
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Redirection en cours...
-            </p>
+            <p className="font-display font-semibold text-foreground">Synchronisation réussie !</p>
+            <p className="text-sm text-muted-foreground mt-1">Redirection en cours...</p>
           </div>
         </div>
       </GlassCard>
@@ -228,48 +189,58 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
   return (
     <div className="space-y-4">
       <GlassCard variant="elevated" className="p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <h2 className="font-display font-semibold">Sélection du Groupe</h2>
+            <h2 className="font-display font-semibold">Dans quel groupe de TP es-tu ?</h2>
           </div>
           {totalEventsScanned > 0 && (
             <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-              {totalEventsScanned} événements analysés
+              {totalEventsScanned} analysés
             </span>
           )}
         </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Sélectionne ton groupe pour ne voir que tes cours et éviter ceux des autres groupes.
+        </p>
 
         {detectedGroups.length > 0 && !showManual ? (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>
-                Nous avons trouvé <span className="text-primary font-bold">{detectedGroups.length}</span> groupes :
-              </Label>
-              <Select value={selectedGroup} onValueChange={handleGroupChange}>
-                <SelectTrigger className="w-full bg-white/50 border-white/30">
-                  <SelectValue placeholder="Lequel est le tien ?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {detectedGroups.map((group) => (
-                    <SelectItem key={group.code} value={group.code}>
-                      <div className="flex items-center justify-between w-full gap-3">
-                        <span className="font-medium">{group.code}</span>
-                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                          {group.count} cours
-                        </span>
+            {/* Clickable group cards */}
+            <div className="grid grid-cols-2 gap-2">
+              {detectedGroups.map((group) => {
+                const isActive = selectedGroup === group.code;
+                return (
+                  <button
+                    key={group.code}
+                    onClick={() => handleGroupSelect(group.code)}
+                    className={`relative flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all duration-200 ${
+                      isActive
+                        ? 'border-primary bg-primary/10 shadow-md'
+                        : 'border-border bg-card hover:border-primary/40 hover:bg-accent/50'
+                    }`}
+                  >
+                    {isActive && (
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary-foreground" />
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    )}
+                    <span className={`font-display font-bold text-lg ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                      {group.code}
+                    </span>
+                    <Badge variant="secondary" className="text-xs">
+                      {group.count} cours
+                    </Badge>
+                  </button>
+                );
+              })}
             </div>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowManual(true)}
-              className="text-muted-foreground"
+              className="text-muted-foreground w-full"
             >
               Mon groupe n'est pas dans la liste
             </Button>
@@ -277,36 +248,26 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
         ) : (
           <div className="space-y-3">
             {detectedGroups.length === 0 && (
-              <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl text-amber-800 text-sm">
+              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <p>Aucun groupe détecté automatiquement. Entre ton code manuellement.</p>
               </div>
             )}
-            
             <div className="space-y-2">
               <Label htmlFor="manual-group">Code de groupe (optionnel)</Label>
               <Input
                 id="manual-group"
-                placeholder="Ex: TC2 G1 A, L3-B, INFO-S3..."
+                placeholder="Ex: TP1, TD2, TC2 G1 A..."
                 value={manualGroup}
-                onChange={(e) => {
-                  setManualGroup(e.target.value);
-                  setSelectedGroup("");
-                }}
-                className="bg-white/50 border-white/30"
+                onChange={(e) => { setManualGroup(e.target.value); setSelectedGroup(""); }}
+                className="bg-background/50 border-border"
               />
               <p className="text-xs text-muted-foreground">
-                💡 Laisse vide pour importer tous les cours (mode Apple Calendar)
+                💡 Laisse vide pour importer tous les cours
               </p>
             </div>
-
             {detectedGroups.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowManual(false)}
-                className="text-primary"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowManual(false)} className="text-primary">
                 ← Retour à la sélection
               </Button>
             )}
@@ -321,7 +282,6 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
             <Eye className="w-4 h-4 text-primary" />
             <span className="font-medium text-sm">Aperçu des prochains cours</span>
           </div>
-          
           {loadingPreview ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -329,26 +289,19 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
           ) : previewEvents.length > 0 ? (
             <div className="space-y-2">
               {previewEvents.slice(0, 4).map((event, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center gap-3 p-2 bg-white/50 rounded-lg"
-                >
+                <div key={index} className="flex items-center gap-3 p-2 bg-card/50 rounded-lg">
                   <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
                     <Calendar className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {event.day} • {event.time}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{event.day} • {event.time}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              Aucun cours futur trouvé pour ce filtre
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-2">Aucun cours futur trouvé pour ce filtre</p>
           )}
         </GlassCard>
       )}
@@ -361,28 +314,17 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
           className="w-full h-12 rounded-xl gradient-primary text-white font-medium"
         >
           {syncing ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Synchronisation...
-            </>
+            <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Synchronisation...</>
           ) : (
-            <>
-              <Check className="w-5 h-5 mr-2" />
-              {selectedGroup || manualGroup 
+            <><Check className="w-5 h-5 mr-2" />
+              {selectedGroup || manualGroup
                 ? `Synchroniser le groupe ${selectedGroup || manualGroup}`
-                : 'Synchroniser tous les cours'
-              }
+                : 'Synchroniser tous les cours'}
             </>
           )}
         </Button>
-
         {onSkip && (
-          <Button
-            variant="ghost"
-            onClick={onSkip}
-            disabled={syncing}
-            className="w-full text-muted-foreground"
-          >
+          <Button variant="ghost" onClick={onSkip} disabled={syncing} className="w-full text-muted-foreground">
             Configurer plus tard
           </Button>
         )}
