@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowLeft, Plus } from "lucide-react";
