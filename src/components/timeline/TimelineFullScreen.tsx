@@ -76,13 +76,13 @@ export const TimelineFullScreen = ({ open, onClose }: Props) => {
             exit={{ y: '100%', borderRadius: '24px 24px 0 0' }}
             transition={{ type: 'spring' as const, damping: 28, stiffness: 280 }}
             data-swipe-blocked
-            className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden"
+            className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden pt-safe"
             style={{ overscrollBehavior: 'contain', touchAction: 'pan-y pan-x' }}
             onTouchMove={(e) => e.stopPropagation()}
           >
             {/* Top Bar with staggered children */}
             <motion.div 
-              className="flex items-center justify-between px-4 py-3 border-b border-border/15 flex-shrink-0 bg-background/90 backdrop-blur-xl"
+              className="flex items-center justify-between px-4 py-3 pt-2 border-b border-border/15 flex-shrink-0 bg-background/90 backdrop-blur-xl"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, duration: 0.3 }}
