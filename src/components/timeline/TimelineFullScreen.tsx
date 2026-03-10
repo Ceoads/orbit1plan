@@ -80,16 +80,16 @@ export const TimelineFullScreen = ({ open, onClose }: Props) => {
             style={{ overscrollBehavior: 'contain', touchAction: 'pan-y pan-x' }}
             onTouchMove={(e) => e.stopPropagation()}
           >
-            {/* Top Bar with staggered children */}
+            {/* Compact app-style top bar */}
             <motion.div 
-              className="flex items-center justify-between px-4 py-3 pt-2 border-b border-border/15 flex-shrink-0 bg-background/90 backdrop-blur-xl"
+              className="flex items-center justify-between px-4 py-2.5 flex-shrink-0"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, duration: 0.3 }}
             >
               {/* Left: Title */}
               <motion.h2 
-                className="font-display font-bold text-base text-foreground"
+                className="font-display font-bold text-lg text-foreground"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
@@ -97,8 +97,8 @@ export const TimelineFullScreen = ({ open, onClose }: Props) => {
                 Timeline
               </motion.h2>
 
-              {/* Right: Controls + Back button */}
-              <div className="flex items-center gap-2">
+              {/* Right: Controls + Close */}
+              <div className="flex items-center gap-1.5">
                 {/* View toggle */}
                 <div className="flex bg-muted/50 rounded-xl p-0.5 border border-border/15 relative">
                   {(['week', 'day'] as const).map(mode => (
@@ -106,7 +106,7 @@ export const TimelineFullScreen = ({ open, onClose }: Props) => {
                       key={mode}
                       onClick={() => setViewMode(mode)}
                       whileTap={{ scale: 0.92 }}
-                      className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all relative z-10 ${
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all relative z-10 ${
                         mode === viewMode
                           ? 'text-foreground'
                           : 'text-muted-foreground hover:text-foreground'
@@ -129,18 +129,17 @@ export const TimelineFullScreen = ({ open, onClose }: Props) => {
                   onClick={() => handleAddTask()} 
                   className="p-2 rounded-xl hover:bg-muted/50 active:bg-muted transition-colors"
                   whileTap={{ scale: 0.85, rotate: 90 }}
-                  whileHover={{ scale: 1.1 }}
                 >
                   <Plus className="w-5 h-5 text-primary" />
                 </motion.button>
-                {/* Back / Close button */}
+                {/* Close button */}
                 <motion.button 
                   onClick={onClose} 
-                  className="p-2 rounded-xl hover:bg-muted/50 active:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  className="p-2 rounded-xl bg-muted/60 hover:bg-muted active:bg-muted/80 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   whileTap={{ scale: 0.85 }}
-                  aria-label="Retour"
+                  aria-label="Fermer"
                 >
-                  <ArrowLeft className="w-5 h-5 text-foreground" />
+                  <X className="w-5 h-5 text-foreground" />
                 </motion.button>
               </div>
             </motion.div>
