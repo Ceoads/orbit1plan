@@ -286,7 +286,7 @@ export const CalendarPocketSpace = ({
                 className="px-4 pb-2"
                 variants={headerVariants}
               >
-                {/* Row 1: Sparkle icon + Close */}
+                {/* Row 1: Sparkle icon + Back button (top right) */}
                 <div className="flex items-center justify-between mb-1">
                   <motion.button
                     onClick={handleClose}
@@ -298,15 +298,14 @@ export const CalendarPocketSpace = ({
                     <span className="font-display text-sm font-bold text-foreground">Orbit</span>
                   </motion.button>
                   
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                  <motion.button
                     onClick={handleClose}
-                    className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
+                    className="p-2 rounded-xl hover:bg-muted/50 active:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+                    whileTap={{ scale: 0.85 }}
                     aria-label={t('common.close')}
                   >
-                    <X className="w-5 h-5" />
-                  </Button>
+                    <ArrowLeft className="w-5 h-5 text-foreground" />
+                  </motion.button>
                 </div>
 
                 {/* Row 2: Month/Year + Navigation arrows */}
