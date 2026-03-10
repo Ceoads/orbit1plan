@@ -181,11 +181,41 @@ function forceUtf8(text: string): string {
 }
 
 /**
- * Parse iCal date with proper timezone handling.
- * Supports: 20240115T090000Z (UTC), 20240115T090000 (local/floating),
- * and TZID parameter dates. Normalizes everything to Europe/Paris.
+ * Get Europe/Paris UTC offset in minutes for a given UTC timestamp.
+ * Handles CET (UTC+1) and CEST (UTC+2) transitions.
  */
-function parseICalDate(dateStr: string, tzid?: string): Date | null {
+function getParisOffsetMinutes(utcMs: number): number {
+  // Use Intl to reliably determine the offset
+  try {
+    const date = new Date(utcMs);
+    const utcStr = date.toLocaleString('en-US', { timeZone: 'UTC' });
+    const parisStr = date.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
+    const utcDate = new Date(utcStr);
+    const parisDate = new Date(parisStr);
+    return (parisDate.getTime() - utcDate.getTime()) / 60000;
+  } catch (_) {
+    // Fallback: assume CET (UTC+1)
+    return 60;
+  }
+}
+
+/**
+ * Parse iCal date and return Paris time components directly.
+ * Returns an object with { year, month, day, hour, minute, second, dayOfWeek }
+ * all in Europe/Paris timezone.
+ */
+interface ParsedDate {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  dayOfWeek: number;
+  toDate(): Date;
+}
+
+function parseICalDate(dateStr: string, tzid?: string): ParsedDate | null {
   try {
     const isUtc = dateStr.endsWith('Z');
     const clean = dateStr.replace(/[Z]/g, '');
@@ -198,46 +228,73 @@ function parseICalDate(dateStr: string, tzid?: string): Date | null {
     const hour = clean.length >= 10 ? parseInt(clean.substring(8, 10)) : 0;
     const minute = clean.length >= 12 ? parseInt(clean.substring(10, 12)) : 0;
     const second = clean.length >= 14 ? parseInt(clean.substring(12, 14)) : 0;
+
+    const makeParsedDate = (h: number, m: number, s: number, y: number, mo: number, d: number): ParsedDate => {
+      const dateObj = new Date(Date.UTC(y, mo, d, h, m, s));
+      return {
+        year: y, month: mo, day: d, hour: h, minute: m, second: s,
+        dayOfWeek: dateObj.getUTCDay(),
+        toDate() { return dateObj; }
+      };
+    };
     
     if (isUtc) {
       // UTC date — convert to Europe/Paris local time
-      const utcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
-      // Use Intl to get the Paris offset
-      const parisStr = utcDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
-      return new Date(parisStr);
+      const utcMs = Date.UTC(year, month, day, hour, minute, second);
+      const offsetMin = getParisOffsetMinutes(utcMs);
+      const parisMs = utcMs + offsetMin * 60000;
+      const parisDate = new Date(parisMs);
+      return {
+        year: parisDate.getUTCFullYear(),
+        month: parisDate.getUTCMonth(),
+        day: parisDate.getUTCDate(),
+        hour: parisDate.getUTCHours(),
+        minute: parisDate.getUTCMinutes(),
+        second: parisDate.getUTCSeconds(),
+        dayOfWeek: parisDate.getUTCDay(),
+        toDate() { return new Date(utcMs); }
+      };
     }
     
-    // Check if TZID is Europe/Paris or similar — treat as local
-    if (tzid && /europe\/paris/i.test(tzid)) {
-      return new Date(year, month, day, hour, minute, second);
+    // Check if TZID is Europe/Paris or similar — already local Paris time
+    if (!tzid || (tzid && /europe\/paris/i.test(tzid))) {
+      return makeParsedDate(hour, minute, second, year, month, day);
     }
     
-    // If TZID is another timezone, try to convert
-    if (tzid) {
-      try {
-        const srcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
-        // Get offset for source timezone
-        const srcStr = srcDate.toLocaleString('en-US', { timeZone: tzid });
-        const srcLocal = new Date(srcStr);
-        const srcOffset = srcDate.getTime() - srcLocal.getTime();
-        
-        // Get offset for Paris
-        const parisStr = srcDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
-        const parisLocal = new Date(parisStr);
-        const parisOffset = srcDate.getTime() - parisLocal.getTime();
-        
-        // Adjust: subtract source offset, add paris offset
-        const adjusted = new Date(srcDate.getTime() + srcOffset - parisOffset);
-        const finalStr = adjusted.toLocaleString('en-US', { timeZone: 'Europe/Paris' });
-        return new Date(finalStr);
-      } catch (_) {
-        // Unknown timezone, treat as local
-        return new Date(year, month, day, hour, minute, second);
-      }
+    // If TZID is another timezone, convert to Paris
+    try {
+      const srcUtcMs = Date.UTC(year, month, day, hour, minute, second);
+      // The given time is in the source timezone, so we need to find the UTC equivalent first
+      // srcTime = UTC + srcOffset, so UTC = srcTime - srcOffset
+      const srcOffsetMin = getParisOffsetMinutes(srcUtcMs); // approximate
+      // Use Intl for source timezone offset
+      const srcDate = new Date(srcUtcMs);
+      const srcStr = srcDate.toLocaleString('en-US', { timeZone: tzid });
+      const srcLocal = new Date(srcStr);
+      const utcStr = srcDate.toLocaleString('en-US', { timeZone: 'UTC' });
+      const utcLocal = new Date(utcStr);
+      const srcTzOffset = (srcLocal.getTime() - utcLocal.getTime()) / 60000;
+      
+      // Convert source local time to UTC
+      const realUtcMs = srcUtcMs - srcTzOffset * 60000;
+      // Then convert UTC to Paris
+      const parisOffset = getParisOffsetMinutes(realUtcMs);
+      const parisMs = realUtcMs + parisOffset * 60000;
+      const parisDate = new Date(parisMs);
+      
+      return {
+        year: parisDate.getUTCFullYear(),
+        month: parisDate.getUTCMonth(),
+        day: parisDate.getUTCDate(),
+        hour: parisDate.getUTCHours(),
+        minute: parisDate.getUTCMinutes(),
+        second: parisDate.getUTCSeconds(),
+        dayOfWeek: parisDate.getUTCDay(),
+        toDate() { return new Date(realUtcMs); }
+      };
+    } catch (_) {
+      return makeParsedDate(hour, minute, second, year, month, day);
     }
-    
-    // Floating time (no Z, no TZID) — assume Europe/Paris local
-    return new Date(year, month, day, hour, minute, second);
   } catch (e) {
     console.error('Error parsing date:', dateStr, e);
     return null;
