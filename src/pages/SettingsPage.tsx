@@ -15,13 +15,6 @@ import {
   Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
   MapPin, Navigation, Home, QrCode, Play, Sparkles
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface UserSettings {
   ical_url: string | null;
