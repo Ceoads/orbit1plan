@@ -694,7 +694,7 @@ serve(async (req) => {
             return false;
           }
           if (e.end) {
-            const endDate = new Date(e.end);
+            const endDate = e.end.toDate();
             if (endDate < now) return false;
           }
           return eventMatchesGroup(e, ical_filter_group);
