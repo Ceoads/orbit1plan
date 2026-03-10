@@ -8,13 +8,92 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { QRCodeScanner } from "@/components/QRCodeScanner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { 
   ArrowLeft, Calendar, RefreshCw, Check, AlertCircle, 
   Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
-  MapPin, Navigation, Home, QrCode, Play, Sparkles
+  MapPin, Navigation, Home, QrCode, Play, Sparkles, ChevronsUpDown, X
 } from "lucide-react";
+
+function categorizeGroupSettings(code: string): string {
+  const upper = code.toUpperCase();
+  if (/^TP\d/i.test(upper)) return "TP";
+  if (/^TD\d/i.test(upper)) return "TD";
+  if (/^G\d/i.test(upper) || /^GROUPE/i.test(upper)) return "Groupe";
+  if (/^TC\d/i.test(upper)) return "TC";
+  if (/^CM/i.test(upper)) return "CM";
+  return "Autre";
+}
+
+const settingsCategoryLabels: Record<string, string> = {
+  TP: "🔬 TP", TD: "📝 TD", Groupe: "👥 Groupe", TC: "🎓 TC", CM: "🏛️ CM", Autre: "📋 Autres",
+};
+
+function SettingsGroupDropdown({ detectedGroups, filterGroup, onFilterGroupChange }: {
+  detectedGroups: { code: string; count: number }[];
+  filterGroup: string;
+  onFilterGroupChange: (val: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const activeGroups = filterGroup.split(",").map(g => g.trim()).filter(Boolean);
+
+  const grouped: Record<string, typeof detectedGroups> = {};
+  for (const g of detectedGroups) {
+    const cat = categorizeGroupSettings(g.code);
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(g);
+  }
+
+  const toggle = (code: string) => {
+    const current = filterGroup.split(",").map(g => g.trim()).filter(Boolean);
+    const next = current.includes(code) ? current.filter(g => g !== code) : [...current, code];
+    onFilterGroupChange(next.join(","));
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-[40px] bg-background/50 border-border">
+          {activeGroups.length > 0 ? (
+            <span className="text-sm">{activeGroups.length} groupe{activeGroups.length > 1 ? 's' : ''} sélectionné{activeGroups.length > 1 ? 's' : ''}</span>
+          ) : (
+            <span className="text-muted-foreground text-sm">Choisir tes groupes...</span>
+          )}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Rechercher..." />
+          <CommandList>
+            <CommandEmpty>Aucun groupe.</CommandEmpty>
+            {Object.entries(grouped).map(([cat, groups]) => (
+              <CommandGroup key={cat} heading={settingsCategoryLabels[cat] || cat}>
+                {groups.map(g => {
+                  const isActive = activeGroups.includes(g.code);
+                  return (
+                    <CommandItem key={g.code} value={g.code} onSelect={() => toggle(g.code)} className="cursor-pointer">
+                      <div className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border ${isActive ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                        {isActive && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="flex-1 font-medium">{g.code}</span>
+                      <span className="text-xs text-muted-foreground">{g.count} cours</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
 interface UserSettings {
   ical_url: string | null;
