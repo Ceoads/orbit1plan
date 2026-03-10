@@ -630,14 +630,14 @@ serve(async (req) => {
       const now = new Date();
       const filteredEvents = events
         .filter(e => e.summary && e.start && eventMatchesGroup(e, filterGroup))
-        .filter(e => new Date(e.start) >= now)
-        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+        .filter(e => e.start.toDate() >= now)
+        .sort((a, b) => a.start.toDate().getTime() - b.start.toDate().getTime())
         .slice(0, 5);
       
       const previewEvents = filteredEvents.map(e => ({
         title: extractSubjectName(e.summary, filterGroup),
-        time: `${new Date(e.start).getHours().toString().padStart(2, '0')}:${new Date(e.start).getMinutes().toString().padStart(2, '0')}`,
-        day: formatDayFr(new Date(e.start)),
+        time: `${e.start.hour.toString().padStart(2, '0')}:${e.start.minute.toString().padStart(2, '0')}`,
+        day: formatDayFr(e.start.toDate()),
       }));
       
       return new Response(JSON.stringify({ previewEvents }), {
