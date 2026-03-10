@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { GlassCard } from "./GlassCard";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -30,12 +30,23 @@ interface PreviewEvent {
   day: string;
 }
 
+/** Categorize a group code into TP, TD, G, or Other */
+function categorizeGroup(code: string): string {
+  const upper = code.toUpperCase();
+  if (/^TP\d/i.test(upper)) return "TP";
+  if (/^TD\d/i.test(upper)) return "TD";
+  if (/^G\d/i.test(upper) || /^GROUPE/i.test(upper)) return "Groupe";
+  if (/^TC\d/i.test(upper)) return "TC";
+  if (/^CM/i.test(upper)) return "CM";
+  return "Autre";
+}
+
 export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelectorProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [loadingStep, setLoadingStep] = useState(0);
   const [detectedGroups, setDetectedGroups] = useState<DetectedGroup[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string>("");
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
   const [manualGroup, setManualGroup] = useState("");
   const [showManual, setShowManual] = useState(false);
   const [previewEvents, setPreviewEvents] = useState<PreviewEvent[]>([]);
@@ -50,6 +61,21 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     "Analyse des 100 premiers événements...",
     "Détection des groupes...",
   ];
+
+  // Group detected groups by category
+  const groupedByCategory = useMemo(() => {
+    const cats: Record<string, DetectedGroup[]> = {};
+    for (const g of detectedGroups) {
+      const cat = categorizeGroup(g.code);
+      if (!cats[cat]) cats[cat] = [];
+      cats[cat].push(g);
+    }
+    return cats;
+  }, [detectedGroups]);
+
+  const selectedGroupString = useMemo(() => {
+    return Array.from(selectedGroups).join(",");
+  }, [selectedGroups]);
 
   useEffect(() => {
     if (icalUrl) {
@@ -79,10 +105,7 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
       setDetectedGroups(groups);
       setTotalEventsScanned(data.totalEventsScanned || 0);
 
-      if (groups.length === 1) {
-        setSelectedGroup(groups[0].code);
-        fetchPreview(groups[0].code);
-      } else if (groups.length === 0) {
+      if (groups.length === 0) {
         setShowManual(true);
       }
     } catch (error: any) {
@@ -96,12 +119,12 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     }
   };
 
-  const fetchPreview = async (groupCode: string) => {
-    if (!groupCode) return;
+  const fetchPreview = async (groupCodes: string) => {
+    if (!groupCodes) return;
     setLoadingPreview(true);
     try {
       const { data, error } = await supabase.functions.invoke('sync-calendar', {
-        body: { userId: user?.id, icalUrl, previewOnly: true, filterGroup: groupCode },
+        body: { userId: user?.id, icalUrl, previewOnly: true, filterGroup: groupCodes },
       });
       if (error) throw error;
       setPreviewEvents(data.previewEvents || []);
@@ -112,15 +135,24 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     }
   };
 
-  const handleGroupSelect = (code: string) => {
-    const newValue = selectedGroup === code ? "" : code;
-    setSelectedGroup(newValue);
+  const handleGroupToggle = (code: string) => {
+    setSelectedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      // Fetch preview with new selection
+      const groupStr = Array.from(next).join(",");
+      if (groupStr) fetchPreview(groupStr);
+      return next;
+    });
     setManualGroup("");
-    if (newValue) fetchPreview(newValue);
   };
 
   const handleConfirm = async () => {
-    const groupToSave = selectedGroup || manualGroup;
+    const groupToSave = selectedGroupString || manualGroup;
     setSyncing(true);
     try {
       await supabase
@@ -186,13 +218,22 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     );
   }
 
+  const categoryLabels: Record<string, string> = {
+    TP: "🔬 Groupe de TP",
+    TD: "📝 Groupe de TD",
+    Groupe: "👥 Groupe général",
+    TC: "🎓 Tronc commun",
+    CM: "🏛️ Cours magistral",
+    Autre: "📋 Autres groupes",
+  };
+
   return (
     <div className="space-y-4">
       <GlassCard variant="elevated" className="p-5">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <h2 className="font-display font-semibold">Dans quel groupe de TP es-tu ?</h2>
+            <h2 className="font-display font-semibold">Sélectionne tes groupes</h2>
           </div>
           {totalEventsScanned > 0 && (
             <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
@@ -201,40 +242,59 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
           )}
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Sélectionne ton groupe pour ne voir que tes cours et éviter ceux des autres groupes.
+          Choisis ton groupe de <strong>TP</strong> et ton groupe de <strong>TD</strong> pour ne voir que tes cours.
+          <br />
+          <span className="text-xs">💡 Ex : si tu es en TP1, tu es aussi en TD1 — sélectionne les deux.</span>
         </p>
 
         {detectedGroups.length > 0 && !showManual ? (
-          <div className="space-y-4">
-            {/* Clickable group cards */}
-            <div className="grid grid-cols-2 gap-2">
-              {detectedGroups.map((group) => {
-                const isActive = selectedGroup === group.code;
-                return (
-                  <button
-                    key={group.code}
-                    onClick={() => handleGroupSelect(group.code)}
-                    className={`relative flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all duration-200 ${
-                      isActive
-                        ? 'border-primary bg-primary/10 shadow-md'
-                        : 'border-border bg-card hover:border-primary/40 hover:bg-accent/50'
-                    }`}
-                  >
-                    {isActive && (
-                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <Check className="w-3 h-3 text-primary-foreground" />
-                      </div>
-                    )}
-                    <span className={`font-display font-bold text-lg ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                      {group.code}
-                    </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {group.count} cours
-                    </Badge>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="space-y-5">
+            {/* Groups by category */}
+            {Object.entries(groupedByCategory).map(([cat, groups]) => (
+              <div key={cat} className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {categoryLabels[cat] || cat}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {groups.map((group) => {
+                    const isActive = selectedGroups.has(group.code);
+                    return (
+                      <button
+                        key={group.code}
+                        onClick={() => handleGroupToggle(group.code)}
+                        className={`relative flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all duration-200 ${
+                          isActive
+                            ? 'border-primary bg-primary/10 shadow-md'
+                            : 'border-border bg-card hover:border-primary/40 hover:bg-accent/50'
+                        }`}
+                      >
+                        {isActive && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="w-3 h-3 text-primary-foreground" />
+                          </div>
+                        )}
+                        <span className={`font-display font-bold text-lg ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                          {group.code}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {group.count} cours
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Selected summary */}
+            {selectedGroups.size > 0 && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20">
+                <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-sm text-primary font-medium">
+                  Sélection : {Array.from(selectedGroups).join(" + ")}
+                </span>
+              </div>
+            )}
 
             <Button
               variant="ghost"
@@ -250,20 +310,20 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
             {detectedGroups.length === 0 && (
               <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <p>Aucun groupe détecté automatiquement. Entre ton code manuellement.</p>
+                <p>Aucun groupe détecté automatiquement. Entre tes codes manuellement.</p>
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="manual-group">Code de groupe (optionnel)</Label>
+              <Label htmlFor="manual-group">Codes de groupes (séparés par des virgules)</Label>
               <Input
                 id="manual-group"
-                placeholder="Ex: TP1, TD2, TC2 G1 A..."
+                placeholder="Ex: TP1, TD1"
                 value={manualGroup}
-                onChange={(e) => { setManualGroup(e.target.value); setSelectedGroup(""); }}
+                onChange={(e) => { setManualGroup(e.target.value); setSelectedGroups(new Set()); }}
                 className="bg-background/50 border-border"
               />
               <p className="text-xs text-muted-foreground">
-                💡 Laisse vide pour importer tous les cours
+                💡 Entre ton groupe TP <strong>et</strong> ton groupe TD. Laisse vide pour tout importer.
               </p>
             </div>
             {detectedGroups.length > 0 && (
@@ -276,7 +336,7 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
       </GlassCard>
 
       {/* Preview Section */}
-      {(selectedGroup || manualGroup) && (
+      {(selectedGroups.size > 0 || manualGroup) && (
         <GlassCard variant="subtle" className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <Eye className="w-4 h-4 text-primary" />
@@ -317,9 +377,11 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
             <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Synchronisation...</>
           ) : (
             <><Check className="w-5 h-5 mr-2" />
-              {selectedGroup || manualGroup
-                ? `Synchroniser le groupe ${selectedGroup || manualGroup}`
-                : 'Synchroniser tous les cours'}
+              {selectedGroups.size > 0
+                ? `Synchroniser (${Array.from(selectedGroups).join(" + ")})`
+                : manualGroup
+                  ? `Synchroniser (${manualGroup})`
+                  : 'Synchroniser tous les cours'}
             </>
           )}
         </Button>
