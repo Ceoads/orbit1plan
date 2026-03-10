@@ -761,26 +761,26 @@ serve(async (req) => {
           const teacherName = extractTeacher(event.description);
           const subjectId = subjectMap.get(subjectName.toLowerCase()) || null;
           
-          const startDate = new Date(event.start);
-          const endDate = new Date(event.end);
+          const startParsed = event.start;
+          const endParsed = event.end;
           
-          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-            console.log(`Skipping event with invalid dates: ${title}`);
-            continue;
-          }
+          const externalId = event.uid || `${title}-${startParsed.toDate().toISOString()}`;
           
-          const externalId = event.uid || `${title}-${startDate.toISOString()}`;
+          // Format exam_date using Paris date components
+          const examDateStr = isExam 
+            ? `${startParsed.year}-${(startParsed.month + 1).toString().padStart(2, '0')}-${startParsed.day.toString().padStart(2, '0')}`
+            : null;
           
           eventsToInsert.push({
             user_id: user_id,
             external_id: externalId,
             title: subjectName,
             subject_id: subjectId,
-            start_time: `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`,
-            end_time: `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`,
-            day_of_week: startDate.getDay(),
+            start_time: `${startParsed.hour.toString().padStart(2, '0')}:${startParsed.minute.toString().padStart(2, '0')}`,
+            end_time: `${endParsed.hour.toString().padStart(2, '0')}:${endParsed.minute.toString().padStart(2, '0')}`,
+            day_of_week: startParsed.dayOfWeek,
             event_type: isExam ? 'exam' : 'class',
-            exam_date: isExam ? startDate.toISOString().split('T')[0] : null,
+            exam_date: examDateStr,
             room_number: roomNumber,
             teacher_name: teacherName,
           });
