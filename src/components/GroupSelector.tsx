@@ -300,7 +300,35 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
                     <span className="text-muted-foreground text-sm">Choisir tes groupes...</span>
                   )}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
+            {/* Auto-suggestions */}
+            {suggestions.length > 0 && (
+              <div className="p-3 bg-accent/30 rounded-xl border border-accent/50 space-y-2">
+                <p className="text-xs font-medium text-accent-foreground flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Groupes liés détectés
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map(code => (
+                    <div key={code} className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAcceptSuggestion(code)}
+                        className="h-7 text-xs gap-1 border-primary/30 hover:bg-primary/10"
+                      >
+                        <Check className="w-3 h-3" />
+                        Ajouter {code}
+                      </Button>
+                      <button onClick={() => handleDismissSuggestion(code)} className="text-muted-foreground hover:text-foreground p-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command>
