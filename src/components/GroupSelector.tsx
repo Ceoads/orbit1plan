@@ -136,16 +136,64 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     }
   };
 
+  /**
+   * Given a group code like "TP1", find related groups (e.g. "TD1", "G1 A")
+   * that share the same number suffix and exist in detectedGroups.
+   */
+  const findRelatedGroups = (code: string): string[] => {
+    // Extract the numeric part: "TP1" → "1", "TP1A" → "1A", "TD2" → "2"
+    const match = code.match(/^(?:TP|TD|G|CM|TC)(\d+\s*[A-Z]?)$/i);
+    if (!match) return [];
+    const suffix = match[1].replace(/\s/g, "");
+    const codeType = code.replace(/\d.*$/, "").toUpperCase(); // "TP", "TD", etc.
+
+    const relatedTypes = ["TP", "TD", "G", "CM", "TC"];
+    const related: string[] = [];
+
+    for (const g of detectedGroups) {
+      if (g.code === code) continue;
+      const gMatch = g.code.match(/^(?:TP|TD|G|CM|TC)(\d+\s*[A-Z]?)$/i);
+      if (!gMatch) continue;
+      const gSuffix = gMatch[1].replace(/\s/g, "");
+      const gType = g.code.replace(/\d.*$/, "").toUpperCase();
+
+      // Same suffix, different type → related
+      if (gSuffix === suffix && gType !== codeType && relatedTypes.includes(gType)) {
+        related.push(g.code);
+      }
+    }
+    return related;
+  };
+
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
   const handleGroupToggle = (code: string) => {
     setSelectedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
+      const wasAdded = !next.has(code);
+      if (wasAdded) {
+        next.add(code);
+        // Find related groups to suggest
+        const related = findRelatedGroups(code).filter(r => !next.has(r));
+        setSuggestions(prev => [...new Set([...prev.filter(s => !next.has(s)), ...related])]);
+      } else {
+        next.delete(code);
+        setSuggestions(prev => prev.filter(s => s !== code));
+      }
       const groupStr = Array.from(next).join(",");
       if (groupStr) fetchPreview(groupStr);
       return next;
     });
     setManualGroup("");
+  };
+
+  const handleAcceptSuggestion = (code: string) => {
+    setSuggestions(prev => prev.filter(s => s !== code));
+    handleGroupToggle(code);
+  };
+
+  const handleDismissSuggestion = (code: string) => {
+    setSuggestions(prev => prev.filter(s => s !== code));
   };
 
   const handleConfirm = async () => {
