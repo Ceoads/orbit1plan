@@ -1,7 +1,7 @@
 import { CalendarEvent } from "@/hooks/useOrbitData";
 
-// Group identifier patterns (e.g., "G1 A", "G1A", "Groupe A", "TC2 G1 B")
-const GROUP_REGEX = /\b(?:TC\d+\s+)?(?:G\d+\s*[A-Z]|Groupe\s+[A-Z])\b/gi;
+// Group identifier patterns (e.g., "G1 A", "G1A", "Groupe A", "TC2 G1 B", "TP1", "TD2", "TP1A")
+const GROUP_REGEX = /\b(?:TC\d+\s+)?(?:G\d+\s*[A-Z]|Groupe\s+[A-Z]|TP\d+[A-Z]?|TD\d+[A-Z]?)\b/gi;
 
 // Optional/shared event keywords
 const OPTIONAL_KEYWORDS = [
