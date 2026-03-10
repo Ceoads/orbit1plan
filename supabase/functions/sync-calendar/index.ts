@@ -218,7 +218,7 @@ interface ParsedDate {
 function parseICalDate(dateStr: string, tzid?: string): ParsedDate | null {
   try {
     const isUtc = dateStr.endsWith('Z');
-    const clean = dateStr.replace(/[Z]/g, '');
+    const clean = dateStr.replace(/[ZT]/g, '');
     
     if (clean.length < 8) return null;
     
@@ -228,6 +228,12 @@ function parseICalDate(dateStr: string, tzid?: string): ParsedDate | null {
     const hour = clean.length >= 10 ? parseInt(clean.substring(8, 10)) : 0;
     const minute = clean.length >= 12 ? parseInt(clean.substring(10, 12)) : 0;
     const second = clean.length >= 14 ? parseInt(clean.substring(12, 14)) : 0;
+
+    // Safety: if any parsed value is NaN, return null
+    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute) || isNaN(second)) {
+      console.error('NaN detected in parsed date:', dateStr, { year, month, day, hour, minute, second });
+      return null;
+    }
 
     const makeParsedDate = (h: number, m: number, s: number, y: number, mo: number, d: number): ParsedDate => {
       const dateObj = new Date(Date.UTC(y, mo, d, h, m, s));
