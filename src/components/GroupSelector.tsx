@@ -65,6 +65,7 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
   const [syncing, setSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const loadingMessages = [
     "Connexion au serveur...",
