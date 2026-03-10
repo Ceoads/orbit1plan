@@ -166,7 +166,6 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     return related;
   };
 
-  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const handleGroupToggle = (code: string) => {
     setSelectedGroups(prev => {
