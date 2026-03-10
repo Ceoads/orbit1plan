@@ -3,7 +3,7 @@ import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { WeeklyTimeGrid } from "./WeeklyTimeGrid";
 import { ExamDetailModal } from "./ExamDetailModal";
-import { ChevronLeft, ChevronRight, X, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
