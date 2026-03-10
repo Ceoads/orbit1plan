@@ -335,38 +335,13 @@ const SettingsPage = () => {
                 Sélectionne ton groupe de <strong>TP</strong> et ton groupe de <strong>TD</strong> pour ne voir que tes cours.
               </p>
 
-              {/* Detected groups as multi-select clickable badges */}
+              {/* Detected groups as multi-select dropdown */}
               {detectedGroups.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {detectedGroups.map((group) => {
-                    const activeGroups = filterGroup.split(",").map(g => g.trim()).filter(Boolean);
-                    const isActive = activeGroups.includes(group.code);
-                    return (
-                      <button
-                        key={group.code}
-                        onClick={() => {
-                          const current = filterGroup.split(",").map(g => g.trim()).filter(Boolean);
-                          let next: string[];
-                          if (isActive) {
-                            next = current.filter(g => g !== group.code);
-                          } else {
-                            next = [...current, group.code];
-                          }
-                          setFilterGroup(next.join(","));
-                        }}
-                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
-                          isActive
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-card text-foreground hover:border-primary/40'
-                        }`}
-                      >
-                        {isActive && <Check className="w-3.5 h-3.5" />}
-                        {group.code}
-                        <span className="text-xs text-muted-foreground ml-1">({group.count})</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <SettingsGroupDropdown
+                  detectedGroups={detectedGroups}
+                  filterGroup={filterGroup}
+                  onFilterGroupChange={setFilterGroup}
+                />
               )}
 
               {/* Manual input always visible */}
@@ -378,11 +353,23 @@ const SettingsPage = () => {
               />
 
               {filterGroup && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
-                  <Check className="w-4 h-4 text-primary" />
-                  <span className="text-sm text-primary font-medium">
-                    Filtres actifs : {filterGroup.split(",").map(g => g.trim()).filter(Boolean).join(" + ")}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-sm text-primary font-medium mr-1">Filtres :</span>
+                  {filterGroup.split(",").map(g => g.trim()).filter(Boolean).map(code => (
+                    <Badge key={code} variant="default" className="gap-1 pr-1">
+                      {code}
+                      <button
+                        onClick={() => {
+                          const next = filterGroup.split(",").map(g => g.trim()).filter(g => g && g !== code);
+                          setFilterGroup(next.join(","));
+                        }}
+                        className="ml-1 rounded-full hover:bg-primary-foreground/20 p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
                 </div>
               )}
             </div>

@@ -7,11 +7,13 @@ import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { 
-  Loader2, Users, Check, 
-  Calendar, AlertCircle, Eye, Sparkles, CheckCircle2
+import {
+  Loader2, Users, Check,
+  Calendar, AlertCircle, Eye, Sparkles, CheckCircle2, ChevronsUpDown, X
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 interface GroupSelectorProps {
   icalUrl: string;
@@ -30,7 +32,6 @@ interface PreviewEvent {
   day: string;
 }
 
-/** Categorize a group code into TP, TD, G, or Other */
 function categorizeGroup(code: string): string {
   const upper = code.toUpperCase();
   if (/^TP\d/i.test(upper)) return "TP";
@@ -40,6 +41,15 @@ function categorizeGroup(code: string): string {
   if (/^CM/i.test(upper)) return "CM";
   return "Autre";
 }
+
+const categoryLabels: Record<string, string> = {
+  TP: "🔬 TP",
+  TD: "📝 TD",
+  Groupe: "👥 Groupe",
+  TC: "🎓 Tronc commun",
+  CM: "🏛️ CM",
+  Autre: "📋 Autres",
+};
 
 export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelectorProps) => {
   const { user } = useAuth();
@@ -54,15 +64,15 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
   const [totalEventsScanned, setTotalEventsScanned] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const loadingMessages = [
     "Connexion au serveur...",
     "Téléchargement du calendrier...",
-    "Analyse des 100 premiers événements...",
+    "Analyse des événements...",
     "Détection des groupes...",
   ];
 
-  // Group detected groups by category
   const groupedByCategory = useMemo(() => {
     const cats: Record<string, DetectedGroup[]> = {};
     for (const g of detectedGroups) {
@@ -78,16 +88,12 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
   }, [selectedGroups]);
 
   useEffect(() => {
-    if (icalUrl) {
-      scanForGroups();
-    }
+    if (icalUrl) scanForGroups();
   }, [icalUrl]);
 
   useEffect(() => {
     if (loading && loadingStep < loadingMessages.length - 1) {
-      const timer = setTimeout(() => {
-        setLoadingStep(prev => prev + 1);
-      }, 800);
+      const timer = setTimeout(() => setLoadingStep(prev => prev + 1), 800);
       return () => clearTimeout(timer);
     }
   }, [loading, loadingStep]);
@@ -100,14 +106,9 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
         body: { userId: user?.id, icalUrl, scanOnly: true },
       });
       if (error) throw error;
-
-      const groups = data.detectedGroups || [];
-      setDetectedGroups(groups);
+      setDetectedGroups(data.detectedGroups || []);
       setTotalEventsScanned(data.totalEventsScanned || 0);
-
-      if (groups.length === 0) {
-        setShowManual(true);
-      }
+      if ((data.detectedGroups || []).length === 0) setShowManual(true);
     } catch (error: any) {
       console.error('Error scanning for groups:', error);
       setShowManual(true);
@@ -138,12 +139,8 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
   const handleGroupToggle = (code: string) => {
     setSelectedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(code)) {
-        next.delete(code);
-      } else {
-        next.add(code);
-      }
-      // Fetch preview with new selection
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
       const groupStr = Array.from(next).join(",");
       if (groupStr) fetchPreview(groupStr);
       return next;
@@ -155,13 +152,11 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     const groupToSave = selectedGroupString || manualGroup;
     setSyncing(true);
     try {
-      await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user?.id,
-          ical_filter_group: groupToSave || null,
-          ical_url: icalUrl,
-        }, { onConflict: 'user_id' });
+      await supabase.from('user_settings').upsert({
+        user_id: user?.id,
+        ical_filter_group: groupToSave || null,
+        ical_url: icalUrl,
+      }, { onConflict: 'user_id' });
 
       const { data, error } = await supabase.functions.invoke('sync-calendar', {
         body: { userId: user?.id, icalUrl, filterGroup: groupToSave || undefined },
@@ -174,7 +169,7 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
         toast.success(`${result.eventsSynced} cours synchronisés !`, {
           description: groupToSave ? `Filtré par: ${groupToSave}` : 'Tous les cours importés',
         });
-        setTimeout(() => { onGroupSelected(groupToSave || ''); }, 1000);
+        setTimeout(() => onGroupSelected(groupToSave || ''), 1000);
       } else {
         throw new Error(result?.error || 'Sync failed');
       }
@@ -218,15 +213,6 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
     );
   }
 
-  const categoryLabels: Record<string, string> = {
-    TP: "🔬 Groupe de TP",
-    TD: "📝 Groupe de TD",
-    Groupe: "👥 Groupe général",
-    TC: "🎓 Tronc commun",
-    CM: "🏛️ Cours magistral",
-    Autre: "📋 Autres groupes",
-  };
-
   return (
     <div className="space-y-4">
       <GlassCard variant="elevated" className="p-5">
@@ -248,51 +234,68 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
         </p>
 
         {detectedGroups.length > 0 && !showManual ? (
-          <div className="space-y-5">
-            {/* Groups by category */}
-            {Object.entries(groupedByCategory).map(([cat, groups]) => (
-              <div key={cat} className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  {categoryLabels[cat] || cat}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {groups.map((group) => {
-                    const isActive = selectedGroups.has(group.code);
-                    return (
-                      <button
-                        key={group.code}
-                        onClick={() => handleGroupToggle(group.code)}
-                        className={`relative flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all duration-200 ${
-                          isActive
-                            ? 'border-primary bg-primary/10 shadow-md'
-                            : 'border-border bg-card hover:border-primary/40 hover:bg-accent/50'
-                        }`}
-                      >
-                        {isActive && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="w-3 h-3 text-primary-foreground" />
-                          </div>
-                        )}
-                        <span className={`font-display font-bold text-lg ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                          {group.code}
-                        </span>
-                        <Badge variant="secondary" className="text-xs">
-                          {group.count} cours
-                        </Badge>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+          <div className="space-y-3">
+            {/* Multi-select dropdown */}
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={popoverOpen}
+                  className="w-full justify-between h-auto min-h-[44px] bg-background/50 border-border"
+                >
+                  {selectedGroups.size > 0 ? (
+                    <span className="text-sm font-medium">
+                      {selectedGroups.size} groupe{selectedGroups.size > 1 ? 's' : ''} sélectionné{selectedGroups.size > 1 ? 's' : ''}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">Choisir tes groupes...</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Rechercher un groupe..." />
+                  <CommandList>
+                    <CommandEmpty>Aucun groupe trouvé.</CommandEmpty>
+                    {Object.entries(groupedByCategory).map(([cat, groups]) => (
+                      <CommandGroup key={cat} heading={categoryLabels[cat] || cat}>
+                        {groups.map((group) => {
+                          const isActive = selectedGroups.has(group.code);
+                          return (
+                            <CommandItem
+                              key={group.code}
+                              value={group.code}
+                              onSelect={() => handleGroupToggle(group.code)}
+                              className="cursor-pointer"
+                            >
+                              <div className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border ${isActive ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                                {isActive && <Check className="h-3 w-3 text-primary-foreground" />}
+                              </div>
+                              <span className="flex-1 font-medium">{group.code}</span>
+                              <span className="text-xs text-muted-foreground">{group.count} cours</span>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
-            {/* Selected summary */}
+            {/* Selected badges */}
             {selectedGroups.size > 0 && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="text-sm text-primary font-medium">
-                  Sélection : {Array.from(selectedGroups).join(" + ")}
-                </span>
+              <div className="flex flex-wrap gap-2">
+                {Array.from(selectedGroups).map(code => (
+                  <Badge key={code} variant="default" className="gap-1 pr-1">
+                    {code}
+                    <button onClick={() => handleGroupToggle(code)} className="ml-1 rounded-full hover:bg-primary-foreground/20 p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
               </div>
             )}
 
@@ -335,7 +338,7 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
         )}
       </GlassCard>
 
-      {/* Preview Section */}
+      {/* Preview */}
       {(selectedGroups.size > 0 || manualGroup) && (
         <GlassCard variant="subtle" className="p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -366,7 +369,7 @@ export const GroupSelector = ({ icalUrl, onGroupSelected, onSkip }: GroupSelecto
         </GlassCard>
       )}
 
-      {/* Action Buttons */}
+      {/* Actions */}
       <div className="space-y-3">
         <Button
           onClick={handleConfirm}
