@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowLeft, Plus } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTimelineTasks, type TimelineTask } from "@/hooks/useTimelineTasks";
 import { TimelineDayView } from "./TimelineDayView";
