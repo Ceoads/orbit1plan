@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Subject, useOrbitData } from "@/hooks/useOrbitData";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { sanitizeText, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface EditSubjectModalProps {
   open: boolean;
@@ -47,14 +48,16 @@ export const EditSubjectModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !subject) return;
+    const sanitizedName = sanitizeText(name, INPUT_LIMITS.name);
+    const sanitizedTeacher = sanitizeText(teacherName, INPUT_LIMITS.teacherName);
+    if (!sanitizedName || !subject) return;
 
     setLoading(true);
     await updateSubject(subject.id, {
-      name,
+      name: sanitizedName,
       color_key: colorKey,
       icon,
-      teacher_name: teacherName || null,
+      teacher_name: sanitizedTeacher || null,
     });
     setLoading(false);
     onOpenChange(false);
@@ -74,6 +77,7 @@ export const EditSubjectModal = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('modals.addSubject.subjectPlaceholder')}
+              maxLength={INPUT_LIMITS.name}
               required
             />
           </div>
@@ -85,6 +89,7 @@ export const EditSubjectModal = ({
               value={teacherName}
               onChange={(e) => setTeacherName(e.target.value)}
               placeholder={t('modals.addSubject.teacherPlaceholder')}
+              maxLength={INPUT_LIMITS.teacherName}
             />
           </div>
 

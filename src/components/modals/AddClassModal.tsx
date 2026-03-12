@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject, useOrbitData } from "@/hooks/useOrbitData";
 import { useTranslation } from "react-i18next";
+import { sanitizeText, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface AddClassModalProps {
   open: boolean;
@@ -44,24 +45,25 @@ export const AddClassModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    const sanitizedTitle = sanitizeText(title, INPUT_LIMITS.title);
+    const sanitizedRoom = sanitizeText(roomNumber, INPUT_LIMITS.roomNumber);
+    if (!sanitizedTitle) return;
 
     setLoading(true);
     await createEvent({
-      title,
+      title: sanitizedTitle,
       subject_id: subjectId === "__none__" ? null : subjectId,
       start_time: startTime,
       end_time: endTime,
       day_of_week: parseInt(dayOfWeek),
       event_type: 'class',
       exam_date: null,
-      room_number: roomNumber || null,
+      room_number: sanitizedRoom || null,
       teacher_name: null,
       external_id: null,
     });
     setLoading(false);
     
-    // Reset form
     setTitle("");
     setSubjectId("__none__");
     setRoomNumber("");
@@ -82,6 +84,7 @@ export const AddClassModal = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('modals.addClass.classPlaceholder')}
+              maxLength={INPUT_LIMITS.title}
               required
             />
           </div>
@@ -149,6 +152,7 @@ export const AddClassModal = ({
               value={roomNumber}
               onChange={(e) => setRoomNumber(e.target.value)}
               placeholder={t('modals.addClass.roomPlaceholder')}
+              maxLength={INPUT_LIMITS.roomNumber}
             />
           </div>
 

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject, useOrbitData } from "@/hooks/useOrbitData";
 import { useTranslation } from "react-i18next";
+import { sanitizeNoteContent, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface AddNoteModalProps {
   open: boolean;
@@ -28,19 +29,19 @@ export const AddNoteModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rawText.trim()) return;
+    const sanitized = sanitizeNoteContent(rawText, INPUT_LIMITS.noteContent);
+    if (!sanitized) return;
 
     setLoading(true);
     await createNote({
       subject_id: subjectId === "__none__" ? null : subjectId,
-      raw_text: rawText,
+      raw_text: sanitized,
       ai_summary: null,
       media_url: null,
       event_id: null,
     });
     setLoading(false);
     
-    // Reset form
     setRawText("");
     if (!defaultSubjectId) setSubjectId("__none__");
     onOpenChange(false);
@@ -78,6 +79,7 @@ export const AddNoteModal = ({
               onChange={(e) => setRawText(e.target.value)}
               placeholder={t('modals.addNote.contentPlaceholder')}
               className="min-h-[150px] resize-none"
+              maxLength={INPUT_LIMITS.noteContent}
               required
             />
           </div>

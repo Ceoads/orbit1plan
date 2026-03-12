@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject, Note, useOrbitData } from "@/hooks/useOrbitData";
 import { useTranslation } from "react-i18next";
+import { sanitizeNoteContent, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface EditNoteModalProps {
   open: boolean;
@@ -35,12 +36,13 @@ export const EditNoteModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rawText.trim() || !note) return;
+    const sanitized = sanitizeNoteContent(rawText, INPUT_LIMITS.noteContent);
+    if (!sanitized || !note) return;
 
     setLoading(true);
     await updateNote(note.id, {
       subject_id: subjectId === "__none__" ? null : subjectId,
-      raw_text: rawText,
+      raw_text: sanitized,
     });
     setLoading(false);
     onOpenChange(false);
@@ -78,6 +80,7 @@ export const EditNoteModal = ({
               onChange={(e) => setRawText(e.target.value)}
               placeholder={t('modals.addNote.contentPlaceholder')}
               className="min-h-[150px] resize-none"
+              maxLength={INPUT_LIMITS.noteContent}
               required
             />
           </div>

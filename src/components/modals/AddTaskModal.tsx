@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject } from "@/hooks/useOrbitData";
+import { sanitizeText, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface AddTaskModalProps {
   open: boolean;
@@ -28,9 +29,10 @@ export const AddTaskModal = ({ open, onClose, onAdd, subjects }: AddTaskModalPro
   const [subjectId, setSubjectId] = useState<string>("");
 
   const handleSubmit = () => {
-    if (!title.trim()) return;
+    const sanitized = sanitizeText(title, INPUT_LIMITS.title);
+    if (!sanitized) return;
     onAdd({
-      title: title.trim(),
+      title: sanitized,
       energy_level: energy,
       due_date: dueDate || undefined,
       subject_id: subjectId || undefined,
@@ -63,6 +65,7 @@ export const AddTaskModal = ({ open, onClose, onAdd, subjects }: AddTaskModalPro
               onChange={e => setTitle(e.target.value)}
               placeholder={t('tasks.taskPlaceholder')}
               className="rounded-xl bg-white/60"
+              maxLength={INPUT_LIMITS.title}
               autoFocus
             />
           </div>
