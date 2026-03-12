@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Subject, useOrbitData } from "@/hooks/useOrbitData";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { sanitizeText, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface AddExamModalProps {
   open: boolean;
@@ -31,27 +32,28 @@ export const AddExamModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !examDate) return;
+    const sanitizedTitle = sanitizeText(title, INPUT_LIMITS.title);
+    const sanitizedRoom = sanitizeText(roomNumber, INPUT_LIMITS.roomNumber);
+    if (!sanitizedTitle || !examDate) return;
 
     const date = new Date(examDate);
     const dayOfWeek = date.getDay();
 
     setLoading(true);
     await createEvent({
-      title,
+      title: sanitizedTitle,
       subject_id: subjectId === "__none__" ? null : subjectId,
       start_time: startTime,
       end_time: endTime,
       day_of_week: dayOfWeek,
       event_type: 'exam',
       exam_date: examDate,
-      room_number: roomNumber || null,
+      room_number: sanitizedRoom || null,
       teacher_name: null,
       external_id: null,
     });
     setLoading(false);
     
-    // Reset form
     setTitle("");
     setSubjectId("__none__");
     setRoomNumber("");
@@ -72,6 +74,7 @@ export const AddExamModal = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('modals.addExam.examPlaceholder')}
+              maxLength={INPUT_LIMITS.title}
               required
             />
           </div>
@@ -134,6 +137,7 @@ export const AddExamModal = ({
               value={roomNumber}
               onChange={(e) => setRoomNumber(e.target.value)}
               placeholder={t('modals.addExam.roomPlaceholder')}
+              maxLength={INPUT_LIMITS.roomNumber}
             />
           </div>
 

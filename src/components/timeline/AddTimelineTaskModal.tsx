@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { detectCategory, CATEGORY_COLORS, type CreateTimelineTask } from "@/hooks/useTimelineTasks";
 import { format } from "date-fns";
+import { sanitizeText, sanitizeNoteContent, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface Props {
   open: boolean;
@@ -52,7 +53,6 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
     }
   }, [open, defaultDate, defaultHour]);
 
-  // Auto-detect category from title
   useEffect(() => {
     if (title.length > 2) {
       const detected = detectCategory(title);
@@ -62,17 +62,19 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
   }, [title]);
 
   const handleSubmit = () => {
-    if (!title.trim() || !date || !time) return;
+    const sanitizedTitle = sanitizeText(title, INPUT_LIMITS.title);
+    const sanitizedNote = sanitizeNoteContent(note, 500);
+    if (!sanitizedTitle || !date || !time) return;
     const scheduled_at = new Date(`${date}T${time}`).toISOString();
     onAdd({
-      title: title.trim(),
+      title: sanitizedTitle,
       category,
       icon,
       color: CATEGORY_COLORS[category] || '#ff9f6b',
       scheduled_at,
       estimated_duration: duration,
       priority,
-      note: note.trim() || undefined,
+      note: sanitizedNote || undefined,
     });
     onClose();
   };
@@ -85,7 +87,6 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Title */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Titre *</label>
             <Input
@@ -93,10 +94,10 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
               onChange={e => setTitle(e.target.value)}
               placeholder="Ex: Réviser anglais, Yoga..."
               className="rounded-xl"
+              maxLength={INPUT_LIMITS.title}
             />
           </div>
 
-          {/* Icon */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Icône</label>
             <div className="flex gap-2 flex-wrap">
@@ -114,16 +115,13 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
             </div>
           </div>
 
-          {/* Category */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Catégorie</label>
             <div className="flex gap-2 flex-wrap">
               {CATEGORIES.map(c => (
                 <button
                   key={c.id}
-                  onClick={() => {
-                    setCategory(c.id);
-                  }}
+                  onClick={() => setCategory(c.id)}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                     category === c.id
                       ? 'text-white'
@@ -137,7 +135,6 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
             </div>
           </div>
 
-          {/* Date & Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-foreground mb-1 block">Date *</label>
@@ -149,7 +146,6 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
             </div>
           </div>
 
-          {/* Duration */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Durée estimée *</label>
             <div className="flex gap-2">
@@ -169,7 +165,6 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
             </div>
           </div>
 
-          {/* Priority */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Priorité</label>
             <div className="flex gap-2">
@@ -189,7 +184,6 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
             </div>
           </div>
 
-          {/* Note */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Note (optionnel)</label>
             <Textarea
@@ -198,10 +192,10 @@ export const AddTimelineTaskModal = ({ open, onClose, onAdd, defaultDate, defaul
               placeholder="Chapitres 3-4, salle B2..."
               className="rounded-xl resize-none"
               rows={2}
+              maxLength={500}
             />
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
             <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl">Annuler</Button>
             <Button

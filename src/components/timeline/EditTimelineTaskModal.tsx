@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CATEGORY_COLORS, type TimelineTask } from "@/hooks/useTimelineTasks";
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
+import { sanitizeText, sanitizeNoteContent, INPUT_LIMITS } from "@/lib/sanitize";
 
 interface Props {
   open: boolean;
@@ -54,17 +55,20 @@ export const EditTimelineTaskModal = ({ open, onClose, task, onUpdate, onDelete 
   }, [task, open]);
 
   const handleSave = () => {
-    if (!task || !title.trim()) return;
+    if (!task) return;
+    const sanitizedTitle = sanitizeText(title, INPUT_LIMITS.title);
+    const sanitizedNote = sanitizeNoteContent(note, 500);
+    if (!sanitizedTitle) return;
     const scheduled_at = new Date(`${date}T${time}`).toISOString();
     onUpdate(task.id, {
-      title: title.trim(),
+      title: sanitizedTitle,
       icon,
       category,
       color: CATEGORY_COLORS[category] || '#ff9f6b',
       scheduled_at,
       estimated_duration: duration,
       priority,
-      note: note.trim() || null,
+      note: sanitizedNote || null,
     });
     onClose();
   };
@@ -85,7 +89,7 @@ export const EditTimelineTaskModal = ({ open, onClose, task, onUpdate, onDelete 
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Titre *</label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl" />
+            <Input value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl" maxLength={INPUT_LIMITS.title} />
           </div>
 
           <div>
@@ -150,7 +154,7 @@ export const EditTimelineTaskModal = ({ open, onClose, task, onUpdate, onDelete 
 
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">Note</label>
-            <Textarea value={note} onChange={e => setNote(e.target.value)} className="rounded-xl resize-none" rows={2} />
+            <Textarea value={note} onChange={e => setNote(e.target.value)} className="rounded-xl resize-none" rows={2} maxLength={500} />
           </div>
 
           <div className="flex gap-3 pt-2">
