@@ -72,6 +72,12 @@ serve(async (req) => {
     }
     const user = { id: claimsData.claims.sub as string };
 
+    if (!checkRateLimit(user.id)) {
+      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.' }), {
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { 
       imageBase64, 
       userId,
