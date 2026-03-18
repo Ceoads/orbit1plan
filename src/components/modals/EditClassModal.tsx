@@ -37,7 +37,7 @@ export const EditClassModal = ({
       setSubjectId(event.subject_id || "__none__");
       setStartTime(event.start_time);
       setEndTime(event.end_time);
-      setDayOfWeek(event.day_of_week.toString());
+      setEventDate(event.event_date || '');
       setRoomNumber(event.room_number || "");
     }
   }, [event]);
