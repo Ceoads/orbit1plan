@@ -256,6 +256,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           day_of_week: 5,
           event_type: "exam",
           exam_date: examDate.toISOString().split("T")[0],
+          event_date: examDate.toISOString().split("T")[0],
         });
       }
 

@@ -48,7 +48,11 @@ export const CalendarMonthView = ({
   };
   
   const getEventsForDay = (date: Date) => {
-    return events.filter(e => e.day_of_week === date.getDay());
+    const dateStr = date.toISOString().split('T')[0];
+    return events.filter(e => {
+      if (e.event_date) return e.event_date === dateStr;
+      return e.day_of_week === date.getDay();
+    });
   };
 
   const hasExamOnDay = (date: Date) => {

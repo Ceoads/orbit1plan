@@ -37,9 +37,7 @@ export const ScheduleCalendar = ({
   };
 
   // Count stats
-  const weeklyClassCount = new Set(
-    events.filter(e => e.event_type === 'class').map(e => e.day_of_week)
-  ).size;
+  const classCount = events.filter(e => e.event_type === 'class').length;
   
   const upcomingExamCount = events.filter(e => {
     if (e.event_type !== 'exam' || !e.exam_date) return false;
