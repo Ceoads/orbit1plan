@@ -612,17 +612,16 @@ serve(async (req) => {
     let isServiceRole = false;
     
     const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
+    const { data: userData } = await supabaseAuth.auth.getUser(token);
     
     if (userData?.user) {
       authenticatedUserId = userData.user.id;
     } else {
-      // If getUser fails, check if the token is a service role key by trying to use it as one
+      // If getUser fails, check if the token is a service role key
       const testClient = createClient(Deno.env.get('SUPABASE_URL')!, token);
-      const { data: testData, error: testError } = await testClient.from('user_settings').select('user_id').limit(1);
+      const { error: testError } = await testClient.from('user_settings').select('user_id').limit(1);
       if (!testError) {
         isServiceRole = true;
-        authenticatedUserId = null;
       } else {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
