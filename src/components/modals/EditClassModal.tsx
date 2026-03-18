@@ -27,7 +27,7 @@ export const EditClassModal = ({
   const [subjectId, setSubjectId] = useState<string>("__none__");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
-  const [dayOfWeek, setDayOfWeek] = useState("1");
+  const [eventDate, setEventDate] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,20 +37,10 @@ export const EditClassModal = ({
       setSubjectId(event.subject_id || "__none__");
       setStartTime(event.start_time);
       setEndTime(event.end_time);
-      setDayOfWeek(event.day_of_week.toString());
+      setEventDate(event.event_date || '');
       setRoomNumber(event.room_number || "");
     }
   }, [event]);
-
-  const days = [
-    { value: "0", label: t('calendar.daysLong.sunday') },
-    { value: "1", label: t('calendar.daysLong.monday') },
-    { value: "2", label: t('calendar.daysLong.tuesday') },
-    { value: "3", label: t('calendar.daysLong.wednesday') },
-    { value: "4", label: t('calendar.daysLong.thursday') },
-    { value: "5", label: t('calendar.daysLong.friday') },
-    { value: "6", label: t('calendar.daysLong.saturday') },
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,13 +48,15 @@ export const EditClassModal = ({
     const sanitizedRoom = sanitizeText(roomNumber, INPUT_LIMITS.roomNumber);
     if (!sanitizedTitle || !event) return;
 
+    const date = eventDate ? new Date(eventDate) : null;
     setLoading(true);
     await updateEvent(event.id, {
       title: sanitizedTitle,
       subject_id: subjectId === "__none__" ? null : subjectId,
       start_time: startTime,
       end_time: endTime,
-      day_of_week: parseInt(dayOfWeek),
+      day_of_week: date ? date.getDay() : event.day_of_week,
+      event_date: eventDate || null,
       room_number: sanitizedRoom || null,
     });
     setLoading(false);
@@ -108,19 +100,14 @@ export const EditClassModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="day">{t('modals.addClass.day')}</Label>
-            <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day.value} value={day.value}>
-                    {day.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="eventDate">{t('modals.addClass.day')}</Label>
+            <Input
+              id="eventDate"
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

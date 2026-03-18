@@ -56,6 +56,7 @@ export const WeeklyTimeGrid = ({
   };
 
   const getEventsForDayAndHour = (date: Date, hour: number): CalendarEvent[] => {
+    const dateStr = date.toISOString().split('T')[0];
     const dayOfWeek = date.getDay();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -66,7 +67,9 @@ export const WeeklyTimeGrid = ({
     if (eventDate < today) return [];
     
     return events.filter(e => {
-      if (e.day_of_week !== dayOfWeek) return false;
+      // Match by event_date if available, fallback to day_of_week
+      const dateMatch = e.event_date ? e.event_date === dateStr : e.day_of_week === dayOfWeek;
+      if (!dateMatch) return false;
       const [startHour] = e.start_time.split(':').map(Number);
       return startHour === hour;
     });

@@ -22,6 +22,7 @@ export interface CalendarEvent {
   day_of_week: number;
   event_type: 'class' | 'exam';
   exam_date: string | null;
+  event_date: string | null;
   room_number: string | null;
   teacher_name: string | null;
   external_id: string | null;
@@ -70,7 +71,7 @@ export const useOrbitData = () => {
     try {
       const [subjectsRes, eventsRes, notesRes, tasksRes, settingsRes] = await Promise.all([
         supabase.from('subjects').select('*').order('name'),
-        supabase.from('calendar_events').select('*').order('day_of_week, start_time'),
+        supabase.from('calendar_events').select('*').order('event_date, start_time'),
         supabase.from('notes_vault').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('*').order('priority_score', { ascending: false }),
         supabase.from('user_settings').select('ical_filter_group').maybeSingle(),
@@ -342,9 +343,13 @@ export const useOrbitData = () => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTime = currentHour * 60 + currentMinute;
-    const currentDay = now.getDay();
+    const todayStr = now.toISOString().split('T')[0];
 
-    const todayClasses = filteredEvents.filter(e => e.day_of_week === currentDay && e.event_type === 'class');
+    const todayClasses = filteredEvents.filter(e => {
+      if (e.event_type !== 'class') return false;
+      if (e.event_date) return e.event_date === todayStr;
+      return e.day_of_week === now.getDay();
+    });
 
     for (const event of todayClasses) {
       const [startHour, startMin] = event.start_time.split(':').map(Number);
@@ -366,10 +371,14 @@ export const useOrbitData = () => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTime = currentHour * 60 + currentMinute;
-    const currentDay = now.getDay();
+    const todayStr = now.toISOString().split('T')[0];
 
     const todayClasses = filteredEvents
-      .filter(e => e.day_of_week === currentDay && e.event_type === 'class')
+      .filter(e => {
+        if (e.event_type !== 'class') return false;
+        if (e.event_date) return e.event_date === todayStr;
+        return e.day_of_week === now.getDay();
+      })
       .sort((a, b) => {
         const [aH, aM] = a.start_time.split(':').map(Number);
         const [bH, bM] = b.start_time.split(':').map(Number);
@@ -385,9 +394,15 @@ export const useOrbitData = () => {
       }
     }
 
-    // Return first class of next day
-    const tomorrow = (currentDay + 1) % 7;
-    const tomorrowClasses = filteredEvents.filter(e => e.day_of_week === tomorrow && e.event_type === 'class');
+    // Return first class of tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowClasses = filteredEvents.filter(e => {
+      if (e.event_type !== 'class') return false;
+      if (e.event_date) return e.event_date === tomorrowStr;
+      return e.day_of_week === tomorrow.getDay();
+    });
     return tomorrowClasses[0] || null;
   };
 
@@ -420,10 +435,13 @@ export const useOrbitData = () => {
   // Get today's events (classes and exams)
   const getTodayEvents = (): CalendarEvent[] => {
     const today = new Date();
-    const currentDay = today.getDay();
+    const todayStr = today.toISOString().split('T')[0];
     
     return filteredEvents
-      .filter(e => e.day_of_week === currentDay)
+      .filter(e => {
+        if (e.event_date) return e.event_date === todayStr;
+        return e.day_of_week === today.getDay();
+      })
       .sort((a, b) => {
         const [aH, aM] = a.start_time.split(':').map(Number);
         const [bH, bM] = b.start_time.split(':').map(Number);

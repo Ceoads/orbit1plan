@@ -220,6 +220,12 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       // Create sample schedule (Monday classes)
       const schedulePromises = createdSubjects.map(async (subject, index) => {
         const startHour = 9 + index;
+        const eventDate = new Date();
+        // Set to next Monday + index days offset
+        const dayOffset = (1 - eventDate.getDay() + 7) % 7;
+        eventDate.setDate(eventDate.getDate() + dayOffset);
+        const eventDateStr = eventDate.toISOString().split('T')[0];
+        
         const { error } = await supabase.from("calendar_events").insert({
           user_id: user.id,
           title: subject.name,
@@ -227,6 +233,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           start_time: `${startHour.toString().padStart(2, "0")}:00`,
           end_time: `${(startHour + 1).toString().padStart(2, "0")}:00`,
           day_of_week: 1,
+          event_date: eventDateStr,
           event_type: "class",
         });
 
@@ -249,6 +256,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           day_of_week: 5,
           event_type: "exam",
           exam_date: examDate.toISOString().split("T")[0],
+          event_date: examDate.toISOString().split("T")[0],
         });
       }
 

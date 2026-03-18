@@ -48,6 +48,7 @@ export const AddExamModal = ({
       day_of_week: dayOfWeek,
       event_type: 'exam',
       exam_date: examDate,
+      event_date: examDate,
       room_number: sanitizedRoom || null,
       teacher_name: null,
       external_id: null,

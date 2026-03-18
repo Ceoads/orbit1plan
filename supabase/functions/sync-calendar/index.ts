@@ -807,10 +807,9 @@ serve(async (req) => {
           
           const externalId = event.uid || `${title}-${startParsed.toDate().toISOString()}`;
           
-          // Format exam_date using Paris date components
-          const examDateStr = isExam 
-            ? `${startParsed.year}-${(startParsed.month + 1).toString().padStart(2, '0')}-${startParsed.day.toString().padStart(2, '0')}`
-            : null;
+          // Format event_date using Paris date components (exact date for every event)
+          const eventDateStr = `${startParsed.year}-${(startParsed.month + 1).toString().padStart(2, '0')}-${startParsed.day.toString().padStart(2, '0')}`;
+          const examDateStr = isExam ? eventDateStr : null;
           
           eventsToInsert.push({
             user_id: user_id,
@@ -822,6 +821,7 @@ serve(async (req) => {
             day_of_week: startParsed.dayOfWeek,
             event_type: isExam ? 'exam' : 'class',
             exam_date: examDateStr,
+            event_date: eventDateStr,
             room_number: roomNumber,
             teacher_name: teacherName,
           });
@@ -840,22 +840,14 @@ serve(async (req) => {
           console.error('Error deleting old events:', deleteError);
         }
         
-        // Deduplicate by (title, day_of_week, start_time, end_time) to collapse
-        // recurring weekly occurrences into a single row, since the data model
-        // uses day_of_week for a fixed weekly schedule.
+        // Deduplicate by external_id (UID) to avoid exact duplicates
+        // Each occurrence keeps its own event_date, so alternating weeks are preserved
         const uniqueEvents = new Map<string, any>();
         for (const event of eventsToInsert) {
-          const dedupeKey = `${event.title}|${event.day_of_week}|${event.start_time}|${event.end_time}`;
-          // For exams, keep each one (they have specific dates)
-          if (event.event_type === 'exam') {
-            uniqueEvents.set(event.external_id, event);
-          } else {
-            // For classes, keep the first occurrence (or overwrite — same data)
-            uniqueEvents.set(dedupeKey, event);
-          }
+          uniqueEvents.set(event.external_id, event);
         }
         const deduplicatedEvents = Array.from(uniqueEvents.values());
-        console.log(`Deduplicated: ${eventsToInsert.length} → ${deduplicatedEvents.length} events`);
+        console.log(`Deduplicated by UID: ${eventsToInsert.length} → ${deduplicatedEvents.length} events`);
         
         const batchSize = 100;
         for (let i = 0; i < deduplicatedEvents.length; i += batchSize) {

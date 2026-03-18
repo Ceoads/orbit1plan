@@ -43,8 +43,11 @@ export const ScheduleWidget = ({
 
   // Get today's events summary
   const today = new Date();
-  const todayDayOfWeek = today.getDay();
-  const todayEvents = events.filter(e => e.day_of_week === todayDayOfWeek);
+  const todayStr = today.toISOString().split('T')[0];
+  const todayEvents = events.filter(e => {
+    if (e.event_date) return e.event_date === todayStr;
+    return e.day_of_week === today.getDay();
+  });
   const upcomingExams = events.filter(e => {
     if (e.event_type !== 'exam' || !e.exam_date) return false;
     const examDate = new Date(e.exam_date);

@@ -494,9 +494,9 @@ export const CourseHubPage = () => {
                 </div>
                 <div>
                   <p className="text-sm font-semibold">
-                    {dayNames[event.day_of_week]} • {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)}
+                    {event.event_date ? new Date(event.event_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' }) : dayNames[event.day_of_week]} • {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Horaire hebdomadaire</p>
+                  <p className="text-xs text-muted-foreground">{event.event_date ? 'Cours planifié' : 'Horaire hebdomadaire'}</p>
                 </div>
               </motion.div>
 

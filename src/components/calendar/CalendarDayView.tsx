@@ -61,8 +61,13 @@ export const CalendarDayView = ({
     return days;
   }, [date]);
 
+  const dateStr = date.toISOString().split('T')[0];
+  
   const dayEvents = events
-    .filter(e => e.day_of_week === date.getDay())
+    .filter(e => {
+      if (e.event_date) return e.event_date === dateStr;
+      return e.day_of_week === date.getDay();
+    })
     .sort((a, b) => {
       const [aH, aM] = a.start_time.split(':').map(Number);
       const [bH, bM] = b.start_time.split(':').map(Number);
@@ -70,7 +75,11 @@ export const CalendarDayView = ({
     });
 
   const getEventsForDay = (d: Date) => {
-    return events.filter(e => e.day_of_week === d.getDay());
+    const dStr = d.toISOString().split('T')[0];
+    return events.filter(e => {
+      if (e.event_date) return e.event_date === dStr;
+      return e.day_of_week === d.getDay();
+    });
   };
 
   const getFirstEventForDay = (d: Date): CalendarEvent | undefined => {
