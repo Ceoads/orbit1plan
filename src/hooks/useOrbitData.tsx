@@ -71,7 +71,7 @@ export const useOrbitData = () => {
     try {
       const [subjectsRes, eventsRes, notesRes, tasksRes, settingsRes] = await Promise.all([
         supabase.from('subjects').select('*').order('name'),
-        supabase.from('calendar_events').select('*').order('day_of_week, start_time'),
+        supabase.from('calendar_events').select('*').order('event_date, start_time'),
         supabase.from('notes_vault').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('*').order('priority_score', { ascending: false }),
         supabase.from('user_settings').select('ical_filter_group').maybeSingle(),
