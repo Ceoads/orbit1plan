@@ -435,10 +435,13 @@ export const useOrbitData = () => {
   // Get today's events (classes and exams)
   const getTodayEvents = (): CalendarEvent[] => {
     const today = new Date();
-    const currentDay = today.getDay();
+    const todayStr = today.toISOString().split('T')[0];
     
     return filteredEvents
-      .filter(e => e.day_of_week === currentDay)
+      .filter(e => {
+        if (e.event_date) return e.event_date === todayStr;
+        return e.day_of_week === today.getDay();
+      })
       .sort((a, b) => {
         const [aH, aM] = a.start_time.split(':').map(Number);
         const [bH, bM] = b.start_time.split(':').map(Number);
