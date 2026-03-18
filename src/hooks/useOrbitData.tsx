@@ -371,10 +371,14 @@ export const useOrbitData = () => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTime = currentHour * 60 + currentMinute;
-    const currentDay = now.getDay();
+    const todayStr = now.toISOString().split('T')[0];
 
     const todayClasses = filteredEvents
-      .filter(e => e.day_of_week === currentDay && e.event_type === 'class')
+      .filter(e => {
+        if (e.event_type !== 'class') return false;
+        if (e.event_date) return e.event_date === todayStr;
+        return e.day_of_week === now.getDay();
+      })
       .sort((a, b) => {
         const [aH, aM] = a.start_time.split(':').map(Number);
         const [bH, bM] = b.start_time.split(':').map(Number);
@@ -390,9 +394,15 @@ export const useOrbitData = () => {
       }
     }
 
-    // Return first class of next day
-    const tomorrow = (currentDay + 1) % 7;
-    const tomorrowClasses = filteredEvents.filter(e => e.day_of_week === tomorrow && e.event_type === 'class');
+    // Return first class of tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowClasses = filteredEvents.filter(e => {
+      if (e.event_type !== 'class') return false;
+      if (e.event_date) return e.event_date === tomorrowStr;
+      return e.day_of_week === tomorrow.getDay();
+    });
     return tomorrowClasses[0] || null;
   };
 
