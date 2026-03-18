@@ -52,6 +52,7 @@ export type Database = {
           created_at: string
           day_of_week: number
           end_time: string
+          event_date: string | null
           event_type: Database["public"]["Enums"]["event_type"]
           exam_date: string | null
           external_id: string | null
@@ -68,6 +69,7 @@ export type Database = {
           created_at?: string
           day_of_week: number
           end_time: string
+          event_date?: string | null
           event_type?: Database["public"]["Enums"]["event_type"]
           exam_date?: string | null
           external_id?: string | null
@@ -84,6 +86,7 @@ export type Database = {
           created_at?: string
           day_of_week?: number
           end_time?: string
+          event_date?: string | null
           event_type?: Database["public"]["Enums"]["event_type"]
           exam_date?: string | null
           external_id?: string | null
