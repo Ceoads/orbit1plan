@@ -42,16 +42,6 @@ export const EditClassModal = ({
     }
   }, [event]);
 
-  const days = [
-    { value: "0", label: t('calendar.daysLong.sunday') },
-    { value: "1", label: t('calendar.daysLong.monday') },
-    { value: "2", label: t('calendar.daysLong.tuesday') },
-    { value: "3", label: t('calendar.daysLong.wednesday') },
-    { value: "4", label: t('calendar.daysLong.thursday') },
-    { value: "5", label: t('calendar.daysLong.friday') },
-    { value: "6", label: t('calendar.daysLong.saturday') },
-  ];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const sanitizedTitle = sanitizeText(title, INPUT_LIMITS.title);
