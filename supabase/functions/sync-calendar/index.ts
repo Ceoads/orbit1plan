@@ -807,10 +807,9 @@ serve(async (req) => {
           
           const externalId = event.uid || `${title}-${startParsed.toDate().toISOString()}`;
           
-          // Format exam_date using Paris date components
-          const examDateStr = isExam 
-            ? `${startParsed.year}-${(startParsed.month + 1).toString().padStart(2, '0')}-${startParsed.day.toString().padStart(2, '0')}`
-            : null;
+          // Format event_date using Paris date components (exact date for every event)
+          const eventDateStr = `${startParsed.year}-${(startParsed.month + 1).toString().padStart(2, '0')}-${startParsed.day.toString().padStart(2, '0')}`;
+          const examDateStr = isExam ? eventDateStr : null;
           
           eventsToInsert.push({
             user_id: user_id,
@@ -822,6 +821,7 @@ serve(async (req) => {
             day_of_week: startParsed.dayOfWeek,
             event_type: isExam ? 'exam' : 'class',
             exam_date: examDateStr,
+            event_date: eventDateStr,
             room_number: roomNumber,
             teacher_name: teacherName,
           });
