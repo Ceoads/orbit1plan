@@ -27,7 +27,7 @@ export const EditClassModal = ({
   const [subjectId, setSubjectId] = useState<string>("__none__");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
-  const [dayOfWeek, setDayOfWeek] = useState("1");
+  const [eventDate, setEventDate] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
   const [loading, setLoading] = useState(false);
 
