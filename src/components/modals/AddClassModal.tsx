@@ -29,7 +29,13 @@ export const AddClassModal = ({
   const [subjectId, setSubjectId] = useState<string>("__none__");
   const [startTime, setStartTime] = useState(`${defaultHour.toString().padStart(2, '0')}:00`);
   const [endTime, setEndTime] = useState(`${(defaultHour + 1).toString().padStart(2, '0')}:00`);
-  const [dayOfWeek, setDayOfWeek] = useState(defaultDayOfWeek.toString());
+  const [eventDate, setEventDate] = useState(() => {
+    const d = new Date();
+    // Set to the default day of week
+    const diff = defaultDayOfWeek - d.getDay();
+    d.setDate(d.getDate() + (diff >= 0 ? diff : diff + 7));
+    return d.toISOString().split('T')[0];
+  });
   const [roomNumber, setRoomNumber] = useState("");
   const [loading, setLoading] = useState(false);
 
