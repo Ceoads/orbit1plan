@@ -610,7 +610,6 @@ serve(async (req) => {
     // Allow service role key for server-side syncAll operations
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const isServiceRole = token === serviceRoleKey;
-    console.log(`Auth check: isServiceRole=${isServiceRole}, tokenLen=${token.length}, srkLen=${serviceRoleKey?.length || 0}`);
     
     let authenticatedUserId: string | null = null;
     
