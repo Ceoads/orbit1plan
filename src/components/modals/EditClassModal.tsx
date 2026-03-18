@@ -48,13 +48,15 @@ export const EditClassModal = ({
     const sanitizedRoom = sanitizeText(roomNumber, INPUT_LIMITS.roomNumber);
     if (!sanitizedTitle || !event) return;
 
+    const date = eventDate ? new Date(eventDate) : null;
     setLoading(true);
     await updateEvent(event.id, {
       title: sanitizedTitle,
       subject_id: subjectId === "__none__" ? null : subjectId,
       start_time: startTime,
       end_time: endTime,
-      day_of_week: parseInt(dayOfWeek),
+      day_of_week: date ? date.getDay() : event.day_of_week,
+      event_date: eventDate || null,
       room_number: sanitizedRoom || null,
     });
     setLoading(false);
