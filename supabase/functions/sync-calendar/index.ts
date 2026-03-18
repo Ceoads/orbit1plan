@@ -624,7 +624,7 @@ serve(async (req) => {
       authenticatedUserId = claimsData.claims.sub as string;
     }
 
-    if (!checkRateLimit(authenticatedUserId)) {
+    if (authenticatedUserId && !checkRateLimit(authenticatedUserId)) {
       return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.' }), {
         status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -637,7 +637,8 @@ serve(async (req) => {
     const { userId, icalUrl, syncAll, scanOnly, previewOnly, filterGroup } = await req.json();
 
     // Validate that the requested userId matches the authenticated user (prevent unauthorized access)
-    if (userId && userId !== authenticatedUserId) {
+    // Service role bypasses this check
+    if (!isServiceRole && userId && userId !== authenticatedUserId) {
       return new Response(JSON.stringify({ error: 'Forbidden: cannot sync for another user' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
