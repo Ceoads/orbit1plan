@@ -606,12 +606,23 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    
+    // Allow service role key for server-side syncAll operations
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const isServiceRole = token === serviceRoleKey;
+    
+    let authenticatedUserId: string | null = null;
+    
+    if (isServiceRole) {
+      authenticatedUserId = null; // Service role can sync all
+    } else {
+      const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      authenticatedUserId = claimsData.claims.sub as string;
     }
-    const authenticatedUserId = claimsData.claims.sub as string;
 
     if (!checkRateLimit(authenticatedUserId)) {
       return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.' }), {
