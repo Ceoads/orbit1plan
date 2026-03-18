@@ -606,14 +606,28 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const token = authHeader.replace('Bearer ', '');
+    
+    // Try to authenticate as user first, fall back to service role check
+    let authenticatedUserId: string | null = null;
+    let isServiceRole = false;
+    
     const supabaseAuth = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const { data: userData } = await supabaseAuth.auth.getUser(token);
+    
+    if (userData?.user) {
+      authenticatedUserId = userData.user.id;
+    } else {
+      // If getUser fails, check if the token is a service role key
+      const testClient = createClient(Deno.env.get('SUPABASE_URL')!, token);
+      const { error: testError } = await testClient.from('user_settings').select('user_id').limit(1);
+      if (!testError) {
+        isServiceRole = true;
+      } else {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
-    const authenticatedUserId = claimsData.claims.sub as string;
 
-    if (!checkRateLimit(authenticatedUserId)) {
+    if (authenticatedUserId && !checkRateLimit(authenticatedUserId)) {
       return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.' }), {
         status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -626,7 +640,8 @@ serve(async (req) => {
     const { userId, icalUrl, syncAll, scanOnly, previewOnly, filterGroup } = await req.json();
 
     // Validate that the requested userId matches the authenticated user (prevent unauthorized access)
-    if (userId && userId !== authenticatedUserId) {
+    // Service role bypasses this check
+    if (!isServiceRole && userId && userId !== authenticatedUserId) {
       return new Response(JSON.stringify({ error: 'Forbidden: cannot sync for another user' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
