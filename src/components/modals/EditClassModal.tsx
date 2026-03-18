@@ -100,19 +100,14 @@ export const EditClassModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="day">{t('modals.addClass.day')}</Label>
-            <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day.value} value={day.value}>
-                    {day.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="eventDate">{t('modals.addClass.day')}</Label>
+            <Input
+              id="eventDate"
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
