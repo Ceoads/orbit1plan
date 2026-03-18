@@ -343,9 +343,13 @@ export const useOrbitData = () => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTime = currentHour * 60 + currentMinute;
-    const currentDay = now.getDay();
+    const todayStr = now.toISOString().split('T')[0];
 
-    const todayClasses = filteredEvents.filter(e => e.day_of_week === currentDay && e.event_type === 'class');
+    const todayClasses = filteredEvents.filter(e => {
+      if (e.event_type !== 'class') return false;
+      if (e.event_date) return e.event_date === todayStr;
+      return e.day_of_week === now.getDay();
+    });
 
     for (const event of todayClasses) {
       const [startHour, startMin] = event.start_time.split(':').map(Number);
