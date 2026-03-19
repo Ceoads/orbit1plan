@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -13,10 +12,10 @@ import { QRCodeScanner } from "@/components/QRCodeScanner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
-  ArrowLeft, Calendar, RefreshCw, Check, AlertCircle,
+  ArrowLeft, Calendar, RefreshCw, Check, 
   Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
   MapPin, Navigation, QrCode, Play, Sparkles, ChevronsUpDown, X,
-  ChevronRight, LogOut, Shield
+  ChevronRight, LogOut, Shield, RotateCcw, HelpCircle
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -32,7 +31,7 @@ function categorizeGroupSettings(code: string): string {
 }
 
 const settingsCategoryLabels: Record<string, string> = {
-  TP: "🔬 TP", TD: "📝 TD", Groupe: "👥 Groupe", TC: "🎓 TC", CM: "🏛️ CM", Autre: "📋 Autres",
+  TP: "TP", TD: "TD", Groupe: "Groupe", TC: "TC", CM: "CM", Autre: "Autres",
 };
 
 function findRelatedGroupsSettings(
@@ -58,7 +57,90 @@ function findRelatedGroupsSettings(
   return related;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── iOS Section Header ───────────────────────────────────────────────────────
+
+function IOSSectionHeader({ label }: { label: string }) {
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70 px-4 mb-1.5 mt-7 first:mt-0"
+       style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}>
+      {label}
+    </p>
+  );
+}
+
+// ─── iOS Setting Row ──────────────────────────────────────────────────────────
+
+function IOSRow({ 
+  icon: Icon, 
+  iconBg, 
+  label, 
+  detail, 
+  action, 
+  onClick, 
+  last = false,
+  destructive = false 
+}: {
+  icon: React.ElementType;
+  iconBg: string;
+  label: string;
+  detail?: string;
+  action?: React.ReactNode;
+  onClick?: () => void;
+  last?: boolean;
+  destructive?: boolean;
+}) {
+  const Wrapper = onClick ? 'button' : 'div';
+  return (
+    <Wrapper
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 min-h-[44px] px-4 py-2.5 ${onClick ? 'active:bg-muted/40' : ''} transition-colors`}
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}
+    >
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        <Icon className={`w-[15px] h-[15px] ${destructive ? 'text-destructive-foreground' : 'text-white'}`} />
+      </div>
+      <div className={`flex items-center justify-between flex-1 min-w-0 ${!last ? 'border-b border-border/30' : ''} py-1`}>
+        <div className="min-w-0 flex-1">
+          <span className={`text-[15px] font-medium leading-tight ${destructive ? 'text-destructive' : 'text-foreground'}`}>
+            {label}
+          </span>
+          {detail && (
+            <p className="text-[12px] text-muted-foreground leading-tight mt-0.5">{detail}</p>
+          )}
+        </div>
+        <div className="flex-shrink-0 ml-2 flex items-center">
+          {action || (onClick && <ChevronRight className="w-4 h-4 text-muted-foreground/40" />)}
+        </div>
+      </div>
+    </Wrapper>
+  );
+}
+
+// ─── iOS Detail Row (label: value) ────────────────────────────────────────────
+
+function IOSDetailRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
+  return (
+    <div className="flex items-center justify-between min-h-[36px] px-4 py-2"
+         style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}>
+      <span className="text-[13px] text-muted-foreground">{label}</span>
+      <div className={`flex-1 ${!last ? 'border-b border-border/30' : ''} ml-3 py-1`}>
+        <span className="text-[13px] text-foreground/70 float-right">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── iOS Card wrapper ─────────────────────────────────────────────────────────
+
+function IOSCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-card rounded-[10px] overflow-hidden shadow-soft ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Group Dropdown ───────────────────────────────────────────────────────────
 
 function SettingsGroupDropdown({ detectedGroups, filterGroup, onFilterGroupChange, suggestions, onAcceptSuggestion, onDismissSuggestion }: {
   detectedGroups: { code: string; count: number }[];
@@ -88,13 +170,13 @@ function SettingsGroupDropdown({ detectedGroups, filterGroup, onFilterGroupChang
     <div className="space-y-2">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-[44px] bg-background/50 border-border rounded-xl">
+          <Button variant="outline" role="combobox" className="w-full justify-between h-10 bg-muted/30 border-border/40 rounded-lg text-[14px]">
             {activeGroups.length > 0 ? (
-              <span className="text-sm">{activeGroups.length} groupe{activeGroups.length > 1 ? 's' : ''}</span>
+              <span>{activeGroups.length} groupe{activeGroups.length > 1 ? 's' : ''} sélectionné{activeGroups.length > 1 ? 's' : ''}</span>
             ) : (
-              <span className="text-muted-foreground text-sm">Choisir tes groupes...</span>
+              <span className="text-muted-foreground">Choisir tes groupes...</span>
             )}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -123,11 +205,10 @@ function SettingsGroupDropdown({ detectedGroups, filterGroup, onFilterGroupChang
         </PopoverContent>
       </Popover>
 
-      {/* Suggestions */}
       {suggestions.length > 0 && (
-        <div className="p-3 bg-accent/30 rounded-xl border border-accent/50 space-y-2">
-          <p className="text-xs font-medium text-accent-foreground flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" />
+        <div className="p-3 bg-accent/30 rounded-lg border border-accent/50 space-y-2">
+          <p className="text-[11px] font-medium text-accent-foreground flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3" />
             Groupes liés détectés
           </p>
           <div className="flex flex-wrap gap-2">
@@ -146,7 +227,6 @@ function SettingsGroupDropdown({ detectedGroups, filterGroup, onFilterGroupChang
         </div>
       )}
 
-      {/* Active badges */}
       {activeGroups.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {activeGroups.map(code => (
@@ -165,31 +245,6 @@ function SettingsGroupDropdown({ detectedGroups, filterGroup, onFilterGroupChang
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Setting row component ────────────────────────────────────────────────────
-
-function SettingRow({ icon: Icon, label, description, action, border = true }: {
-  icon: React.ElementType;
-  label: string;
-  description?: string;
-  action: React.ReactNode;
-  border?: boolean;
-}) {
-  return (
-    <div className={`flex items-center justify-between gap-3 py-3.5 ${border ? 'border-b border-border/30' : ''}`}>
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center flex-shrink-0">
-          <Icon className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground leading-tight">{label}</p>
-          {description && <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{description}</p>}
-        </div>
-      </div>
-      <div className="flex-shrink-0">{action}</div>
     </div>
   );
 }
@@ -235,7 +290,6 @@ const SettingsPage = () => {
   const [savingCampus, setSavingCampus] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   useEffect(() => { fetchSettings(); }, [user]);
 
@@ -282,7 +336,6 @@ const SettingsPage = () => {
   const handleFilterGroupChange = (newVal: string) => {
     const oldGroups = filterGroup.split(",").map(g => g.trim()).filter(Boolean);
     const newGroups = newVal.split(",").map(g => g.trim()).filter(Boolean);
-    // Find newly added groups
     const added = newGroups.filter(g => !oldGroups.includes(g));
     if (added.length > 0) {
       const newSuggestions: string[] = [];
@@ -398,10 +451,6 @@ const SettingsPage = () => {
     }
   };
 
-  const toggleSection = (id: string) => {
-    setExpandedSection(prev => prev === id ? null : id);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -411,52 +460,61 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Fixed header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="rounded-full -ml-2 w-9 h-9">
+    <div className="min-h-screen bg-secondary/50"
+         style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Quicksand", system-ui, sans-serif' }}>
+      {/* Fixed iOS-style header */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-secondary/70 backdrop-blur-2xl border-b border-border/30">
+        <div className="max-w-lg mx-auto px-4 h-[52px] flex items-center gap-3">
+          <button onClick={() => navigate('/')} className="flex items-center gap-1 text-primary -ml-1 active:opacity-60 transition-opacity">
             <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="font-display text-lg font-bold text-foreground">Paramètres</h1>
+            <span className="text-[16px] font-medium">Retour</span>
+          </button>
+          <h1 className="flex-1 text-center text-[17px] font-semibold text-foreground -mr-12">Paramètres</h1>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 pb-24 pt-[72px]">
-        {/* ──── Calendrier section ──── */}
-        <SectionHeader icon={Calendar} label="Calendrier" color="text-primary" />
+      <main className="max-w-lg mx-auto px-4 pt-[68px] pb-safe" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 2rem)' }}>
 
-        <div className="bg-card rounded-2xl border border-border/40 overflow-hidden mb-4">
-          {/* URL iCal */}
-          <div className="p-4 space-y-3">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">URL iCal</Label>
+        {/* ──── CALENDRIER ──── */}
+        <IOSSectionHeader label="Calendrier" />
+        <IOSCard>
+          {/* URL iCal input area */}
+          <div className="px-4 pt-3 pb-3 space-y-2.5">
             <div className="flex gap-2">
               <Input
                 type="url"
                 placeholder="https://ton-ecole.edu/calendar.ics"
                 value={icalUrl}
                 onChange={(e) => setIcalUrl(e.target.value)}
-                className="flex-1 rounded-xl bg-muted/30 border-border/50 h-11"
+                className="flex-1 rounded-lg bg-muted/40 border-border/30 h-10 text-[14px]"
               />
-              <Button variant="outline" size="icon" onClick={() => setShowQRScanner(true)} className="shrink-0 rounded-xl h-11 w-11">
-                <QrCode className="w-4 h-4" />
-              </Button>
+              <button
+                onClick={() => setShowQRScanner(true)}
+                className="shrink-0 w-10 h-10 rounded-lg bg-muted/40 border border-border/30 flex items-center justify-center active:bg-muted/60 transition-colors"
+              >
+                <QrCode className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Compatible <span className="font-medium text-foreground/70">Pronote</span> · <span className="font-medium text-foreground/70">Hyperplanning</span> · <span className="font-medium text-foreground/70">ADE</span> · <span className="font-medium text-foreground/70">CELCAT</span>
+              Compatible Pronote · Hyperplanning · ADE · CELCAT
             </p>
           </div>
 
-          <div className="h-px bg-border/30 mx-4" />
+          {/* Separator */}
+          <div className="h-px bg-border/30 ml-4" />
 
-          {/* Groupes */}
-          <div className="p-4 space-y-3">
+          {/* Groups */}
+          <div className="px-4 py-3 space-y-2.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Groupes TP / TD</Label>
-              <Button variant="ghost" size="sm" onClick={scanForGroups} disabled={!icalUrl || scanningGroups} className="h-7 text-xs rounded-lg">
-                {scanningGroups ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+              <span className="text-[13px] font-medium text-muted-foreground">Groupes TP / TD</span>
+              <button
+                onClick={scanForGroups}
+                disabled={!icalUrl || scanningGroups}
+                className="flex items-center gap-1 text-[13px] text-primary font-medium disabled:opacity-40 active:opacity-60 transition-opacity"
+              >
+                {scanningGroups ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
                 Détecter
-              </Button>
+              </button>
             </div>
 
             {detectedGroups.length > 0 && (
@@ -474,185 +532,186 @@ const SettingsPage = () => {
               placeholder="Ou entre tes groupes : TP1, TD1..."
               value={filterGroup}
               onChange={(e) => handleFilterGroupChange(e.target.value)}
-              className="rounded-xl bg-muted/30 border-border/50 h-10 text-sm"
+              className="rounded-lg bg-muted/40 border-border/30 h-9 text-[13px]"
             />
           </div>
 
-          <div className="h-px bg-border/30 mx-4" />
+          {/* Separator */}
+          <div className="h-px bg-border/30 ml-4" />
 
-          {/* Save + Sync */}
-          <div className="p-4 space-y-3">
-            <Button onClick={handleSaveUrl} disabled={saving} className="w-full h-11 rounded-xl font-medium gradient-primary text-primary-foreground">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+          {/* Save + Sync CTA */}
+          <div className="p-4">
+            <Button
+              onClick={handleSaveUrl}
+              disabled={saving}
+              className="w-full h-[52px] rounded-2xl font-semibold text-[16px] gradient-primary text-primary-foreground shadow-soft"
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Check className="w-5 h-5 mr-2" />}
               Enregistrer et synchroniser
             </Button>
-
-            {settings?.last_synced_at && (
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> Dernière synchro</span>
-                <span className="font-medium text-foreground/70">{new Date(settings.last_synced_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            )}
           </div>
+        </IOSCard>
 
-          <div className="h-px bg-border/30 mx-4" />
-
-          {/* Sync settings rows */}
-          <div className="px-4">
-            <SettingRow
-              icon={RefreshCw}
-              label="Sync automatique"
-              description="Mise à jour quotidienne"
-              action={<Switch checked={settings?.sync_enabled ?? true} onCheckedChange={handleToggleSync} />}
-            />
-            <SettingRow
-              icon={RefreshCw}
-              label="Resynchroniser"
-              border={false}
-              action={
-                <Button variant="ghost" size="sm" onClick={handleSync} disabled={syncing || !icalUrl} className="h-8 text-xs rounded-lg">
-                  {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Lancer"}
-                </Button>
-              }
-            />
-          </div>
-        </div>
-
-        {/* ──── Campus section ──── */}
-        <SectionHeader icon={MapPin} label="Campus" color="text-emerald-500" />
-
-        <div className="bg-card rounded-2xl border border-border/40 overflow-hidden mb-4">
-          <div className="p-4">
-            {hasCampusConfigured ? (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-emerald-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{campusName || 'Campus configuré'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {isOnCampus ? '📍 Sur le campus' : '🏠 Hors campus'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Configure la position de ton campus pour le mode intelligent.</p>
-                <Input
-                  placeholder="Nom du campus"
-                  value={campusNameInput}
-                  onChange={(e) => setCampusNameInput(e.target.value)}
-                  className="rounded-xl bg-muted/30 border-border/50 h-10"
+        {/* Sync status details */}
+        {(settings?.last_synced_at || filterGroup) && (
+          <>
+            <IOSSectionHeader label="Statut" />
+            <IOSCard>
+              {settings?.last_synced_at && (
+                <IOSDetailRow
+                  label="Dernière synchro"
+                  value={new Date(settings.last_synced_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 />
-                <Button
-                  onClick={async () => {
-                    if (!campusNameInput) { toast.error("Entre le nom"); return; }
-                    setSavingCampus(true);
-                    const success = await setCurrentAsCampus(campusNameInput);
-                    setSavingCampus(false);
-                    if (success) { toast.success("Campus enregistré !"); fetchSettings(); }
-                    else toast.error("Erreur - vérifie ta géolocalisation");
-                  }}
-                  disabled={savingCampus || !campusNameInput}
-                  className="w-full h-10 rounded-xl"
-                >
-                  {savingCampus ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Navigation className="w-4 h-4 mr-2" />}
-                  Utiliser ma position
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+              {filterGroup && (
+                <IOSDetailRow
+                  label="Filtre actif"
+                  value={filterGroup}
+                  last={true}
+                />
+              )}
+            </IOSCard>
+          </>
+        )}
 
-        {/* ──── Tutoriel section ──── */}
-        <SectionHeader icon={Sparkles} label="Tutoriel" color="text-primary" />
+        {/* Sync options */}
+        <IOSSectionHeader label="Synchronisation" />
+        <IOSCard>
+          <IOSRow
+            icon={RefreshCw}
+            iconBg="bg-primary"
+            label="Sync automatique"
+            detail="Mise à jour quotidienne"
+            action={<Switch checked={settings?.sync_enabled ?? true} onCheckedChange={handleToggleSync} />}
+          />
+          <IOSRow
+            icon={RotateCcw}
+            iconBg="bg-muted-foreground"
+            label="Resynchroniser maintenant"
+            last
+            onClick={syncing ? undefined : handleSync}
+            action={
+              syncing ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : undefined
+            }
+          />
+        </IOSCard>
 
-        <div className="bg-card rounded-2xl border border-border/40 overflow-hidden mb-4">
-          <button
+        {/* ──── CAMPUS ──── */}
+        <IOSSectionHeader label="Localisation" />
+        <IOSCard>
+          {hasCampusConfigured ? (
+            <>
+              <IOSRow
+                icon={MapPin}
+                iconBg="bg-success"
+                label={campusName || 'Campus configuré'}
+                detail={isOnCampus ? 'Sur le campus' : 'Hors campus'}
+                last
+                action={
+                  <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${isOnCampus ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>
+                    {isOnCampus ? '📍 Actif' : '🏠 Inactif'}
+                  </span>
+                }
+              />
+            </>
+          ) : (
+            <div className="p-4 space-y-3">
+              <p className="text-[13px] text-muted-foreground">Configure la position de ton campus pour le mode intelligent.</p>
+              <Input
+                placeholder="Nom du campus"
+                value={campusNameInput}
+                onChange={(e) => setCampusNameInput(e.target.value)}
+                className="rounded-lg bg-muted/40 border-border/30 h-10 text-[14px]"
+              />
+              <Button
+                onClick={async () => {
+                  if (!campusNameInput) { toast.error("Entre le nom"); return; }
+                  setSavingCampus(true);
+                  const success = await setCurrentAsCampus(campusNameInput);
+                  setSavingCampus(false);
+                  if (success) { toast.success("Campus enregistré !"); fetchSettings(); }
+                  else toast.error("Erreur - vérifie ta géolocalisation");
+                }}
+                disabled={savingCampus || !campusNameInput}
+                className="w-full h-[44px] rounded-xl text-[14px]"
+              >
+                {savingCampus ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Navigation className="w-4 h-4 mr-2" />}
+                Utiliser ma position actuelle
+              </Button>
+            </div>
+          )}
+        </IOSCard>
+
+        {/* ──── TUTORIEL ──── */}
+        <IOSSectionHeader label="Tutoriel" />
+        <IOSCard>
+          <IOSRow
+            icon={Play}
+            iconBg="bg-primary"
+            label="Relancer le tutoriel"
             onClick={() => {
               localStorage.removeItem("orbit_tutorial_completed");
               toast.success("Tutoriel réinitialisé !");
               navigate('/');
             }}
-            className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors border-b border-border/30"
-          >
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Play className="w-4 h-4 text-primary" />
-            </div>
-            <span className="text-sm font-medium text-foreground flex-1 text-left">Relancer le tutoriel</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-
-          <button
+          />
+          <IOSRow
+            icon={Sparkles}
+            iconBg="bg-warning"
+            label="Tutoriel complet"
             onClick={() => {
               localStorage.removeItem("orbit_tutorial_completed");
               toast.success("Tutoriel complet lancé !");
               navigate('/?restart_tutorial=full');
             }}
-            className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors border-b border-border/30"
-          >
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary" />
-            </div>
-            <span className="text-sm font-medium text-foreground flex-1 text-left">Tutoriel complet</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-
-          <button
+          />
+          <IOSRow
+            icon={RotateCcw}
+            iconBg="bg-muted-foreground"
+            label="Revoir l'intro"
+            last
             onClick={() => {
               localStorage.removeItem("orbit_onboarding_seen");
               localStorage.removeItem("orbit_tutorial_completed");
               toast.success("Onboarding réinitialisé !");
               navigate('/');
             }}
-            className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center">
-              <Play className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <span className="text-sm font-medium text-foreground flex-1 text-left">Revoir l'intro</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+          />
+        </IOSCard>
 
-        {/* ──── Infos section ──── */}
-        <SectionHeader icon={BookOpen} label="Aide" color="text-muted-foreground" />
+        {/* ──── AIDE ──── */}
+        <IOSSectionHeader label="À propos" />
+        <IOSCard>
+          <IOSRow icon={Calendar} iconBg="bg-primary/80" label="Import auto de l'emploi du temps" last={false} />
+          <IOSRow icon={Users} iconBg="bg-physics" label="Filtrage par groupe TP / TD" last={false} />
+          <IOSRow icon={BookOpen} iconBg="bg-warning" label="Détection auto des examens" last={false} />
+          <IOSRow icon={MapPin} iconBg="bg-success" label="Extraction des salles" last />
+        </IOSCard>
 
-        <div className="bg-card rounded-2xl border border-border/40 overflow-hidden mb-4 p-4">
-          <ul className="text-xs text-muted-foreground space-y-1.5">
-            <li className="flex items-center gap-2"><span>📅</span> Import automatique de ton emploi du temps</li>
-            <li className="flex items-center gap-2"><span>🎯</span> Filtrage par groupe de TP / TD</li>
-            <li className="flex items-center gap-2"><span>📚</span> Détection auto des examens</li>
-            <li className="flex items-center gap-2"><span>🏛️</span> Extraction des salles</li>
-          </ul>
-        </div>
-
-        {/* ──── Danger zone ──── */}
-        <SectionHeader icon={Shield} label="Compte" color="text-destructive" />
-
-        <div className="bg-card rounded-2xl border border-border/40 overflow-hidden mb-4">
-          <button
-            onClick={handleClearData}
-            className="w-full flex items-center gap-3 p-4 hover:bg-destructive/5 transition-colors border-b border-border/30"
-          >
-            <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <Trash2 className="w-4 h-4 text-destructive" />
-            </div>
-            <span className="text-sm font-medium text-destructive flex-1 text-left">Supprimer mes données</span>
-            <ChevronRight className="w-4 h-4 text-destructive/50" />
-          </button>
-
-          <button
+        {/* ──── COMPTE ──── */}
+        <IOSSectionHeader label="Compte" />
+        <IOSCard className="mb-3">
+          <IOSRow
+            icon={LogOut}
+            iconBg="bg-muted-foreground"
+            label="Se déconnecter"
+            last
             onClick={signOut}
-            className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center">
-              <LogOut className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <span className="text-sm font-medium text-foreground flex-1 text-left">Se déconnecter</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+          />
+        </IOSCard>
+
+        {/* Danger zone — separate red-tinted card */}
+        <IOSCard className="mb-8 bg-destructive/[0.04]">
+          <IOSRow
+            icon={Trash2}
+            iconBg="bg-destructive"
+            label="Supprimer toutes mes données"
+            destructive
+            last
+            onClick={handleClearData}
+          />
+        </IOSCard>
+
       </main>
 
       {/* QR Scanner */}
@@ -669,16 +728,5 @@ const SettingsPage = () => {
     </div>
   );
 };
-
-// ─── Tiny section header ──────────────────────────────────────────────────────
-
-function SectionHeader({ icon: Icon, label, color }: { icon: React.ElementType; label: string; color: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-2 mt-6 first:mt-0 px-1">
-      <Icon className={`w-4 h-4 ${color}`} />
-      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-    </div>
-  );
-}
 
 export default SettingsPage;
