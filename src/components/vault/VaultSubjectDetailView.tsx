@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { differenceInDays, isToday, startOfDay } from "date-fns";
 import { VaultFile } from "@/hooks/useVaultData";
 import { VaultFileCard } from "./VaultFileCard";
@@ -12,13 +12,12 @@ interface VaultSubjectDetailViewProps {
 }
 
 type FilterType = "Tous" | "Cours" | "TP" | "TD";
-
 const FILTERS: FilterType[] = ["Tous", "Cours", "TP", "TD"];
 
 function getDocumentCategory(file: VaultFile): "Cours" | "TP" | "TD" {
-  const tags = (file.tags || []).map(t => t.toLowerCase());
-  if (tags.some(t => t.includes("tp") || t.includes("exercice"))) return "TP";
-  if (tags.some(t => t.includes("td") || t.includes("correction"))) return "TD";
+  const tags = (file.tags || []).map((t) => t.toLowerCase());
+  if (tags.some((t) => t.includes("tp") || t.includes("exercice"))) return "TP";
+  if (tags.some((t) => t.includes("td") || t.includes("correction"))) return "TD";
   return "Cours";
 }
 
@@ -30,31 +29,24 @@ interface Group {
 
 function groupByDate(files: VaultFile[]): Group[] {
   const now = startOfDay(new Date());
-
   const groups: Group[] = [
     { label: "Aujourd'hui", files: [], defaultOpen: true },
     { label: "Cette semaine", files: [], defaultOpen: true },
-    { label: "Semaine dernière", files: [], defaultOpen: false },
+    { label: "Semaine derniere", files: [], defaultOpen: false },
     { label: "Ce mois-ci", files: [], defaultOpen: false },
     { label: "Plus ancien", files: [], defaultOpen: false },
   ];
 
   for (const file of files) {
     const diff = differenceInDays(now, startOfDay(new Date(file.created_at)));
-    if (isToday(new Date(file.created_at))) {
-      groups[0].files.push(file);
-    } else if (diff <= 7) {
-      groups[1].files.push(file);
-    } else if (diff <= 14) {
-      groups[2].files.push(file);
-    } else if (diff <= 30) {
-      groups[3].files.push(file);
-    } else {
-      groups[4].files.push(file);
-    }
+    if (isToday(new Date(file.created_at))) groups[0].files.push(file);
+    else if (diff <= 7) groups[1].files.push(file);
+    else if (diff <= 14) groups[2].files.push(file);
+    else if (diff <= 30) groups[3].files.push(file);
+    else groups[4].files.push(file);
   }
 
-  return groups.filter(g => g.files.length > 0);
+  return groups.filter((g) => g.files.length > 0);
 }
 
 const CollapsibleGroup = ({
@@ -69,26 +61,25 @@ const CollapsibleGroup = ({
   return (
     <div>
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 w-full py-2 text-left"
       >
-        {open ? (
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        )}
-        <span className="text-sm font-semibold text-muted-foreground">
+        <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.15em]">
           {group.label}
         </span>
-        <span className="text-xs text-muted-foreground/70">({group.files.length})</span>
+        <span className="text-[10px] text-neutral-600">
+          ({group.files.length})
+        </span>
       </button>
 
       {open && (
-        <div className="space-y-3 mt-1">
-          {group.files.map(file => (
+        <div className="space-y-1 mt-1">
+          {group.files.map((file) => (
             <SwipeableItem
               key={file.id}
-              onDelete={() => onDeleteFile(file.id, file.ai_summary?.substring(0, 30) || "Fichier")}
+              onDelete={() =>
+                onDeleteFile(file.id, file.ai_summary?.substring(0, 30) || "Fichier")
+              }
             >
               <VaultFileCard file={file} />
             </SwipeableItem>
@@ -108,20 +99,21 @@ export const VaultSubjectDetailView = ({
 
   const filteredFiles = useMemo(() => {
     let result = [...files].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
     if (activeFilter !== "Tous") {
-      result = result.filter(f => getDocumentCategory(f) === activeFilter);
+      result = result.filter((f) => getDocumentCategory(f) === activeFilter);
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
-        f =>
+        (f) =>
           f.extracted_text?.toLowerCase().includes(q) ||
           f.ai_summary?.toLowerCase().includes(q) ||
-          f.tags?.some(t => t.toLowerCase().includes(q))
+          f.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }
 
@@ -129,33 +121,36 @@ export const VaultSubjectDetailView = ({
   }, [files, activeFilter, searchQuery]);
 
   const useGroups = files.length >= 5;
-  const groups = useMemo(() => (useGroups ? groupByDate(filteredFiles) : []), [filteredFiles, useGroups]);
+  const groups = useMemo(
+    () => (useGroups ? groupByDate(filteredFiles) : []),
+    [filteredFiles, useGroups]
+  );
 
   return (
     <div className="space-y-4">
-      {/* Search within subject */}
+      {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
         <input
           type="text"
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Rechercher (OCR)..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-muted/50 border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-neutral-900 border border-[#1E1E24] text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
         />
       </div>
 
-      {/* Quick filters */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {FILTERS.map(filter => (
+      {/* Filters */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {FILTERS.map((filter) => (
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}
             className={cn(
-              "flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
+              "flex-shrink-0 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors",
               activeFilter === filter
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                ? "bg-neutral-100 text-neutral-900"
+                : "bg-transparent text-neutral-500 hover:text-neutral-300 border border-[#1E1E24]"
             )}
           >
             {filter}
@@ -166,20 +161,29 @@ export const VaultSubjectDetailView = ({
       {/* Files */}
       {filteredFiles.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-muted-foreground text-sm">Aucun document trouvé</p>
+          <p className="text-neutral-500 text-sm">Aucun document</p>
         </div>
       ) : useGroups ? (
-        <div className="space-y-2">
-          {groups.map(group => (
-            <CollapsibleGroup key={group.label} group={group} onDeleteFile={onDeleteFile} />
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <CollapsibleGroup
+              key={group.label}
+              group={group}
+              onDeleteFile={onDeleteFile}
+            />
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredFiles.map(file => (
+        <div className="space-y-1">
+          {filteredFiles.map((file) => (
             <SwipeableItem
               key={file.id}
-              onDelete={() => onDeleteFile(file.id, file.ai_summary?.substring(0, 30) || "Fichier")}
+              onDelete={() =>
+                onDeleteFile(
+                  file.id,
+                  file.ai_summary?.substring(0, 30) || "Fichier"
+                )
+              }
             >
               <VaultFileCard file={file} />
             </SwipeableItem>
