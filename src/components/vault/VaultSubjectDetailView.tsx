@@ -95,7 +95,9 @@ const CollapsibleGroup = ({
 
 export const VaultSubjectDetailView = ({
   files,
+  subjectId,
   onDeleteFile,
+  onContentAdded,
 }: VaultSubjectDetailViewProps) => {
   const [activeFilter, setActiveFilter] = useState<FilterType>("Tous");
   const [searchQuery, setSearchQuery] = useState("");
