@@ -260,8 +260,8 @@ export const TheVaultPage = () => {
             </div>
           </div>
 
-          {/* Subject list */}
-          <div className="grid grid-cols-1 gap-3">
+          {/* Subject grid */}
+          <div className="grid grid-cols-3 gap-4">
             {subjectStats.length === 0 ? (
               <div className="text-center py-12">
                 <BookOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />

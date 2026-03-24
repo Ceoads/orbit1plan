@@ -1,4 +1,3 @@
-import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Subject, VaultFile } from "@/hooks/useVaultData";
 
@@ -10,47 +9,77 @@ interface VaultSubjectCardProps {
   newCount?: number;
 }
 
-const colorStyles: Record<string, { bg: string; border: string; accent: string }> = {
-  math: { bg: "bg-primary/10", border: "border-primary/20", accent: "bg-primary" },
-  history: { bg: "bg-warning/10", border: "border-warning/20", accent: "bg-warning" },
-  physics: { bg: "bg-success/10", border: "border-success/20", accent: "bg-success" },
-  english: { bg: "bg-[hsl(280,67%,55%)]/10", border: "border-[hsl(280,67%,55%)]/20", accent: "bg-[hsl(280,67%,55%)]" },
-  chemistry: { bg: "bg-destructive/10", border: "border-destructive/20", accent: "bg-destructive" },
-};
-
 export const VaultSubjectCard = ({
   subject,
   fileCount,
+  recentFiles,
   onClick,
   newCount = 0,
 }: VaultSubjectCardProps) => {
-  const styles = colorStyles[subject.color_key] || colorStyles.math;
+  const mostRecent = recentFiles[0];
+  const hasThumb = !!mostRecent?.thumbnail_url || !!mostRecent?.file_url;
 
   return (
     <button
       onClick={onClick}
-      className={cn(
-        "w-full p-4 rounded-2xl border-2 transition-all duration-200",
-        "hover:scale-[1.02] active:scale-[0.98]",
-        "text-left",
-        styles.bg,
-        styles.border
-      )}
+      className="flex flex-col items-center gap-2 group w-full"
     >
-      <div className="flex items-center gap-4">
-        <div className="text-4xl leading-none">{subject.icon}</div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-display font-semibold text-foreground truncate">{subject.name}</h3>
-          <p className="text-sm text-muted-foreground">
-            {fileCount} {fileCount === 1 ? 'fichier' : 'fichiers'}
-            {newCount > 0 && (
-              <span className="text-primary font-medium"> • {newCount} nouveau{newCount > 1 ? 'x' : ''}</span>
-            )}
-          </p>
+      {/* Notebook cover */}
+      <div className={cn(
+        "relative w-full aspect-[3/4] rounded-xl overflow-hidden",
+        "shadow-lg transition-all duration-200",
+        "group-hover:scale-[1.03] group-active:scale-[0.97]",
+        "bg-gradient-to-br from-muted/80 to-muted border border-border/40"
+      )}>
+        {/* Spine accent */}
+        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary/60 rounded-l-xl z-10" />
+
+        {/* Content area */}
+        {hasThumb ? (
+          <img
+            src={mostRecent.thumbnail_url || mostRecent.file_url}
+            alt={subject.name}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              const fallback = (e.target as HTMLImageElement).nextElementSibling;
+              if (fallback) (fallback as HTMLElement).style.display = 'flex';
+            }}
+          />
+        ) : null}
+
+        {/* Placeholder fallback (shown when no thumb or image fails) */}
+        <div
+          className={cn(
+            "absolute inset-0 flex flex-col items-center justify-center gap-1",
+            hasThumb ? "hidden" : "flex"
+          )}
+        >
+          <span className="text-4xl">{subject.icon}</span>
+          <span className="text-lg font-bold text-muted-foreground/60 uppercase tracking-wide">
+            {subject.name.charAt(0)}
+          </span>
         </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+
+        {/* New badge */}
+        {newCount > 0 && (
+          <div className="absolute top-2 right-2 z-10">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold shadow-md">
+              {newCount}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Label */}
+      <div className="text-center w-full px-1">
+        <p className="text-xs font-medium text-foreground truncate leading-tight">
+          {subject.name}
+        </p>
+        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+          {fileCount} {fileCount === 1 ? 'fichier' : 'fichiers'}
+        </p>
       </div>
     </button>
   );
 };
-
