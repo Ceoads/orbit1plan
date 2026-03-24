@@ -328,23 +328,12 @@ export const TheVaultPage = () => {
 
       {/* Subject detail */}
       {selectedSubject && !isSearchMode && (
-        <>
-          {displayedFiles.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Aucun fichier dans cette matière</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Capture un document pour commencer
-              </p>
-            </div>
-          ) : (
-            <VaultSubjectDetailView
-              files={displayedFiles}
-              subjectId={selectedSubject.id}
-              onDeleteFile={(id, name) => setDeleteTarget({ type: "file", id, name })}
-              onContentAdded={refetch}
-            />
-          )}
-        </>
+        <VaultSubjectDetailView
+          files={displayedFiles}
+          subjectId={selectedSubject.id}
+          onDeleteFile={(id, name) => setDeleteTarget({ type: "file", id, name })}
+          onContentAdded={refetch}
+        />
       )}
 
       {/* Smart Capture */}
