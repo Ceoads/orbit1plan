@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
-import { FileText, ChevronRight } from "lucide-react";
+import { FileText, ChevronRight, Camera, PenLine, File } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VaultFile } from "@/hooks/useVaultData";
 import { useHaptics } from "@/hooks/useHaptics";
