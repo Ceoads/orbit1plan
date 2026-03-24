@@ -3,12 +3,15 @@ import { Search } from "lucide-react";
 import { differenceInDays, isToday, startOfDay } from "date-fns";
 import { VaultFile } from "@/hooks/useVaultData";
 import { VaultFileCard } from "./VaultFileCard";
+import { VaultAddContentMenu } from "./VaultAddContentMenu";
 import { SwipeableItem } from "@/components/SwipeableItem";
 import { cn } from "@/lib/utils";
 
 interface VaultSubjectDetailViewProps {
   files: VaultFile[];
+  subjectId: string;
   onDeleteFile: (id: string, name: string) => void;
+  onContentAdded: () => void;
 }
 
 type FilterType = "Tous" | "Cours" | "TP" | "TD";
