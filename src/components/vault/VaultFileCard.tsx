@@ -50,7 +50,7 @@ export const VaultFileCard = ({ file, onClick }: VaultFileCardProps) => {
         ) : file.file_type === "note" ? (
           <PenLine className="w-4 h-4 text-primary" />
         ) : file.file_type === "pdf" ? (
-          <FileText className="w-4 h-4 text-red-500" />
+          <FileText className="w-4 h-4 text-destructive" />
         ) : file.file_url && file.file_url !== "" ? (
           <img
             src={file.file_url}
