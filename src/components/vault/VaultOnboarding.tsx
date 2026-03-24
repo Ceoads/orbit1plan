@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Loader2, Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface CleanedSubject {
   cleanName: string;
@@ -16,17 +17,8 @@ interface VaultOnboardingProps {
   onComplete: () => void;
 }
 
-const COURS_COLORS = [
-  "#3B82F6",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#EC4899",
-  "#06B6D4",
-  "#F97316",
-];
-const SAE_COLOR = "#6366F1";
+const COURS_COLORS = ["math", "history", "physics", "english", "chemistry", "geometry"];
+const SAE_COLOR = "english"; // purple-ish
 
 export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
   const { user } = useAuth();
@@ -66,10 +58,7 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
       if (fnError) throw fnError;
 
       const cleaned: CleanedSubject[] = (data?.subjects || []).map(
-        (s: any) => ({
-          ...s,
-          selected: true,
-        })
+        (s: any) => ({ ...s, selected: true })
       );
 
       setSubjects(cleaned);
@@ -112,34 +101,45 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
     setStep("saving");
 
     try {
+      // Delete old vault files for fresh start
       await supabase.from("vault_files").delete().eq("user_id", user.id);
 
+      // Insert subjects one by one to avoid unique constraint issues
       let coursColorIndex = 0;
-      const subjectsToInsert = selected.map((s) => {
-        const color = s.isSAE ? SAE_COLOR : COURS_COLORS[coursColorIndex++ % COURS_COLORS.length];
-        return {
-          user_id: user.id,
-          name: s.cleanName,
-          color_key: color,
-          icon: s.isSAE ? "SAE" : "COURS",
-          ical_code: s.originalCodes.join(",") || null,
-        };
-      });
+      for (const s of selected) {
+        const colorKey = s.isSAE ? SAE_COLOR : COURS_COLORS[coursColorIndex++ % COURS_COLORS.length];
+        
+        // Check if subject already exists
+        const { data: existing } = await supabase
+          .from("subjects")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("name", s.cleanName)
+          .maybeSingle();
 
-      const { error: insertError } = await supabase
-        .from("subjects")
-        .upsert(subjectsToInsert, { onConflict: "user_id,name", ignoreDuplicates: true });
+        if (!existing) {
+          const { error: insertError } = await supabase
+            .from("subjects")
+            .insert({
+              user_id: user.id,
+              name: s.cleanName,
+              color_key: colorKey,
+              icon: s.isSAE ? "SAE" : "COURS",
+              ical_code: s.originalCodes.join(",") || null,
+            });
+          if (insertError) {
+            console.error("Insert error for", s.cleanName, insertError);
+          }
+        }
+      }
 
-      if (insertError) throw insertError;
-
+      // Mark vault as initialized
       await supabase
         .from("profiles")
-        .update({
-          preferences: { vault_initialized: true },
-        })
+        .update({ preferences: { vault_initialized: true } })
         .eq("user_id", user.id);
 
-      toast.success("Vault configuré");
+      toast.success("Vault configuré !");
       onComplete();
     } catch (err: any) {
       console.error("Save error:", err);
@@ -150,13 +150,13 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
 
   if (step === "loading") {
     return (
-      <div className="vault-dark min-h-[60vh] flex flex-col items-center justify-center gap-6 px-6">
-        <Loader2 className="w-8 h-8 animate-spin text-neutral-400" />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-6 px-6">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <div className="text-center space-y-2">
-          <p className="text-sm font-medium text-neutral-200 tracking-wide">
+          <p className="text-sm font-medium text-foreground">
             Analyse de ton emploi du temps
           </p>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             Extraction et nettoyage des matières...
           </p>
         </div>
@@ -166,9 +166,9 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
 
   if (step === "saving") {
     return (
-      <div className="vault-dark min-h-[60vh] flex flex-col items-center justify-center gap-6 px-6">
-        <Loader2 className="w-8 h-8 animate-spin text-neutral-400" />
-        <p className="text-sm text-neutral-400">Configuration du Vault...</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-6 px-6">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Configuration du Vault...</p>
       </div>
     );
   }
@@ -177,49 +177,60 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
   const coursSubjects = subjects.filter((s) => !s.isSAE);
   const saeSubjects = subjects.filter((s) => s.isSAE);
 
+  // Color mapping for visual accent bars
+  const colorMap: Record<string, string> = {
+    math: "hsl(var(--math))",
+    history: "hsl(var(--history))",
+    physics: "hsl(var(--physics))",
+    english: "hsl(var(--english))",
+    chemistry: "hsl(var(--chemistry))",
+    geometry: "hsl(var(--geometry))",
+  };
+
   return (
-    <div className="vault-dark space-y-8 px-1 pb-32 animate-fade-in">
+    <div className="space-y-8 px-1 pb-32 animate-fade-in">
+      {/* Header */}
       <div className="space-y-2 pt-4">
-        <h1 className="text-lg font-semibold text-neutral-100 tracking-tight">
+        <h1 className="font-display text-xl font-bold text-foreground">
           Configure ton Vault
         </h1>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          {error
-            ? error
-            : "Matières extraites de ton emploi du temps. Coche celles que tu veux garder."}
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {error || "Matières extraites de ton emploi du temps. Coche celles que tu veux garder."}
         </p>
       </div>
 
+      {/* COURS Section */}
       {coursSubjects.length > 0 && (
         <div className="space-y-3">
-          <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.15em]">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
             Cours
           </p>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {coursSubjects.map((subject, idx) => {
               const globalIdx = subjects.indexOf(subject);
-              const color = COURS_COLORS[idx % COURS_COLORS.length];
+              const colorKey = COURS_COLORS[idx % COURS_COLORS.length];
+              const accentColor = colorMap[colorKey] || "hsl(var(--primary))";
               return (
                 <button
                   key={globalIdx}
                   onClick={() => toggleSubject(globalIdx)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200",
                     "border",
                     subject.selected
-                      ? "border-neutral-700 bg-neutral-900"
-                      : "border-transparent bg-transparent opacity-40"
+                      ? "bg-card border-border shadow-soft"
+                      : "bg-transparent border-transparent opacity-50"
                   )}
                 >
                   <div
                     className="w-1 h-8 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: color }}
+                    style={{ backgroundColor: accentColor }}
                   />
-                  <span className="text-sm text-neutral-200 flex-1 text-left">
+                  <span className="text-sm font-medium text-foreground flex-1 text-left">
                     {subject.cleanName}
                   </span>
                   {subject.selected && (
-                    <Check className="w-4 h-4 text-neutral-400" />
+                    <Check className="w-4 h-4 text-primary" />
                   )}
                 </button>
               );
@@ -228,12 +239,13 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
         </div>
       )}
 
+      {/* SAE Section */}
       {saeSubjects.length > 0 && (
         <div className="space-y-3">
-          <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.15em]">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
             SAE
           </p>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {saeSubjects.map((subject) => {
               const globalIdx = subjects.indexOf(subject);
               return (
@@ -241,22 +253,22 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
                   key={globalIdx}
                   onClick={() => toggleSubject(globalIdx)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200",
                     "border",
                     subject.selected
-                      ? "border-neutral-700 bg-neutral-900"
-                      : "border-transparent bg-transparent opacity-40"
+                      ? "bg-card border-border shadow-soft"
+                      : "bg-transparent border-transparent opacity-50"
                   )}
                 >
                   <div
                     className="w-1 h-8 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: SAE_COLOR }}
+                    style={{ backgroundColor: colorMap.english }}
                   />
-                  <span className="text-sm text-neutral-200 flex-1 text-left">
+                  <span className="text-sm font-medium text-foreground flex-1 text-left">
                     {subject.cleanName}
                   </span>
                   {subject.selected && (
-                    <Check className="w-4 h-4 text-neutral-400" />
+                    <Check className="w-4 h-4 text-primary" />
                   )}
                 </button>
               );
@@ -265,8 +277,9 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
         </div>
       )}
 
+      {/* Manual add */}
       <div className="space-y-3">
-        <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.15em]">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           Ajouter manuellement
         </p>
         <div className="flex gap-2">
@@ -277,29 +290,27 @@ export const VaultOnboarding = ({ onComplete }: VaultOnboardingProps) => {
             onKeyDown={(e) => e.key === "Enter" && addManualSubject()}
             placeholder="Nom de la matière..."
             maxLength={50}
-            className="flex-1 px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-800 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
+            className="flex-1 px-4 py-3 rounded-2xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
-          <button
+          <Button
             onClick={addManualSubject}
-            className="px-4 py-3 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 transition-colors"
+            size="icon"
+            variant="outline"
+            className="rounded-2xl h-12 w-12"
           >
             <Plus className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
-      <button
+      {/* Validate */}
+      <Button
         onClick={handleValidate}
         disabled={selectedCount === 0}
-        className={cn(
-          "w-full py-4 rounded-lg text-sm font-medium transition-all",
-          selectedCount > 0
-            ? "bg-neutral-100 text-neutral-900 hover:bg-white"
-            : "bg-neutral-800 text-neutral-500 cursor-not-allowed"
-        )}
+        className="w-full h-14 rounded-2xl gradient-primary text-base font-semibold shadow-lg"
       >
         Valider {selectedCount > 0 ? `(${selectedCount} matière${selectedCount > 1 ? "s" : ""})` : ""}
-      </button>
+      </Button>
     </div>
   );
 };

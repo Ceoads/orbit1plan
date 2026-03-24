@@ -352,19 +352,6 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.3);
   }
-
-
-  /* Vault Dark Theme - scoped */
-  .vault-dark {
-    background-color: #0A0A0B;
-    color: #E5E5E5;
-    font-family: 'Geist', -apple-system, system-ui, sans-serif;
-    border-radius: 0;
-  }
-
-  .vault-dark * {
-    font-family: 'Geist', -apple-system, system-ui, sans-serif;
-  }
 }
 
 @layer utilities {
