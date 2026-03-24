@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Bold, Italic, Heading1, Heading2, List, Quote, Minus, X, Save } from "lucide-react";
+import { Bold, Italic, Heading1, Heading2, List, Quote, Minus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,15 +17,23 @@ interface VaultNoteEditorProps {
   initialContent?: string;
 }
 
-const TOOLBAR_ACTIONS = [
-  { icon: Bold, label: "Gras", prefix: "**", suffix: "**" },
-  { icon: Italic, label: "Italique", prefix: "*", suffix: "*" },
+interface ToolbarAction {
+  icon: typeof Bold;
+  label: string;
+  prefix: string;
+  suffix: string;
+  lineStart: boolean;
+}
+
+const TOOLBAR_ACTIONS: ToolbarAction[] = [
+  { icon: Bold, label: "Gras", prefix: "**", suffix: "**", lineStart: false },
+  { icon: Italic, label: "Italique", prefix: "*", suffix: "*", lineStart: false },
   { icon: Heading1, label: "Titre", prefix: "# ", suffix: "", lineStart: true },
   { icon: Heading2, label: "Sous-titre", prefix: "## ", suffix: "", lineStart: true },
   { icon: List, label: "Liste", prefix: "* ", suffix: "", lineStart: true },
   { icon: Quote, label: "Citation", prefix: "> ", suffix: "", lineStart: true },
   { icon: Minus, label: "Séparateur", prefix: "\n---\n", suffix: "", lineStart: true },
-] as const;
+];
 
 export const VaultNoteEditor = ({
   open,
@@ -51,7 +59,6 @@ export const VaultNoteEditor = ({
       let newCursorPos: number;
 
       if (lineStart) {
-        // Insert at beginning of current line
         const lineStartIdx = content.lastIndexOf("\n", start - 1) + 1;
         newContent = content.substring(0, lineStartIdx) + prefix + content.substring(lineStartIdx);
         newCursorPos = start + prefix.length;
@@ -115,22 +122,21 @@ export const VaultNoteEditor = ({
         <div className="flex items-center gap-0.5 px-5 py-2 border-b border-border/50">
           {TOOLBAR_ACTIONS.map((action) => {
             const Icon = action.icon;
-            const { label, prefix, suffix } = action;
-            const lineStart = "lineStart" in action ? action.lineStart : false;
             return (
-            <button
-              key={label}
-              type="button"
-              title={label}
-              onClick={() => applyFormat(prefix, suffix, lineStart)}
-              className={cn(
-                "p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80",
-                "transition-colors duration-150"
-              )}
-            >
-              <Icon className="w-4 h-4" />
-            </button>
-          ))}
+              <button
+                key={action.label}
+                type="button"
+                title={action.label}
+                onClick={() => applyFormat(action.prefix, action.suffix, action.lineStart)}
+                className={cn(
+                  "p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80",
+                  "transition-colors duration-150"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            );
+          })}
         </div>
 
         {/* Editor */}
