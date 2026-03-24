@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Subject, VaultFile } from "@/hooks/useVaultData";
+import { ChevronRight } from "lucide-react";
 
 interface VaultSubjectCardProps {
   subject: Subject;
@@ -12,66 +13,50 @@ interface VaultSubjectCardProps {
 export const VaultSubjectCard = ({
   subject,
   fileCount,
-  recentFiles,
   onClick,
   newCount = 0,
 }: VaultSubjectCardProps) => {
-  const mostRecent = recentFiles[0];
-  const hasThumb = !!mostRecent?.thumbnail_url || !!mostRecent?.file_url;
+  const isSAE = subject.icon === "SAE";
+  const borderColor = isSAE ? "#6366F1" : (subject.color_key || "#3B82F6");
 
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-2 group w-full"
+      className={cn(
+        "w-full flex items-center gap-4 px-4 py-4 rounded-lg transition-colors",
+        "border border-[#1E1E24] hover:border-neutral-700 hover:bg-neutral-900/50",
+        "text-left group"
+      )}
     >
-      {/* Notebook cover */}
-      <div className={cn(
-        "relative w-full aspect-[3/4] rounded-xl overflow-hidden",
-        "shadow-lg transition-all duration-200",
-        "group-hover:scale-[1.03] group-active:scale-[0.97]",
-        "bg-gradient-to-br from-muted/80 to-muted border border-border/40"
-      )}>
-        {/* Spine accent */}
-        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary/60 rounded-l-xl z-10" />
+      {/* Color accent bar */}
+      <div
+        className="w-1 h-10 rounded-full flex-shrink-0"
+        style={{ backgroundColor: borderColor }}
+      />
 
-        {/* Content area */}
-        {hasThumb ? (
-          <img
-            src={mostRecent.thumbnail_url || mostRecent.file_url}
-            alt={subject.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-              const fallback = (e.target as HTMLImageElement).nextElementSibling;
-              if (fallback) (fallback as HTMLElement).style.display = 'flex';
-            }}
-          />
-        ) : null}
-
-        {/* Solid color fallback when no thumbnail */}
-        {!hasThumb && (
-          <div className="absolute inset-0 bg-primary/15" />
-        )}
-
-        {/* New badge */}
-        {newCount > 0 && (
-          <div className="absolute top-2 right-2 z-10">
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold shadow-md">
-              {newCount}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Label */}
-      <div className="text-center w-full px-1">
-        <p className="text-xs font-medium text-foreground truncate leading-tight">
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-neutral-200 truncate">
           {subject.name}
         </p>
-        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-          {fileCount} {fileCount === 1 ? 'fichier' : 'fichiers'}
+        <p className="text-xs text-neutral-500 mt-0.5">
+          {fileCount} {fileCount === 1 ? "fichier" : "fichiers"}
         </p>
       </div>
+
+      {/* New badge */}
+      {newCount > 0 && (
+        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-neutral-100 text-neutral-900 text-[10px] font-bold">
+          {newCount}
+        </span>
+      )}
+
+      {/* Category label */}
+      <span className="text-[10px] uppercase tracking-wider text-neutral-600 flex-shrink-0">
+        {isSAE ? "SAE" : ""}
+      </span>
+
+      <ChevronRight className="w-4 h-4 text-neutral-600 group-hover:text-neutral-400 transition-colors flex-shrink-0" />
     </button>
   );
 };

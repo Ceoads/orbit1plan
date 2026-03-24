@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -350,6 +351,19 @@
   
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.3);
+  }
+
+
+  /* Vault Dark Theme - scoped */
+  .vault-dark {
+    background-color: #0A0A0B;
+    color: #E5E5E5;
+    font-family: 'Geist', -apple-system, system-ui, sans-serif;
+    border-radius: 0;
+  }
+
+  .vault-dark * {
+    font-family: 'Geist', -apple-system, system-ui, sans-serif;
   }
 }
 
