@@ -37,7 +37,21 @@ export const VaultFileCard = ({ file, onClick }: VaultFileCardProps) => {
     >
       {/* Thumbnail */}
       <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
-        {file.file_url ? (
+        {file.file_type === "photo" && file.file_url ? (
+          <img
+            src={file.file_url}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : file.file_type === "note" ? (
+          <PenLine className="w-4 h-4 text-primary" />
+        ) : file.file_type === "pdf" ? (
+          <FileText className="w-4 h-4 text-red-500" />
+        ) : file.file_url && file.file_url !== "" ? (
           <img
             src={file.file_url}
             alt=""
@@ -48,7 +62,7 @@ export const VaultFileCard = ({ file, onClick }: VaultFileCardProps) => {
             }}
           />
         ) : (
-          <FileText className="w-4 h-4 text-muted-foreground" />
+          <File className="w-4 h-4 text-muted-foreground" />
         )}
       </div>
 
