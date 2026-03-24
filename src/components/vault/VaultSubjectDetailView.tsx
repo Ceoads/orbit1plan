@@ -32,7 +32,7 @@ function groupByDate(files: VaultFile[]): Group[] {
   const groups: Group[] = [
     { label: "Aujourd'hui", files: [], defaultOpen: true },
     { label: "Cette semaine", files: [], defaultOpen: true },
-    { label: "Semaine derniere", files: [], defaultOpen: false },
+    { label: "Semaine dernière", files: [], defaultOpen: false },
     { label: "Ce mois-ci", files: [], defaultOpen: false },
     { label: "Plus ancien", files: [], defaultOpen: false },
   ];
@@ -64,16 +64,16 @@ const CollapsibleGroup = ({
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 w-full py-2 text-left"
       >
-        <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.15em]">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           {group.label}
         </span>
-        <span className="text-[10px] text-neutral-600">
+        <span className="text-xs text-muted-foreground/70">
           ({group.files.length})
         </span>
       </button>
 
       {open && (
-        <div className="space-y-1 mt-1">
+        <div className="space-y-2 mt-1">
           {group.files.map((file) => (
             <SwipeableItem
               key={file.id}
@@ -99,8 +99,7 @@ export const VaultSubjectDetailView = ({
 
   const filteredFiles = useMemo(() => {
     let result = [...files].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
     if (activeFilter !== "Tous") {
@@ -130,27 +129,27 @@ export const VaultSubjectDetailView = ({
     <div className="space-y-4">
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Rechercher (OCR)..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-neutral-900 border border-[#1E1E24] text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
+          className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
 
       {/* Filters */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {FILTERS.map((filter) => (
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}
             className={cn(
-              "flex-shrink-0 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+              "flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
               activeFilter === filter
-                ? "bg-neutral-100 text-neutral-900"
-                : "bg-transparent text-neutral-500 hover:text-neutral-300 border border-[#1E1E24]"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted/60 text-muted-foreground hover:bg-muted"
             )}
           >
             {filter}
@@ -161,28 +160,21 @@ export const VaultSubjectDetailView = ({
       {/* Files */}
       {filteredFiles.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-neutral-500 text-sm">Aucun document</p>
+          <p className="text-muted-foreground text-sm">Aucun document trouvé</p>
         </div>
       ) : useGroups ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {groups.map((group) => (
-            <CollapsibleGroup
-              key={group.label}
-              group={group}
-              onDeleteFile={onDeleteFile}
-            />
+            <CollapsibleGroup key={group.label} group={group} onDeleteFile={onDeleteFile} />
           ))}
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {filteredFiles.map((file) => (
             <SwipeableItem
               key={file.id}
               onDelete={() =>
-                onDeleteFile(
-                  file.id,
-                  file.ai_summary?.substring(0, 30) || "Fichier"
-                )
+                onDeleteFile(file.id, file.ai_summary?.substring(0, 30) || "Fichier")
               }
             >
               <VaultFileCard file={file} />

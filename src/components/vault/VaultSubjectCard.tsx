@@ -10,6 +10,15 @@ interface VaultSubjectCardProps {
   newCount?: number;
 }
 
+const colorMap: Record<string, string> = {
+  math: "hsl(var(--math))",
+  history: "hsl(var(--history))",
+  physics: "hsl(var(--physics))",
+  english: "hsl(var(--english))",
+  chemistry: "hsl(var(--chemistry))",
+  geometry: "hsl(var(--geometry))",
+};
+
 export const VaultSubjectCard = ({
   subject,
   fileCount,
@@ -17,46 +26,49 @@ export const VaultSubjectCard = ({
   newCount = 0,
 }: VaultSubjectCardProps) => {
   const isSAE = subject.icon === "SAE";
-  const borderColor = isSAE ? "#6366F1" : (subject.color_key || "#3B82F6");
+  const accentColor = colorMap[subject.color_key] || "hsl(var(--primary))";
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-4 px-4 py-4 rounded-lg transition-colors",
-        "border border-[#1E1E24] hover:border-neutral-700 hover:bg-neutral-900/50",
+        "w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-200",
+        "bg-card border border-border",
+        "hover:shadow-soft hover:scale-[1.01] active:scale-[0.99]",
         "text-left group"
       )}
     >
       {/* Color accent bar */}
       <div
         className="w-1 h-10 rounded-full flex-shrink-0"
-        style={{ backgroundColor: borderColor }}
+        style={{ backgroundColor: accentColor }}
       />
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-neutral-200 truncate">
+        <p className="text-sm font-semibold text-foreground truncate">
           {subject.name}
         </p>
-        <p className="text-xs text-neutral-500 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {fileCount} {fileCount === 1 ? "fichier" : "fichiers"}
         </p>
       </div>
 
       {/* New badge */}
       {newCount > 0 && (
-        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-neutral-100 text-neutral-900 text-[10px] font-bold">
+        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
           {newCount}
         </span>
       )}
 
-      {/* Category label */}
-      <span className="text-[10px] uppercase tracking-wider text-neutral-600 flex-shrink-0">
-        {isSAE ? "SAE" : ""}
-      </span>
+      {/* SAE label */}
+      {isSAE && (
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex-shrink-0">
+          SAE
+        </span>
+      )}
 
-      <ChevronRight className="w-4 h-4 text-neutral-600 group-hover:text-neutral-400 transition-colors flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
     </button>
   );
 };

@@ -5,11 +5,13 @@ import { VaultSubjectCard, VaultFileCard, FilingConfirmationBanner } from "@/com
 import { VaultSubjectDetailView } from "@/components/vault/VaultSubjectDetailView";
 import { VaultOnboarding } from "@/components/vault/VaultOnboarding";
 import { SmartVaultCapture } from "@/components/vault/SmartVaultCapture";
-import { ArrowLeft, Search, Plus } from "lucide-react";
+import { ArrowLeft, Search, Plus, FolderOpen, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddSubjectModal } from "@/components/modals";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/components/SearchBar";
 import { SwipeableItem } from "@/components/SwipeableItem";
 import {
   AlertDialog,
@@ -57,7 +59,6 @@ export const TheVaultPage = () => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [vaultInitialized, setVaultInitialized] = useState<boolean | null>(null);
 
-  // Check if vault has been initialized
   useEffect(() => {
     const checkInit = async () => {
       if (!user) return;
@@ -99,16 +100,9 @@ export const TheVaultPage = () => {
     });
   };
 
-  const handleConfirmFiling = async (
-    subjectId: string,
-    wasCorrect: boolean
-  ) => {
+  const handleConfirmFiling = async (subjectId: string, wasCorrect: boolean) => {
     if (!pendingConfirmation) return;
-    const success = await confirmFiling(
-      pendingConfirmation.file.id,
-      subjectId,
-      wasCorrect
-    );
+    const success = await confirmFiling(pendingConfirmation.file.id, subjectId, wasCorrect);
     if (success) {
       setPendingConfirmation(null);
       const subject = subjects.find((s) => s.id === subjectId);
@@ -123,9 +117,7 @@ export const TheVaultPage = () => {
               },
             });
           if (!error && flashcardsResult?.flashcards?.length > 0) {
-            toast.success(
-              `${flashcardsResult.flashcards.length} flashcards creees`
-            );
+            toast.success(`${flashcardsResult.flashcards.length} flashcards créées !`);
           }
         } catch (e) {
           console.error("Error generating flashcards:", e);
@@ -149,19 +141,15 @@ export const TheVaultPage = () => {
 
   if (loading || vaultInitialized === null) {
     return (
-      <div className="vault-dark min-h-[60vh] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-neutral-600 border-t-neutral-300 rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   // Show onboarding if not initialized
   if (!vaultInitialized) {
-    return (
-      <div className="vault-dark min-h-screen">
-        <VaultOnboarding onComplete={handleOnboardingComplete} />
-      </div>
-    );
+    return <VaultOnboarding onComplete={handleOnboardingComplete} />;
   }
 
   // Separate COURS and SAE
@@ -169,7 +157,7 @@ export const TheVaultPage = () => {
   const saeStats = subjectStats.filter((s) => s.icon === "SAE");
 
   return (
-    <div className="vault-dark space-y-6 animate-fade-in pb-32">
+    <div className="space-y-6 animate-fade-in pb-32">
       {/* Pending confirmation banner */}
       {pendingConfirmation && (
         <FilingConfirmationBanner
@@ -185,36 +173,33 @@ export const TheVaultPage = () => {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 pt-4">
+      <div className="flex items-center gap-3 pt-2">
         {(selectedSubject || isSearchMode) && (
-          <button
-            onClick={handleBack}
-            className="p-2 rounded-lg hover:bg-neutral-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-neutral-400" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={handleBack} className="rounded-xl">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
         )}
         <div className="flex-1">
-          <h1 className="text-lg font-semibold text-neutral-100 tracking-tight">
-            {selectedSubject
-              ? selectedSubject.name
-              : isSearchMode
-              ? "Recherche"
-              : "Vault"}
-          </h1>
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            <h1 className="font-display text-xl font-bold text-foreground">
+              {selectedSubject ? selectedSubject.name : isSearchMode ? "Recherche" : "Vault"}
+            </h1>
+          </div>
           {selectedSubject && (
-            <p className="text-xs text-neutral-500 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-1">
               {displayedFiles.length} fichiers
             </p>
           )}
         </div>
         {!selectedSubject && !isSearchMode && (
-          <button
+          <Button
+            size="icon"
             onClick={() => setShowAddSubject(true)}
-            className="p-2 rounded-lg border border-[#1E1E24] hover:bg-neutral-900 transition-colors"
+            className="rounded-full h-10 w-10 gradient-primary shadow-lg"
           >
-            <Plus className="w-4 h-4 text-neutral-400" />
-          </button>
+            <Plus className="w-5 h-5" />
+          </Button>
         )}
       </div>
 
@@ -225,22 +210,19 @@ export const TheVaultPage = () => {
           setSelectedSubject(null);
         }}
       >
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher dans tous les fichiers..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-neutral-900 border border-[#1E1E24] text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
-          />
-        </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher dans tous les fichiers (OCR)..."
+        />
       </div>
 
       {/* Empty search help */}
       {isSearchMode && searchQuery === "" && (
-        <div className="text-center py-12">
-          <p className="text-neutral-500 text-sm">
+        <div className="text-center py-8">
+          <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+          <p className="text-muted-foreground">Tape un mot pour rechercher</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">
             Recherche dans le contenu de tous tes documents
           </p>
         </div>
@@ -248,36 +230,30 @@ export const TheVaultPage = () => {
 
       {/* Search Results */}
       {isSearchMode && searchQuery !== "" && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {displayedFiles.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-neutral-500 text-sm">
-                Aucun resultat pour "{searchQuery}"
-              </p>
+              <p className="text-muted-foreground">Aucun résultat pour "{searchQuery}"</p>
             </div>
           ) : (
             <>
-              <p className="text-[10px] text-neutral-500 uppercase tracking-[0.15em]">
-                {displayedFiles.length} resultat
-                {displayedFiles.length > 1 ? "s" : ""}
+              <p className="text-sm text-muted-foreground">
+                {displayedFiles.length} résultat{displayedFiles.length > 1 ? "s" : ""}
               </p>
-              <div className="space-y-1">
-                {displayedFiles.map((file) => (
-                  <SwipeableItem
-                    key={file.id}
-                    onDelete={() =>
-                      setDeleteTarget({
-                        type: "file",
-                        id: file.id,
-                        name:
-                          file.ai_summary?.substring(0, 30) || "Fichier",
-                      })
-                    }
-                  >
-                    <VaultFileCard file={file} />
-                  </SwipeableItem>
-                ))}
-              </div>
+              {displayedFiles.map((file) => (
+                <SwipeableItem
+                  key={file.id}
+                  onDelete={() =>
+                    setDeleteTarget({
+                      type: "file",
+                      id: file.id,
+                      name: file.ai_summary?.substring(0, 30) || "Fichier",
+                    })
+                  }
+                >
+                  <VaultFileCard file={file} />
+                </SwipeableItem>
+              ))}
             </>
           )}
         </div>
@@ -287,20 +263,23 @@ export const TheVaultPage = () => {
       {!selectedSubject && !isSearchMode && (
         <div className="space-y-6">
           {/* Stats */}
-          <div className="flex items-baseline gap-3 px-1">
-            <span className="text-2xl font-semibold text-neutral-100">
-              {files.length}
-            </span>
-            <span className="text-xs text-neutral-500">fichiers</span>
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{files.length}</p>
+              <p className="text-sm text-muted-foreground">fichiers dans le coffre</p>
+            </div>
           </div>
 
           {/* COURS section */}
           {coursStats.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.15em] px-1">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest px-1">
                 Cours
               </p>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {coursStats.map((subject) => (
                   <VaultSubjectCard
                     key={subject.id}
@@ -316,11 +295,11 @@ export const TheVaultPage = () => {
 
           {/* SAE section */}
           {saeStats.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.15em] px-1">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest px-1">
                 SAE
               </p>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {saeStats.map((subject) => (
                   <VaultSubjectCard
                     key={subject.id}
@@ -334,34 +313,33 @@ export const TheVaultPage = () => {
             </div>
           )}
 
-          {/* Empty state */}
+          {/* Empty */}
           {subjectStats.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-neutral-500 text-sm">Aucune matiere</p>
-              <p className="text-neutral-600 text-xs mt-1">
-                Ajoute une matiere pour commencer
+            <div className="text-center py-12">
+              <FolderOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">Aucune matière</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Ajoute une matière pour commencer
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Subject detail view */}
+      {/* Subject detail */}
       {selectedSubject && !isSearchMode && (
         <>
           {displayedFiles.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-neutral-500 text-sm">Aucun fichier</p>
-              <p className="text-neutral-600 text-xs mt-1">
+              <p className="text-muted-foreground">Aucun fichier dans cette matière</p>
+              <p className="text-sm text-muted-foreground mt-1">
                 Capture un document pour commencer
               </p>
             </div>
           ) : (
             <VaultSubjectDetailView
               files={displayedFiles}
-              onDeleteFile={(id, name) =>
-                setDeleteTarget({ type: "file", id, name })
-              }
+              onDeleteFile={(id, name) => setDeleteTarget({ type: "file", id, name })}
             />
           )}
         </>
@@ -370,33 +348,23 @@ export const TheVaultPage = () => {
       {/* Smart Capture */}
       <SmartVaultCapture onFileCaptured={handleFileCaptured} />
 
-      {/* Add subject modal */}
-      <AddSubjectModal
-        open={showAddSubject}
-        onOpenChange={setShowAddSubject}
-      />
+      {/* Modal */}
+      <AddSubjectModal open={showAddSubject} onOpenChange={setShowAddSubject} />
 
       {/* Delete Confirmation */}
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
-        <AlertDialogContent className="bg-neutral-950 border-[#1E1E24]">
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-neutral-200">
-              Supprimer ?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-neutral-500">
-              "{deleteTarget?.name}" sera supprime definitivement.
+            <AlertDialogTitle>Supprimer ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{deleteTarget?.name}" sera supprimé définitivement.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-[#1E1E24] text-neutral-400 hover:bg-neutral-900">
-              Annuler
-            </AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Supprimer
             </AlertDialogAction>
