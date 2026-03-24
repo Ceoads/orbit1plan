@@ -132,6 +132,14 @@ export const VaultSubjectDetailView = ({
 
   return (
     <div className="space-y-4">
+      {/* Header with add button */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+          Documents
+        </span>
+        <VaultAddContentMenu subjectId={subjectId} onContentAdded={onContentAdded} />
+      </div>
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
