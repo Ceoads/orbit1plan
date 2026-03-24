@@ -113,7 +113,11 @@ export const VaultNoteEditor = ({
 
         {/* Toolbar */}
         <div className="flex items-center gap-0.5 px-5 py-2 border-b border-border/50">
-          {TOOLBAR_ACTIONS.map(({ icon: Icon, label, prefix, suffix, lineStart }) => (
+          {TOOLBAR_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            const { label, prefix, suffix } = action;
+            const lineStart = "lineStart" in action ? action.lineStart : false;
+            return (
             <button
               key={label}
               type="button"
