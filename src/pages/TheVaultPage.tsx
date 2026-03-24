@@ -339,7 +339,9 @@ export const TheVaultPage = () => {
           ) : (
             <VaultSubjectDetailView
               files={displayedFiles}
+              subjectId={selectedSubject.id}
               onDeleteFile={(id, name) => setDeleteTarget({ type: "file", id, name })}
+              onContentAdded={refetch}
             />
           )}
         </>

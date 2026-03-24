@@ -3,12 +3,15 @@ import { Search } from "lucide-react";
 import { differenceInDays, isToday, startOfDay } from "date-fns";
 import { VaultFile } from "@/hooks/useVaultData";
 import { VaultFileCard } from "./VaultFileCard";
+import { VaultAddContentMenu } from "./VaultAddContentMenu";
 import { SwipeableItem } from "@/components/SwipeableItem";
 import { cn } from "@/lib/utils";
 
 interface VaultSubjectDetailViewProps {
   files: VaultFile[];
+  subjectId: string;
   onDeleteFile: (id: string, name: string) => void;
+  onContentAdded: () => void;
 }
 
 type FilterType = "Tous" | "Cours" | "TP" | "TD";
@@ -92,7 +95,9 @@ const CollapsibleGroup = ({
 
 export const VaultSubjectDetailView = ({
   files,
+  subjectId,
   onDeleteFile,
+  onContentAdded,
 }: VaultSubjectDetailViewProps) => {
   const [activeFilter, setActiveFilter] = useState<FilterType>("Tous");
   const [searchQuery, setSearchQuery] = useState("");
@@ -127,6 +132,14 @@ export const VaultSubjectDetailView = ({
 
   return (
     <div className="space-y-4">
+      {/* Header with add button */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+          Documents
+        </span>
+        <VaultAddContentMenu subjectId={subjectId} onContentAdded={onContentAdded} />
+      </div>
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
