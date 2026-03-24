@@ -55,8 +55,10 @@ export const TheVaultPage = () => {
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isSearchMode, setIsSearchMode] = useState(false);
 
-  // Get subject stats for cards
-  const subjectStats = getSubjectStats();
+  // Get subject stats for cards (deduplicated by id)
+  const subjectStats = getSubjectStats().filter(
+    (s, i, arr) => arr.findIndex(x => x.id === s.id) === i
+  );
 
   // Filter files based on search or selected subject
   const displayedFiles = searchQuery.trim() 
