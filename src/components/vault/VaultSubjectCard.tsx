@@ -48,18 +48,10 @@ export const VaultSubjectCard = ({
           />
         ) : null}
 
-        {/* Placeholder fallback (shown when no thumb or image fails) */}
-        <div
-          className={cn(
-            "absolute inset-0 flex flex-col items-center justify-center gap-1",
-            hasThumb ? "hidden" : "flex"
-          )}
-        >
-          <span className="text-4xl">{subject.icon}</span>
-          <span className="text-lg font-bold text-muted-foreground/60 uppercase tracking-wide">
-            {subject.name.charAt(0)}
-          </span>
-        </div>
+        {/* Solid color fallback when no thumbnail */}
+        {!hasThumb && (
+          <div className="absolute inset-0 bg-primary/15" />
+        )}
 
         {/* New badge */}
         {newCount > 0 && (
