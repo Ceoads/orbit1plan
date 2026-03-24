@@ -688,6 +688,36 @@ const SettingsPage = () => {
           <IOSRow icon={MapPin} iconBg="bg-success" label="Extraction des salles" last />
         </IOSCard>
 
+        {/* ──── VAULT ──── */}
+        <IOSSectionHeader label="Vault" />
+        <IOSCard className="mb-3">
+          <IOSRow
+            icon={RotateCcw}
+            iconBg="bg-warning"
+            label="Réinitialiser le Vault"
+            detail="Relancer la configuration des matières"
+            last
+            onClick={async () => {
+              if (!user) return;
+              if (!confirm("Réinitialiser le Vault ? Tu pourras reconfigurer tes matières.")) return;
+              try {
+                await supabase.from('vault_files').delete().eq('user_id', user.id);
+                // Remove vault subjects (icon = COURS or SAE)
+                await supabase.from('subjects').delete().eq('user_id', user.id).in('icon', ['COURS', 'SAE']);
+                // Reset vault_initialized flag
+                const { data: profile } = await supabase.from('profiles').select('preferences').eq('user_id', user.id).single();
+                const prefs = (profile?.preferences as any) || {};
+                delete prefs.vault_initialized;
+                await supabase.from('profiles').update({ preferences: prefs }).eq('user_id', user.id);
+                toast.success("Vault réinitialisé. Retourne dans le Vault pour reconfigurer.");
+              } catch (e) {
+                console.error(e);
+                toast.error("Erreur lors de la réinitialisation");
+              }
+            }}
+          />
+        </IOSCard>
+
         {/* ──── COMPTE ──── */}
         <IOSSectionHeader label="Compte" />
         <IOSCard className="mb-3">

@@ -65,7 +65,7 @@ export const useVaultData = () => {
     try {
       const [filesRes, subjectsRes, yearsRes, semestersRes] = await Promise.all([
         supabase.from('vault_files').select('*').order('created_at', { ascending: false }),
-        supabase.from('subjects').select('*').order('name'),
+        supabase.from('subjects').select('*').in('icon', ['COURS', 'SAE']).order('name'),
         supabase.from('academic_years').select('*').order('start_date', { ascending: false }),
         supabase.from('semesters').select('*').order('start_date', { ascending: false }),
       ]);
