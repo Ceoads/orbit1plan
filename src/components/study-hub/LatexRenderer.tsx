@@ -1,6 +1,7 @@
 import { useEffect, useRef, memo } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import DOMPurify from "dompurify";
 
 interface LatexRendererProps {
   content: string;
