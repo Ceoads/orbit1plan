@@ -1,6 +1,7 @@
 import { useEffect, useRef, memo } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import DOMPurify from "dompurify";
 
 interface LatexRendererProps {
   content: string;
@@ -19,7 +20,10 @@ export const LatexRenderer = memo(({ content, className = "" }: LatexRendererPro
 
     // Parse and render LaTeX expressions
     const rendered = parseAndRenderLatex(content);
-    containerRef.current.innerHTML = rendered;
+    containerRef.current.innerHTML = DOMPurify.sanitize(rendered, {
+      ADD_TAGS: ['span', 'div', 'math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'mover', 'munder', 'mtable', 'mtr', 'mtd', 'annotation'],
+      ADD_ATTR: ['class', 'style', 'aria-hidden', 'encoding', 'xmlns'],
+    });
   }, [content]);
 
   return (
