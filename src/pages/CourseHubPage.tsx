@@ -658,13 +658,7 @@ export const CourseHubPage = () => {
                   haptics.selection();
                   if (!subject) {
                     toast.error("Aucune matière liée à ce cours", {
-                      description: "Impossible d'ouvrir les notes.",
-                    });
-                    return;
-                  }
-                  if (noteStats.notes === 0) {
-                    toast.error(`Aucune note pour ${subject.name}`, {
-                      description: "Capture ta première note depuis ce cours.",
+                      description: "Impossible d'ouvrir le dossier dans le Vault.",
                     });
                     return;
                   }
