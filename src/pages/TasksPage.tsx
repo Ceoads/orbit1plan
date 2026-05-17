@@ -360,7 +360,7 @@ export const TasksPage = () => {
         whileTap={{ scale: 0.92 }}
         whileHover={{ scale: 1.06 }}
         transition={SPRING}
-        onClick={() => { haptics.impact(); setShowAddModal(true); }}
+        onClick={() => { haptics.soft(); setShowAddModal(true); }}
         className="fixed left-1/2 -translate-x-1/2 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center backdrop-blur-md"
         style={{
           bottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)",
