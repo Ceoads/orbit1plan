@@ -218,6 +218,39 @@ export const TheVaultPage = () => {
     refetch();
   };
 
+  const handleRenameSubject = async (subjectId: string, newName: string) => {
+    const { error } = await supabase
+      .from("subjects")
+      .update({ name: newName })
+      .eq("id", subjectId);
+    if (error) {
+      toast.error("Erreur lors du renommage");
+      return false;
+    }
+    toast.success("Dossier renommé");
+    setSelectedSubject((s) => (s && s.id === subjectId ? { ...s, name: newName } : s));
+    refetch();
+    return true;
+  };
+
+  const handleDeleteSubject = async (subjectId: string) => {
+    // Detach files from this subject so they stay searchable
+    await supabase
+      .from("vault_files")
+      .update({ subject_id: null, filing_status: "pending" })
+      .eq("subject_id", subjectId);
+
+    const { error } = await supabase.from("subjects").delete().eq("id", subjectId);
+    if (error) {
+      toast.error("Erreur lors de la suppression");
+      return false;
+    }
+    toast.success("Dossier supprimé");
+    setSelectedSubject(null);
+    refetch();
+    return true;
+  };
+
   // FAB file upload (no subject pre-selected → smart filing)
   const uploadFile = async (file: File, isPhoto: boolean) => {
     if (!user) return;
