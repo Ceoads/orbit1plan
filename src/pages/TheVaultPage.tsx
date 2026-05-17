@@ -392,13 +392,23 @@ export const TheVaultPage = () => {
       {inSearch && searchQuery !== "" && (
         <div className="space-y-3">
           {displayedFiles.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun résultat pour "{searchQuery}"
-            </p>
+            <div className="text-center py-16 px-6">
+              <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <Search className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <p className="font-semibold text-foreground">
+                Aucun résultat pour "{searchQuery}"
+              </p>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto">
+                Le texte OCR de tes fichiers a été analysé, mais ce mot n'a pas été trouvé.
+                Vérifie l'orthographe ou essaie un autre mot-clé.
+              </p>
+            </div>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                {displayedFiles.length} résultat{displayedFiles.length > 1 ? "s" : ""}
+                {displayedFiles.length} résultat{displayedFiles.length > 1 ? "s" : ""} trouvé
+                {displayedFiles.length > 1 ? "s" : ""} via OCR
               </p>
               {displayedFiles.map((file) => (
                 <SwipeableItem
