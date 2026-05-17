@@ -243,7 +243,6 @@ export const CalendarPocketSpace = ({
               if (!isScrolledDown && (info.offset.y > 80 || info.velocity.y > 400)) {
                 handleClose();
               }
-              lastSwipeDirection.current = null;
             }}
             style={{ 
               willChange: 'transform',
