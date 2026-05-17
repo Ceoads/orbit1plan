@@ -85,16 +85,8 @@ export const WeeklyTimeGrid = ({
     return (endH * 60 + endM) - (startH * 60 + startM);
   };
 
-  const getSubjectColors = (colorKey: string): { bg: string; border: string; text: string } => {
-    const colorMap: Record<string, { bg: string; border: string; text: string }> = {
-      math: { bg: 'bg-subject-math/20', border: 'border-subject-math', text: 'text-subject-math' },
-      history: { bg: 'bg-subject-history/20', border: 'border-subject-history', text: 'text-subject-history' },
-      physics: { bg: 'bg-subject-physics/20', border: 'border-subject-physics', text: 'text-subject-physics' },
-      english: { bg: 'bg-subject-english/20', border: 'border-subject-english', text: 'text-subject-english' },
-      chemistry: { bg: 'bg-subject-chemistry/20', border: 'border-subject-chemistry', text: 'text-subject-chemistry' },
-    };
-    return colorMap[colorKey] || { bg: 'bg-muted', border: 'border-muted-foreground', text: 'text-foreground' };
-  };
+  // Legacy helper kept for compatibility (no longer used for cards)
+  const _unused = (_k: string) => null;
 
   const handleExamClick = (exam: CalendarEvent) => {
     haptics.soft();
