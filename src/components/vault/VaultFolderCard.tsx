@@ -11,8 +11,11 @@ interface VaultFolderCardProps {
 }
 
 /**
- * 3D folder card — colored folder body with stacked papers peeking out the top.
- * Used in both the grid and list views of the Vault.
+ * Premium 3D folder card.
+ * - Gradient body (course color top → darker bottom)
+ * - 3 stacked white paper sheets peeking from inside the folder
+ * - Status dot top-left (green if has files, gray if empty)
+ * - Course name + file count below the card
  */
 export const VaultFolderCard = ({
   subject,
@@ -21,6 +24,8 @@ export const VaultFolderCard = ({
   variant = "grid",
 }: VaultFolderCardProps) => {
   const color = getCourseColor(subject.name);
+  const top = color.hex;
+  const bottom = shade(color.hex, -22);
   const hasFiles = fileCount > 0;
 
   if (variant === "list") {
@@ -35,14 +40,14 @@ export const VaultFolderCard = ({
       >
         <span
           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: color.hex }}
+          style={{ backgroundColor: top }}
         />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground truncate">
             {subject.name}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {fileCount} {fileCount === 1 ? "fichier" : "fichiers"}
+            {fileCount} {fileCount === 1 ? "document" : "documents"}
           </p>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
@@ -53,77 +58,111 @@ export const VaultFolderCard = ({
   return (
     <button
       onClick={onClick}
-      className="w-full flex flex-col items-start gap-2 group text-left"
+      className="w-full flex flex-col items-start gap-2.5 group text-left"
     >
       <div
-        className={cn(
-          "relative w-full aspect-[1/1.05] rounded-3xl overflow-hidden",
-          "transition-all duration-200 active:scale-[0.97] group-hover:shadow-soft"
-        )}
-        style={{ background: "#F5F5F5" }}
+        className="relative w-full rounded-[20px] overflow-visible transition-all duration-200 ease-out group-hover:scale-[1.04] group-active:scale-[0.97]"
+        style={{
+          aspectRatio: "160 / 180",
+          filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.12))",
+        }}
       >
-        {/* Status dot */}
-        <span
-          className="absolute top-3 left-3 w-2 h-2 rounded-full z-10"
-          style={{ backgroundColor: hasFiles ? "#4CAF7D" : "#C7C7CC" }}
+        {/* Stacked papers (peeking from inside folder, behind the front flap) */}
+        <Paper offsetTop="6%"  widthPct={84} rotate={-3} z={1} />
+        <Paper offsetTop="3%"  widthPct={82} rotate={2}  z={2} />
+        <Paper offsetTop="0%"  widthPct={80} rotate={-1} z={3} />
+
+        {/* Folder back / tab */}
+        <div
+          className="absolute left-0 right-0 top-[12%] h-[24%] rounded-t-[18px]"
+          style={{
+            background: top,
+            filter: "brightness(0.92)",
+            zIndex: 4,
+          }}
+        >
+          <div
+            className="absolute left-0 top-0 h-full w-[55%] rounded-t-[18px] rounded-br-[14px]"
+            style={{ background: top, filter: "brightness(0.85)" }}
+          />
+        </div>
+
+        {/* Folder front body */}
+        <div
+          className="absolute left-0 right-0 top-[30%] bottom-0 rounded-[18px]"
+          style={{
+            background: `linear-gradient(180deg, ${top} 0%, ${bottom} 100%)`,
+            boxShadow:
+              "inset 0 1px 2px rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.08)",
+            zIndex: 5,
+          }}
         />
 
-        {/* 3D folder illustration */}
-        <Folder3D color={color.hex} />
+        {/* Subtle highlight */}
+        <div
+          className="absolute left-3 right-3 top-[32%] h-[5%] rounded-full opacity-40 pointer-events-none"
+          style={{ background: "rgba(255,255,255,0.55)", zIndex: 6 }}
+        />
+
+        {/* Status dot */}
+        <span
+          className="absolute top-2.5 left-2.5 w-2 h-2 rounded-full z-10"
+          style={{
+            backgroundColor: hasFiles ? "#4CAF7D" : "#BDBDBD",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.18)",
+          }}
+        />
       </div>
 
-      <div className="flex items-baseline gap-1.5 px-1 w-full">
-        <span className="text-sm font-medium text-foreground truncate">
+      <div className="flex items-baseline gap-1.5 px-0.5 w-full">
+        <span
+          className="text-sm font-medium truncate"
+          style={{ color: "#333" }}
+        >
           {subject.name}
         </span>
-        <span className="text-sm text-muted-foreground flex-shrink-0">
-          {fileCount}
+        <span className="text-xs flex-shrink-0" style={{ color: "#999" }}>
+          {fileCount} {fileCount === 1 ? "doc" : "docs"}
         </span>
       </div>
     </button>
   );
 };
 
-const Folder3D = ({ color }: { color: string }) => (
-  <div className="absolute inset-0 flex items-end justify-center pb-6">
-    <div className="relative w-[78%] aspect-[1.25/1]">
-      {/* Papers peeking out the top */}
-      <div
-        className="absolute left-[14%] right-[18%] -top-3 h-[55%] rounded-md bg-white shadow-sm"
-        style={{ transform: "rotate(-6deg)", zIndex: 1 }}
-      />
-      <div
-        className="absolute left-[20%] right-[12%] -top-2 h-[55%] rounded-md bg-white shadow-sm"
-        style={{ transform: "rotate(4deg)", zIndex: 2 }}
-      />
-      <div
-        className="absolute left-[16%] right-[16%] -top-1 h-[55%] rounded-md bg-white shadow-sm"
-        style={{ transform: "rotate(-1deg)", zIndex: 3 }}
-      />
-
-      {/* Folder tab (back) */}
-      <div
-        className="absolute top-0 left-0 h-[22%] w-[55%] rounded-t-xl"
-        style={{
-          background: color,
-          filter: "brightness(0.92)",
-          zIndex: 4,
-        }}
-      />
-      {/* Folder body (front) */}
-      <div
-        className="absolute top-[16%] left-0 right-0 bottom-0 rounded-xl shadow-md"
-        style={{
-          background: `linear-gradient(180deg, ${color} 0%, ${color} 70%, rgba(0,0,0,0.08) 100%)`,
-          boxShadow: `0 8px 18px -6px ${color}66, inset 0 -3px 0 rgba(0,0,0,0.06)`,
-          zIndex: 5,
-        }}
-      />
-      {/* Highlight */}
-      <div
-        className="absolute top-[18%] left-2 right-2 h-[6%] rounded-full opacity-30"
-        style={{ background: "rgba(255,255,255,0.6)", zIndex: 6 }}
-      />
-    </div>
-  </div>
+const Paper = ({
+  offsetTop,
+  widthPct,
+  rotate,
+  z,
+}: {
+  offsetTop: string;
+  widthPct: number;
+  rotate: number;
+  z: number;
+}) => (
+  <div
+    className="absolute left-1/2 rounded-md bg-white"
+    style={{
+      top: offsetTop,
+      width: `${widthPct}%`,
+      height: "32%",
+      transform: `translateX(-50%) rotate(${rotate}deg)`,
+      boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+      zIndex: z,
+    }}
+  />
 );
+
+// Darken/lighten a hex color by percentage (-100..100)
+function shade(hex: string, percent: number): string {
+  const h = hex.replace("#", "");
+  const num = parseInt(h, 16);
+  const r = (num >> 16) & 0xff;
+  const g = (num >> 8) & 0xff;
+  const b = num & 0xff;
+  const adj = (c: number) =>
+    Math.max(0, Math.min(255, Math.round(c + (percent / 100) * 255)));
+  return `#${[adj(r), adj(g), adj(b)]
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
