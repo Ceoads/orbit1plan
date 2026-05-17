@@ -368,6 +368,23 @@ export const CalendarPocketSpace = ({
                     >
                       <ChevronRight className="w-5 h-5" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        haptics.selection();
+                        sounds.tap();
+                        setViewMode((v) => (v === 'week' ? 'list' : 'week'));
+                      }}
+                      className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
+                      aria-label={viewMode === 'week' ? 'Vue liste' : 'Vue semaine'}
+                    >
+                      {viewMode === 'week' ? (
+                        <LayoutList className="w-5 h-5" />
+                      ) : (
+                        <CalendarRange className="w-5 h-5" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               </motion.header>
