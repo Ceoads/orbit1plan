@@ -2,8 +2,9 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { WeeklyTimeGrid } from "./WeeklyTimeGrid";
+import { CalendarTodayList } from "./CalendarTodayList";
 import { ExamDetailModal } from "./ExamDetailModal";
-import { ChevronLeft, ChevronRight, ArrowLeft, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowLeft, Sparkles, LayoutList, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -48,6 +49,8 @@ export const CalendarPocketSpace = ({
   
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'week' | 'list'>('week');
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
   // Track scroll position for conditional dismiss
   const handleGridScroll = useCallback((e: Event) => {
@@ -365,6 +368,23 @@ export const CalendarPocketSpace = ({
                     >
                       <ChevronRight className="w-5 h-5" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        haptics.selection();
+                        sounds.tap();
+                        setViewMode((v) => (v === 'week' ? 'list' : 'week'));
+                      }}
+                      className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
+                      aria-label={viewMode === 'week' ? 'Vue liste' : 'Vue semaine'}
+                    >
+                      {viewMode === 'week' ? (
+                        <LayoutList className="w-5 h-5" />
+                      ) : (
+                        <CalendarRange className="w-5 h-5" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               </motion.header>
@@ -383,22 +403,32 @@ export const CalendarPocketSpace = ({
                 />
               </motion.div>
 
-              {/* Weekly Time Grid with Horizontal Swipe */}
-              <motion.div 
+              {/* Main view */}
+              <motion.div
                 className="flex-1 overflow-hidden px-2 weekly-time-grid"
                 variants={gridVariants}
-                drag="x"
+                drag={viewMode === 'week' ? 'x' : false}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
-                onDragEnd={(_, info) => handleHorizontalSwipe(info)}
+                onDragEnd={(_, info) => viewMode === 'week' && handleHorizontalSwipe(info)}
               >
-                <WeeklyTimeGrid
-                  weekDays={weekDays}
-                  events={events}
-                  subjects={subjects}
-                  getExamsOnDate={getExamsOnDate}
-                  onExamClick={handleExamClick}
-                />
+                {viewMode === 'week' ? (
+                  <WeeklyTimeGrid
+                    weekDays={weekDays}
+                    events={events}
+                    subjects={subjects}
+                    getExamsOnDate={getExamsOnDate}
+                    onExamClick={handleExamClick}
+                  />
+                ) : (
+                  <CalendarTodayList
+                    currentDate={selectedDate}
+                    weekDays={weekDays}
+                    events={events}
+                    subjects={subjects}
+                    onSelectDay={(d) => setSelectedDate(d)}
+                  />
+                )}
               </motion.div>
 
               {/* Bottom padding for floating dock */}
