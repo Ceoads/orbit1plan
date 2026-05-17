@@ -31,9 +31,9 @@ export const CalendarPocketSpace = ({
   const { t } = useTranslation();
   const haptics = useHaptics();
   const sounds = useSoundEffects();
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const lastSwipeDirection = useRef<'left' | 'right' | null>(null);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const [showTopShadow, setShowTopShadow] = useState(true);
   const wasAtTop = useRef(true);
@@ -49,7 +49,6 @@ export const CalendarPocketSpace = ({
   
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'week' | 'list'>('week');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
   // Track scroll position for conditional dismiss
