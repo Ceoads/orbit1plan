@@ -295,8 +295,8 @@ export const TasksPage = () => {
                             isSelected
                               ? "text-foreground"
                               : isPast
-                              ? "text-muted-foreground/35"
-                              : "text-muted-foreground/60"
+                              ? "text-muted-foreground/55"
+                              : "text-muted-foreground"
                           )}
                         >
                           {DAY_3_FR[d.getDay()]}
@@ -307,10 +307,10 @@ export const TasksPage = () => {
                             isSelected
                               ? "text-foreground"
                               : isPast
-                              ? "text-muted-foreground/35"
+                              ? "text-muted-foreground/55"
                               : isCurrentDay
                               ? "text-primary"
-                              : "text-muted-foreground/80"
+                              : "text-foreground/85"
                           )}
                         >
                           {d.getDate()}

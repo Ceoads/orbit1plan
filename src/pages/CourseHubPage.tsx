@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/GlassCard";
+import { IOSBackButton } from "@/components/IOSBackButton";
 import { Button } from "@/components/ui/button";
 import { PostCaptureActionMenu, CapturedNote } from "@/components/vault/PostCaptureActionMenu";
 import { buildCourseVaultPath } from "@/lib/courseNavigation";
@@ -420,9 +421,14 @@ export const CourseHubPage = () => {
           className="hidden"
         />
 
+        {/* iOS back button (top-left) — never get stuck */}
+        <div className="sticky top-0 z-30 px-3 pt-safe pt-2 pb-1 bg-gradient-to-b from-background/85 via-background/60 to-transparent backdrop-blur-md">
+          <IOSBackButton fallback="/" />
+        </div>
+
         {/* Drag indicator */}
         <motion.div 
-          className="flex justify-center pt-4 pb-2"
+          className="flex justify-center pt-1 pb-2"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}

@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { QRCodeScanner } from "@/components/QRCodeScanner";
+import { IOSBackButton } from "@/components/IOSBackButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
@@ -465,10 +466,7 @@ const SettingsPage = () => {
       {/* Fixed iOS-style header */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-secondary/70 backdrop-blur-2xl border-b border-border/30">
         <div className="max-w-lg mx-auto px-4 h-[52px] flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="flex items-center gap-1 text-primary -ml-1 active:opacity-60 transition-opacity">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-[16px] font-medium">Retour</span>
-          </button>
+          <IOSBackButton fallback="/" />
           <h1 className="flex-1 text-center text-[17px] font-semibold text-foreground -mr-12">Paramètres</h1>
         </div>
       </header>
