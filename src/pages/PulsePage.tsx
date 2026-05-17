@@ -1,231 +1,314 @@
-import { useState, useEffect } from "react";
-import { GlassCard } from "@/components/GlassCard";
-import { ClassRecapCard, ClassTimeline } from "@/components/dashboard";
-import { ScheduleWidget } from "@/components/calendar";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
+import { Plus, Check } from "lucide-react";
 import { useOrbitData } from "@/hooks/useOrbitData";
-import { Clock, BookOpen, CalendarDays, Sparkles, MapPin, Bell, ChevronRight } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useHaptics } from "@/hooks/useHaptics";
+import { AddTaskModal } from "@/components/modals/AddTaskModal";
+import { cn } from "@/lib/utils";
+
+const SPRING = { type: "spring" as const, stiffness: 320, damping: 22 };
+const SOFT_SPRING = { type: "spring" as const, stiffness: 260, damping: 26 };
+
+const DAY_SHORT_FR = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+const DAY_FULL_FR = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const MONTH_FR = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+
+const getGreetingFR = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Bonjour";
+  if (h < 18) return "Bon après-midi";
+  return "Bonsoir";
+};
+
+const getWeekDays = (ref: Date) => {
+  // Monday-first week
+  const day = ref.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(ref);
+    d.setDate(ref.getDate() + offset + i);
+    return d;
+  });
+};
 
 export const PulsePage = () => {
-  const { 
-    getCurrentClass, 
-    getNextClass, 
-    getSubjectById, 
-    getHighestPriorityTask, 
-    getUpcomingExams, 
-    getTodayEvents,
-    events,
-    subjects,
-    notes, 
-    tasks 
-  } = useOrbitData();
-  
-  const [showRoomReminder, setShowRoomReminder] = useState(false);
-  const [minutesToClass, setMinutesToClass] = useState<number | null>(null);
+  const { user } = useAuth();
+  const { tasks, getTodayEvents, toggleTask, createTask, subjects } = useOrbitData();
+  const haptics = useHaptics();
+
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+
+  // Scroll-reactive header
+  const { scrollY } = useScroll();
+  useMotionValueEvent(scrollY, "change", (v) => {
+    setExpanded(v < 24);
+  });
 
   const today = new Date();
-  const currentClass = getCurrentClass();
-  const nextClass = getNextClass();
-  const displayClass = currentClass || nextClass;
-  const classSubject = displayClass ? getSubjectById(displayClass.subject_id) : null;
-  const isCurrentlyInClass = !!currentClass;
-  const priorityTask = getHighestPriorityTask();
-  const upcomingExams = getUpcomingExams();
-  const nextExam = upcomingExams[0];
-  const examSubject = nextExam ? getSubjectById(nextExam.subject_id) : null;
-  
-  // Get today's events for the timeline
+  const todayStr = today.toISOString().split("T")[0];
+  const selectedStr = selectedDate.toISOString().split("T")[0];
+  const isToday = todayStr === selectedStr;
+
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
   const todayEvents = getTodayEvents?.() || [];
-  
-  // Transform events for the timeline component
-  const timelineEvents = todayEvents
-    .filter(event => {
-      // Filter out the current/main display class to avoid duplication
-      if (displayClass && event.id === displayClass.id) return false;
-      // Only show future events
-      const now = new Date();
-      const [hours, mins] = event.end_time.split(':').map(Number);
-      const eventEnd = new Date();
-      eventEnd.setHours(hours, mins, 0, 0);
-      return eventEnd > now;
-    })
-    .slice(0, 4) // Show max 4 upcoming events
-    .map(event => {
-      const subject = getSubjectById(event.subject_id);
-      const now = new Date();
-      const [startH, startM] = event.start_time.split(':').map(Number);
-      const [endH, endM] = event.end_time.split(':').map(Number);
-      const eventStart = new Date();
-      eventStart.setHours(startH, startM, 0, 0);
-      const eventEnd = new Date();
-      eventEnd.setHours(endH, endM, 0, 0);
-      
-      return {
-        id: event.id,
-        title: event.title,
-        startTime: event.start_time,
-        endTime: event.end_time,
-        subjectName: subject?.name || event.title,
-        colorKey: subject?.color_key,
-        eventType: event.event_type,
-        isCurrentEvent: now >= eventStart && now <= eventEnd,
-      };
-    });
 
-  useEffect(() => {
-    const checkClassTime = () => {
-      if (!nextClass || isCurrentlyInClass) { 
-        setShowRoomReminder(false); 
-        return; 
-      }
-      const now = new Date();
-      const [startHour, startMin] = nextClass.start_time.split(':').map(Number);
-      const classStart = new Date();
-      classStart.setHours(startHour, startMin, 0, 0);
-      const diff = classStart.getTime() - now.getTime();
-      const minutesUntil = Math.floor(diff / 60000);
-      if (minutesUntil > 0 && minutesUntil <= 10 && nextClass.room_number) {
-        setShowRoomReminder(true);
-        setMinutesToClass(minutesUntil);
-      } else {
-        setShowRoomReminder(false);
-        setMinutesToClass(null);
-      }
-    };
-    checkClassTime();
-    const interval = setInterval(checkClassTime, 30000);
-    return () => clearInterval(interval);
-  }, [nextClass, isCurrentlyInClass]);
+  // Combine today's events + open tasks into a single chronological list
+  const listItems = useMemo(() => {
+    const eventItems = todayEvents.map((e) => ({
+      kind: "event" as const,
+      id: e.id,
+      title: e.title,
+      time: e.start_time?.slice(0, 5) || "",
+      sortKey: e.start_time || "99:99",
+      done: false,
+      icon: subjects.find((s) => s.id === e.subject_id)?.icon || "📚",
+    }));
+    const taskItems = tasks
+      .filter((t) => !t.is_subtask)
+      .map((t) => ({
+        kind: "task" as const,
+        id: t.id,
+        title: t.title,
+        time: t.due_date ? new Date(t.due_date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
+        sortKey: t.due_date || "zz",
+        done: t.status === "done",
+        icon: "✦",
+      }));
+    return [...eventItems, ...taskItems].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  }, [todayEvents, tasks, subjects]);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bonjour";
-    if (hour < 18) return "Bon après-midi";
-    return "Bonsoir";
+  const openTaskCount = tasks.filter((t) => t.status === "todo" && !t.is_subtask).length;
+  const eventCount = todayEvents.length;
+  const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(" ")[0] || "toi";
+
+  const handleToggle = async (id: string) => {
+    haptics.selection();
+    await toggleTask(id);
   };
-
-  const getDaysUntil = (dateStr: string): number => {
-    return Math.ceil((new Date(dateStr).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  const todoCount = tasks.filter(t => t.status === 'todo' && !t.is_subtask).length;
-  const doneCount = tasks.filter(t => t.status === 'done').length;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-24">
-      {/* Mesh Background Decorations */}
-      <div className="fixed inset-0 pointer-events-none -z-10 mesh-background opacity-70" />
-      
-      {/* Header */}
-      <div className="pt-4">
-        <p className="text-muted-foreground text-sm font-medium">
-          {today.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
-        <h1 className="font-display text-3xl font-bold text-foreground mt-1">
-          {getGreeting()}! ✨
-        </h1>
-      </div>
-
-      {/* Room Reminder Alert */}
-      {showRoomReminder && nextClass?.room_number && (
-        <div className="soft-card p-4 border-l-4 border-l-primary animate-scale-in">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">Cours dans {minutesToClass} min</p>
-              <p className="font-display font-bold text-foreground text-lg">📍 {nextClass.room_number}</p>
-            </div>
-            <Bell className="w-5 h-5 text-primary animate-bounce" />
+    <div className="-mt-6 -mx-4">
+      {/* ===== HEADER ===== */}
+      <motion.header
+        layout
+        transition={SPRING}
+        className="px-6 pt-4 pb-3 sticky top-0 z-20 backdrop-blur-xl bg-[hsl(var(--background)/0.72)]"
+        style={{ borderBottom: "1px solid hsl(var(--border) / 0.4)" }}
+      >
+        {/* Day label + date stack */}
+        <motion.div layout className="flex items-start justify-between">
+          <div className="flex items-baseline gap-1">
+            <h1
+              className="font-display font-bold tracking-tight text-foreground leading-none"
+              style={{ fontSize: expanded ? 56 : 34, transition: "font-size 0.35s cubic-bezier(0.4,0,0.2,1)" }}
+            >
+              {DAY_SHORT_FR[selectedDate.getDay()]}
+            </h1>
+            <motion.span
+              animate={{ scale: [1, 1.15, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              className="inline-block rounded-full bg-primary"
+              style={{ width: expanded ? 12 : 8, height: expanded ? 12 : 8, marginLeft: 2, marginBottom: 6 }}
+            />
           </div>
-        </div>
-      )}
 
-      {/* Main Class Card */}
-      {displayClass && classSubject ? (
-        <ClassRecapCard
-          subjectName={classSubject.name}
-          subjectIcon={classSubject.icon}
-          startTime={displayClass.start_time.slice(0, 5)}
-          endTime={displayClass.end_time.slice(0, 5)}
-          teacherName={displayClass.teacher_name || classSubject.teacher_name}
-          roomNumber={displayClass.room_number}
-          isCurrentClass={isCurrentlyInClass}
-        />
-      ) : (
-        <div className="soft-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
-              <BookOpen className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Aucun cours prévu</p>
-              <p className="font-display font-semibold text-lg">Profite de ton temps libre ! 🎉</p>
-            </div>
+          <div className="text-right leading-tight">
+            <p className="text-sm font-medium text-muted-foreground">
+              {selectedDate.getDate()} {MONTH_FR[selectedDate.getMonth()]}
+            </p>
+            <p className="text-sm text-muted-foreground/70">{selectedDate.getFullYear()}</p>
           </div>
-        </div>
-      )}
+        </motion.div>
 
-      {/* Schedule Widget - Opens Pocket Space */}
-      <section>
-        <ScheduleWidget 
-          events={events} 
-          subjects={subjects} 
-        />
-      </section>
+        {/* Expanded briefing */}
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              key="briefing"
+              initial={{ opacity: 0, y: -8, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -8, height: 0 }}
+              transition={SPRING}
+              className="overflow-hidden"
+            >
+              <div className="pt-5 pb-2">
+                <p className="text-[22px] leading-snug font-display tracking-tight text-muted-foreground">
+                  {getGreetingFR()},{" "}
+                  <span className="text-foreground font-semibold">{firstName}</span>.{" "}
+                  Tu as{" "}
+                  <span className="text-foreground font-semibold">{eventCount} cours</span>
+                  {" "}et{" "}
+                  <span className="text-foreground font-semibold">{openTaskCount} tâches</span>
+                  {" "}aujourd'hui.
+                </p>
 
-      {/* Focus Task */}
-      {priorityTask && (
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-warning" />
-            <h2 className="font-display font-semibold text-foreground">À réviser maintenant</h2>
-          </div>
-          <div className="soft-card p-5 border-l-4 border-l-primary">
-            <div className="flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">{priorityTask.title}</h3>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </div>
-        </section>
-      )}
+                <div className="flex items-center gap-5 mt-4 text-xs font-medium text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="text-primary">●</span> {eventCount + openTaskCount} items</span>
+                  <span className="flex items-center gap-1.5"><span className="text-foreground/40">●</span> {tasks.filter(t => t.status === "done").length} terminées</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Upcoming Exam Alert */}
-      {nextExam && examSubject && nextExam.exam_date && getDaysUntil(nextExam.exam_date) <= 7 && (
-        <div className="soft-card p-5 border-l-4 border-l-warning">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-warning/10 flex items-center justify-center">
-              <CalendarDays className="w-6 h-6 text-warning" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">Examen à venir</p>
-              <p className="font-display font-semibold text-foreground">
-                {examSubject.icon} {nextExam.title}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-warning">{getDaysUntil(nextExam.exam_date)}</p>
-              <p className="text-xs text-muted-foreground">jours</p>
-            </div>
-          </div>
-        </div>
-      )}
+        {/* Week strip */}
+        <motion.div layout transition={SPRING} className="flex justify-between items-center pt-3 pb-1">
+          {weekDays.map((d, i) => {
+            const isSel = d.toDateString() === selectedDate.toDateString();
+            const isPast = d < today && !isSel && d.toDateString() !== today.toDateString();
+            return (
+              <motion.button
+                key={i}
+                onClick={() => { haptics.selection(); setSelectedDate(d); }}
+                whileTap={{ scale: 0.92 }}
+                className="flex flex-col items-center gap-1 py-1 px-2 relative hit-target"
+              >
+                <span className={cn(
+                  "text-[10px] font-semibold uppercase tracking-wider",
+                  isSel ? "text-foreground" : "text-muted-foreground/60"
+                )}>
+                  {DAY_SHORT_FR[d.getDay()]}
+                </span>
+                <span className={cn(
+                  "text-base font-display font-bold",
+                  isSel ? "text-foreground" : isPast ? "text-muted-foreground/40" : "text-muted-foreground/80"
+                )}>
+                  {d.getDate()}
+                </span>
+                {isSel && (
+                  <motion.div
+                    layoutId="weekActive"
+                    transition={SPRING}
+                    className="absolute -bottom-0.5 w-1.5 h-1.5 rounded-full bg-primary"
+                  />
+                )}
+              </motion.button>
+            );
+          })}
+        </motion.div>
+      </motion.header>
 
-      {/* Stats Grid */}
-      <section className="grid grid-cols-3 gap-3">
-        <div className="soft-card p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{notes.length}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Notes</p>
-        </div>
-        <div className="soft-card p-4 text-center">
-          <p className="text-2xl font-bold text-success">{doneCount}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Terminées</p>
-        </div>
-        <div className="soft-card p-4 text-center">
-          <p className="text-2xl font-bold text-warning">{upcomingExams.length}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Examens</p>
-        </div>
-      </section>
+      {/* ===== TASK / EVENT LIST ===== */}
+      <motion.section
+        className="mx-4 mt-4 mb-32 rounded-3xl bg-card/80 backdrop-blur-sm overflow-hidden"
+        style={{ boxShadow: "0 8px 30px -10px hsl(20 30% 20% / 0.08)" }}
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+        }}
+      >
+        <AnimatePresence mode="popLayout">
+          {listItems.length === 0 ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="p-10 text-center"
+            >
+              <p className="text-sm text-muted-foreground">Aucun élément aujourd'hui ✨</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Profite de ta journée libre</p>
+            </motion.div>
+          ) : (
+            listItems.map((item, idx) => (
+              <motion.div
+                key={item.id}
+                layout
+                variants={{
+                  hidden: { opacity: 0, y: 12 },
+                  visible: { opacity: 1, y: 0, transition: SOFT_SPRING },
+                }}
+                exit={{ opacity: 0, x: 30, transition: { duration: 0.25 } }}
+                className={cn(
+                  "flex items-center gap-4 px-5 py-4 relative",
+                  idx > 0 && "border-t border-dotted border-foreground/8"
+                )}
+                style={idx > 0 ? { borderTopStyle: "dotted", borderTopColor: "hsl(var(--foreground) / 0.08)" } : {}}
+              >
+                {item.kind === "task" ? (
+                  <motion.button
+                    whileTap={{ scale: 0.85 }}
+                    whileHover={{ scale: 1.05 }}
+                    transition={SPRING}
+                    onClick={() => handleToggle(item.id)}
+                    className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors",
+                      item.done
+                        ? "bg-primary/15 border-primary"
+                        : "border-foreground/20 hover:border-primary"
+                    )}
+                  >
+                    <AnimatePresence>
+                      {item.done && (
+                        <motion.span
+                          initial={{ scale: 0, rotate: -90 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          exit={{ scale: 0 }}
+                          transition={SPRING}
+                        >
+                          <Check className="w-3.5 h-3.5 text-primary" strokeWidth={3} />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                ) : (
+                  <span className="w-6 h-6 flex items-center justify-center text-base shrink-0">
+                    {item.icon}
+                  </span>
+                )}
+
+                <motion.p
+                  animate={{
+                    opacity: item.done ? 0.4 : 1,
+                    textDecoration: item.done ? "line-through" : "none",
+                  }}
+                  transition={{ duration: 0.25 }}
+                  className="flex-1 text-[15px] font-medium text-foreground truncate"
+                >
+                  {item.title}
+                </motion.p>
+
+                {item.time && (
+                  <span className="text-xs font-medium text-muted-foreground/60 tabular-nums shrink-0">
+                    {item.time}
+                  </span>
+                )}
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
+      </motion.section>
+
+      {/* ===== FAB ===== */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ ...SPRING, delay: 0.4 }}
+        whileTap={{ scale: 0.92 }}
+        whileHover={{ scale: 1.06 }}
+        onClick={() => { haptics.soft(); setShowAddTask(true); }}
+        className="fixed z-30 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+          background: "hsl(var(--primary))",
+          boxShadow: "0 12px 32px -8px hsl(var(--primary) / 0.5), 0 4px 12px -2px hsl(var(--primary) / 0.3)",
+        }}
+        aria-label="Ajouter une tâche"
+      >
+        <Plus className="w-6 h-6 text-primary-foreground" strokeWidth={2.5} />
+      </motion.button>
+
+      <AddTaskModal
+        open={showAddTask}
+        onClose={() => setShowAddTask(false)}
+        subjects={subjects}
+        onAdd={(data) => { createTask(data as any); setShowAddTask(false); }}
+      />
     </div>
   );
 };
