@@ -403,22 +403,32 @@ export const CalendarPocketSpace = ({
                 />
               </motion.div>
 
-              {/* Weekly Time Grid with Horizontal Swipe */}
-              <motion.div 
+              {/* Main view */}
+              <motion.div
                 className="flex-1 overflow-hidden px-2 weekly-time-grid"
                 variants={gridVariants}
-                drag="x"
+                drag={viewMode === 'week' ? 'x' : false}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
-                onDragEnd={(_, info) => handleHorizontalSwipe(info)}
+                onDragEnd={(_, info) => viewMode === 'week' && handleHorizontalSwipe(info)}
               >
-                <WeeklyTimeGrid
-                  weekDays={weekDays}
-                  events={events}
-                  subjects={subjects}
-                  getExamsOnDate={getExamsOnDate}
-                  onExamClick={handleExamClick}
-                />
+                {viewMode === 'week' ? (
+                  <WeeklyTimeGrid
+                    weekDays={weekDays}
+                    events={events}
+                    subjects={subjects}
+                    getExamsOnDate={getExamsOnDate}
+                    onExamClick={handleExamClick}
+                  />
+                ) : (
+                  <CalendarTodayList
+                    currentDate={selectedDate}
+                    weekDays={weekDays}
+                    events={events}
+                    subjects={subjects}
+                    onSelectDay={(d) => setSelectedDate(d)}
+                  />
+                )}
               </motion.div>
 
               {/* Bottom padding for floating dock */}
