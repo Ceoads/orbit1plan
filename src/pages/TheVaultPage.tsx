@@ -64,14 +64,42 @@ export const TheVaultPage = () => {
   // Auto-select subject from ?subject=<id>
   useEffect(() => {
     const sid = searchParams.get("subject");
-    if (!sid || subjects.length === 0) return;
-    const match = subjects.find((s) => s.id === sid);
-    if (match) {
-      setSelectedSubject(match);
+    if (!sid) return;
+
+    const clearParam = () => {
       const next = new URLSearchParams(searchParams);
       next.delete("subject");
       setSearchParams(next, { replace: true });
+    };
+
+    const match = subjects.find((s) => s.id === sid);
+    if (match) {
+      setSelectedSubject(match);
+      clearParam();
+      return;
     }
+
+    // Subject not in vault-filtered list (e.g. icon != COURS/SAE).
+    // Fetch it directly so we still open the right folder.
+    if (subjects.length === 0) return; // wait for initial load
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("subjects")
+        .select("id,name,color_key,teacher_name,icon,ical_code")
+        .eq("id", sid)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!error && data) {
+        setSelectedSubject(data as Subject);
+      } else {
+        toast.error("Matière introuvable");
+      }
+      clearParam();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, subjects, setSearchParams]);
 
   useEffect(() => {
