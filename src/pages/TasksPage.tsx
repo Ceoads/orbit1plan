@@ -334,14 +334,14 @@ export const TasksPage = () => {
 
           {/* Edge chevron taps (subtle) */}
           <button
-            onClick={() => goToWeek(weekOffset - 1)}
+            onClick={() => goToWeek(-1)}
             aria-label="Semaine précédente"
             className="absolute -left-1 top-1/2 -translate-y-1/2 p-1 opacity-0 hover:opacity-60 transition-opacity"
           >
             <ChevronLeft className="w-4 h-4 text-muted-foreground" />
           </button>
           <button
-            onClick={() => goToWeek(weekOffset + 1)}
+            onClick={() => goToWeek(1)}
             aria-label="Semaine suivante"
             className="absolute -right-1 top-1/2 -translate-y-1/2 p-1 opacity-0 hover:opacity-60 transition-opacity"
           >
