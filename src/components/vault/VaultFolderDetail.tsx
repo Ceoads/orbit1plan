@@ -65,14 +65,93 @@ function groupByDay(files: VaultFile[]) {
   return Array.from(map.values()).sort((a, b) => b.time - a.time);
 }
 
-export const VaultFolderDetail = ({ subject, files, onContentAdded }: VaultFolderDetailProps) => {
+export const VaultFolderDetail = ({
+  subject,
+  files,
+  onContentAdded,
+  onRename,
+  onDelete,
+}: VaultFolderDetailProps) => {
   const color = getCourseColor(subject.name);
   const groups = useMemo(() => groupByDay(files), [files]);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState(subject.name);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const handleShare = async () => {
+    const lines = files
+      .slice(0, 20)
+      .map((f) => `• ${f.ai_summary?.substring(0, 60) || f.original_filename || "Document"}`)
+      .join("\n");
+    const text = `${subject.name} — ${files.length} document${files.length > 1 ? "s" : ""}\n${lines}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: subject.name, text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        toast.success("Copié dans le presse-papier");
+      }
+    } catch {
+      /* user cancelled */
+    }
+  };
+
+  const handleRenameSubmit = async () => {
+    const next = renameValue.trim();
+    if (!next || next === subject.name) {
+      setRenameOpen(false);
+      return;
+    }
+    if (!onRename) return;
+    const ok = await onRename(subject.id, next);
+    if (ok) setRenameOpen(false);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!onDelete) return;
+    const ok = await onDelete(subject.id);
+    if (ok) setDeleteOpen(false);
+  };
 
   return (
     <div className="space-y-6">
       {/* Big folder header */}
-      <div className="flex flex-col items-center text-center pt-2">
+      <div className="flex flex-col items-center text-center pt-2 relative">
+        <div className="absolute right-0 top-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted/60 transition-colors"
+                aria-label="Options du dossier"
+              >
+                <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-xl">
+              <DropdownMenuItem
+                onClick={() => {
+                  setRenameValue(subject.name);
+                  setRenameOpen(true);
+                }}
+                className="gap-3 py-2.5 rounded-lg"
+              >
+                <Pencil className="w-4 h-4 text-muted-foreground" />
+                <span>Renommer</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShare} className="gap-3 py-2.5 rounded-lg">
+                <Share2 className="w-4 h-4 text-muted-foreground" />
+                <span>Partager</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setDeleteOpen(true)}
+                className="gap-3 py-2.5 rounded-lg text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Supprimer</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="relative w-24 h-20">
           <BigFolder color={color.hex} />
         </div>
@@ -119,6 +198,51 @@ export const VaultFolderDetail = ({ subject, files, onContentAdded }: VaultFolde
           ))}
         </div>
       )}
+
+      {/* Rename dialog */}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Renommer le dossier</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleRenameSubmit()}
+            placeholder="Nouveau nom"
+            autoFocus
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setRenameOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleRenameSubmit}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce dossier ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{subject.name}" sera supprimé. Les {files.length} document
+              {files.length > 1 ? "s" : ""} resteront accessibles depuis la recherche
+              mais ne seront plus rangés dans ce dossier.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
