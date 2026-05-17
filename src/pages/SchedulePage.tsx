@@ -21,7 +21,7 @@ export const SchedulePage = () => {
           description: "Ouverture de tes notes...",
           action: {
             label: "Voir",
-            onClick: () => navigate('/vault'),
+            onClick: () => navigate('/?tab=vault'),
           },
         });
       } else {
@@ -29,7 +29,7 @@ export const SchedulePage = () => {
           description: "Ajoute des notes pour créer tes supports de révision",
           action: {
             label: "Ajouter",
-            onClick: () => navigate('/vault'),
+            onClick: () => navigate('/?tab=vault'),
           },
         });
       }
