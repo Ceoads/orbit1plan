@@ -1,19 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useVaultData, VaultFile, Subject } from "@/hooks/useVaultData";
 import { useAuth } from "@/hooks/useAuth";
-import { VaultSubjectCard, VaultFileCard, FilingConfirmationBanner } from "@/components/vault";
-import { VaultSubjectDetailView } from "@/components/vault/VaultSubjectDetailView";
+import { VaultFileCard, FilingConfirmationBanner } from "@/components/vault";
+import { VaultFolderCard } from "@/components/vault/VaultFolderCard";
+import { VaultFolderDetail } from "@/components/vault/VaultFolderDetail";
 import { VaultOnboarding } from "@/components/vault/VaultOnboarding";
 import { SmartVaultCapture } from "@/components/vault/SmartVaultCapture";
-import { ArrowLeft, Search, Plus, FolderOpen, Sparkles } from "lucide-react";
+import { VaultNoteEditor } from "@/components/vault/VaultNoteEditor";
+import {
+  ArrowLeft,
+  Search,
+  Plus,
+  FolderPlus,
+  LayoutGrid,
+  List as ListIcon,
+  FileText,
+  Camera,
+  PenLine,
+  Upload,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddSubjectModal } from "@/components/modals";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { SearchBar } from "@/components/SearchBar";
 import { SwipeableItem } from "@/components/SwipeableItem";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +51,19 @@ interface PendingConfirmation {
   confidence: number;
 }
 
+type FileFilter = "Tous" | "PDF" | "Slides" | "Notes";
+const FILE_FILTERS: FileFilter[] = ["Tous", "PDF", "Slides", "Notes"];
+
+const matchesFilter = (file: VaultFile, filter: FileFilter): boolean => {
+  if (filter === "Tous") return true;
+  const t = (file.file_type || "").toLowerCase();
+  const name = (file.original_filename || "").toLowerCase();
+  if (filter === "PDF") return t === "pdf" || name.endsWith(".pdf");
+  if (filter === "Notes") return t === "note";
+  if (filter === "Slides") return /ppt|pptx|key|slide/.test(t) || /\.(ppt|pptx|key)$/.test(name);
+  return true;
+};
+
 export const TheVaultPage = () => {
   const { user } = useAuth();
   const {
@@ -44,12 +75,16 @@ export const TheVaultPage = () => {
     getSubjectStats,
     confirmFiling,
     deleteFile,
+    createFile,
     refetch,
   } = useVaultData();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [showAddSubject, setShowAddSubject] = useState(false);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [fileFilter, setFileFilter] = useState<FileFilter>("Tous");
   const [deleteTarget, setDeleteTarget] = useState<{
     type: "subject" | "file";
     id: string;
@@ -60,6 +95,9 @@ export const TheVaultPage = () => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [vaultInitialized, setVaultInitialized] = useState<boolean | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-select subject from ?subject=<id>
   useEffect(() => {
@@ -79,9 +117,7 @@ export const TheVaultPage = () => {
       return;
     }
 
-    // Subject not in vault-filtered list (e.g. icon != COURS/SAE).
-    // Fetch it directly so we still open the right folder.
-    if (subjects.length === 0) return; // wait for initial load
+    if (subjects.length === 0) return;
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -182,6 +218,45 @@ export const TheVaultPage = () => {
     refetch();
   };
 
+  // FAB file upload (no subject pre-selected → smart filing)
+  const uploadFile = async (file: File, isPhoto: boolean) => {
+    if (!user) return;
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("notes")
+        .upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = await supabase.storage
+        .from("notes")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+
+      const fileType = file.type.startsWith("image/")
+        ? "photo"
+        : file.type.includes("pdf")
+        ? "pdf"
+        : "document";
+
+      await createFile({
+        file_url: urlData?.signedUrl || "",
+        subject_id: selectedSubject?.id || null,
+        original_filename: file.name,
+        file_type: fileType,
+        filing_status: selectedSubject ? "confirmed" : "pending",
+        tags: [fileType],
+      });
+
+      toast.success("Fichier ajouté");
+      refetch();
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur lors de l'ajout");
+    }
+  };
+
   if (loading || vaultInitialized === null) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -190,18 +265,20 @@ export const TheVaultPage = () => {
     );
   }
 
-  // Show onboarding if not initialized
   if (!vaultInitialized) {
     return <VaultOnboarding onComplete={handleOnboardingComplete} />;
   }
 
-  // Separate COURS and SAE
-  const coursStats = subjectStats.filter((s) => s.icon !== "SAE");
-  const saeStats = subjectStats.filter((s) => s.icon === "SAE");
+  // Subject folder counts respect the current file filter
+  const filteredCountForSubject = (subjectId: string) =>
+    files.filter((f) => f.subject_id === subjectId && matchesFilter(f, fileFilter)).length;
+
+  const inSubject = selectedSubject && !isSearchMode;
+  const inSearch = isSearchMode;
+  const inHome = !selectedSubject && !isSearchMode;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-32">
-      {/* Pending confirmation banner */}
+    <div className="space-y-5 animate-fade-in pb-32">
       {pendingConfirmation && (
         <FilingConfirmationBanner
           file={pendingConfirmation.file}
@@ -218,66 +295,106 @@ export const TheVaultPage = () => {
       {/* Header */}
       <div className="flex items-center gap-3 pt-2">
         {(selectedSubject || isSearchMode) && (
-          <Button variant="ghost" size="icon" onClick={handleBack} className="rounded-xl">
+          <Button variant="ghost" size="icon" onClick={handleBack} className="rounded-xl -ml-2">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         )}
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-primary" />
-            <h1 className="font-display text-xl font-bold text-foreground">
-              {selectedSubject ? selectedSubject.name : isSearchMode ? "Recherche" : "Vault"}
-            </h1>
-          </div>
-          {selectedSubject && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {displayedFiles.length} fichiers
-            </p>
+        <h1
+          className={cn(
+            "flex-1 font-display font-bold text-foreground",
+            inSubject ? "text-xl" : "text-[28px] leading-tight"
           )}
-        </div>
-        {!selectedSubject && !isSearchMode && (
-          <Button
-            size="icon"
-            onClick={() => setShowAddSubject(true)}
-            className="rounded-full h-10 w-10 gradient-primary shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
+        >
+          {inSubject ? selectedSubject!.name : inSearch ? "Recherche" : "Vault"}
+        </h1>
+
+        {inHome && (
+          <>
+            {/* View toggle */}
+            <div className="flex items-center bg-muted/60 rounded-full p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                  viewMode === "grid"
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground"
+                )}
+                aria-label="Vue grille"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                  viewMode === "list"
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground"
+                )}
+                aria-label="Vue liste"
+              >
+                <ListIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setShowAddSubject(true)}
+              className="rounded-full h-10 w-10"
+              aria-label="Ajouter une matière"
+            >
+              <FolderPlus className="w-5 h-5" />
+            </Button>
+          </>
         )}
       </div>
 
       {/* Search */}
-      <div
-        onClick={() => {
-          setIsSearchMode(true);
-          setSelectedSubject(null);
-        }}
-      >
-        <SearchBar
+      <div className="relative" onClick={() => !inSubject && setIsSearchMode(true)}>
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
           value={searchQuery}
-          onChange={setSearchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Rechercher dans tous les fichiers (OCR)..."
+          className="w-full pl-10 pr-4 py-3 rounded-2xl bg-transparent border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
         />
       </div>
 
-      {/* Empty search help */}
-      {isSearchMode && searchQuery === "" && (
-        <div className="text-center py-8">
-          <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-          <p className="text-muted-foreground">Tape un mot pour rechercher</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">
-            Recherche dans le contenu de tous tes documents
-          </p>
+      {/* Home: filter chips */}
+      {inHome && (
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
+          {FILE_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFileFilter(f)}
+              className={cn(
+                "flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-all",
+                fileFilter === f
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-transparent text-foreground border-border hover:border-foreground/40"
+              )}
+            >
+              {f}
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Search Results */}
-      {isSearchMode && searchQuery !== "" && (
+      {/* Search results */}
+      {inSearch && searchQuery === "" && (
+        <div className="text-center py-8">
+          <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+          <p className="text-muted-foreground">Tape un mot pour rechercher</p>
+        </div>
+      )}
+      {inSearch && searchQuery !== "" && (
         <div className="space-y-3">
           {displayedFiles.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Aucun résultat pour "{searchQuery}"</p>
-            </div>
+            <p className="text-center text-muted-foreground py-12">
+              Aucun résultat pour "{searchQuery}"
+            </p>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
@@ -302,90 +419,155 @@ export const TheVaultPage = () => {
         </div>
       )}
 
-      {/* Subject List (home view) */}
-      {!selectedSubject && !isSearchMode && (
-        <div className="space-y-6">
-          {/* Stats */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{files.length}</p>
-              <p className="text-sm text-muted-foreground">fichiers dans le coffre</p>
-            </div>
-          </div>
-
-          {/* COURS section */}
-          {coursStats.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest px-1">
-                Cours
+      {/* Home: folders */}
+      {inHome && (
+        <>
+          {subjectStats.length === 0 ? (
+            <div className="flex flex-col items-center text-center py-16 px-6">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <FolderPlus className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-display text-lg font-bold text-foreground">
+                Ton coffre est vide
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                Ajoute tes premiers cours pour commencer
               </p>
-              <div className="space-y-2">
-                {coursStats.map((subject) => (
-                  <VaultSubjectCard
+              <Button
+                onClick={() => setShowAddSubject(true)}
+                className="mt-5 rounded-full px-5 bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Ajouter un fichier
+              </Button>
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-2 gap-4">
+              {subjectStats
+                .slice()
+                .sort((a, b) => filteredCountForSubject(b.id) - filteredCountForSubject(a.id))
+                .map((subject) => (
+                  <VaultFolderCard
                     key={subject.id}
                     subject={subject}
-                    fileCount={subject.fileCount}
-                    recentFiles={subject.recentFiles}
+                    fileCount={filteredCountForSubject(subject.id)}
                     onClick={() => setSelectedSubject(subject)}
                   />
                 ))}
-              </div>
             </div>
-          )}
-
-          {/* SAE section */}
-          {saeStats.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest px-1">
-                SAE
-              </p>
-              <div className="space-y-2">
-                {saeStats.map((subject) => (
-                  <VaultSubjectCard
+          ) : (
+            <div className="space-y-2">
+              {subjectStats
+                .slice()
+                .sort((a, b) => {
+                  const ar = files.find((f) => f.subject_id === a.id)?.created_at || "";
+                  const br = files.find((f) => f.subject_id === b.id)?.created_at || "";
+                  return br.localeCompare(ar);
+                })
+                .map((subject) => (
+                  <VaultFolderCard
                     key={subject.id}
                     subject={subject}
-                    fileCount={subject.fileCount}
-                    recentFiles={subject.recentFiles}
+                    fileCount={filteredCountForSubject(subject.id)}
                     onClick={() => setSelectedSubject(subject)}
+                    variant="list"
                   />
                 ))}
-              </div>
             </div>
           )}
-
-          {/* Empty */}
-          {subjectStats.length === 0 && (
-            <div className="text-center py-12">
-              <FolderOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-muted-foreground">Aucune matière</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Ajoute une matière pour commencer
-              </p>
-            </div>
-          )}
-        </div>
+        </>
       )}
 
       {/* Subject detail */}
-      {selectedSubject && !isSearchMode && (
-        <VaultSubjectDetailView
+      {inSubject && (
+        <VaultFolderDetail
+          subject={selectedSubject!}
           files={displayedFiles}
-          subjectId={selectedSubject.id}
-          onDeleteFile={(id, name) => setDeleteTarget({ type: "file", id, name })}
           onContentAdded={refetch}
         />
       )}
 
-      {/* Smart Capture */}
+      {/* Floating Add FAB (home only) */}
+      {inHome && (
+        <div className="fixed bottom-24 right-4 z-40">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+                aria-label="Ajouter"
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={12} className="w-56 rounded-2xl mr-1 mb-1">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-3 py-3 rounded-xl">
+                <Upload className="w-4 h-4 text-muted-foreground" />
+                <span>Importer un fichier</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => cameraInputRef.current?.click()} className="gap-3 py-3 rounded-xl">
+                <Camera className="w-4 h-4 text-muted-foreground" />
+                <span>Prendre une photo</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => cameraInputRef.current?.click()} className="gap-3 py-3 rounded-xl">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <span>Scanner un document</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowNoteEditor(true)} className="gap-3 py-3 rounded-xl">
+                <PenLine className="w-4 h-4 text-muted-foreground" />
+                <span>Note rapide</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.ppt,.pptx,image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) uploadFile(f, false);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) uploadFile(f, true);
+          e.target.value = "";
+        }}
+      />
+
+      <VaultNoteEditor
+        open={showNoteEditor}
+        onOpenChange={setShowNoteEditor}
+        onSave={async (title, md) => {
+          await createFile({
+            file_url: "",
+            subject_id: null,
+            extracted_text: md,
+            ai_summary: title,
+            file_type: "note",
+            filing_status: "pending",
+            tags: ["note"],
+            original_filename: `${title}.md`,
+          });
+          toast.success("Note créée");
+          refetch();
+        }}
+      />
+
       <SmartVaultCapture onFileCaptured={handleFileCaptured} />
 
-      {/* Modal */}
       <AddSubjectModal open={showAddSubject} onOpenChange={setShowAddSubject} />
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
