@@ -59,6 +59,20 @@ export const TheVaultPage = () => {
     useState<PendingConfirmation | null>(null);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [vaultInitialized, setVaultInitialized] = useState<boolean | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-select subject from ?subject=<id>
+  useEffect(() => {
+    const sid = searchParams.get("subject");
+    if (!sid || subjects.length === 0) return;
+    const match = subjects.find((s) => s.id === sid);
+    if (match) {
+      setSelectedSubject(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete("subject");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, subjects, setSearchParams]);
 
   useEffect(() => {
     const checkInit = async () => {
