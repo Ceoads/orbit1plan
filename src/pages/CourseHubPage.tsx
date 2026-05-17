@@ -656,7 +656,19 @@ export const CourseHubPage = () => {
               <motion.button
                 onClick={() => {
                   haptics.selection();
-                  navigate('/?tab=vault');
+                  if (!subject) {
+                    toast.error("Aucune matière liée à ce cours", {
+                      description: "Impossible d'ouvrir les notes.",
+                    });
+                    return;
+                  }
+                  if (noteStats.notes === 0) {
+                    toast.error(`Aucune note pour ${subject.name}`, {
+                      description: "Capture ta première note depuis ce cours.",
+                    });
+                    return;
+                  }
+                  navigate(`/?tab=vault&subject=${subject.id}`);
                 }}
                 className="w-full p-3 rounded-xl flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 whileHover={{ scale: 1.02 }}
