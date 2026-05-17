@@ -76,19 +76,35 @@ export const TasksPage = () => {
     });
   }, [anchorMonday, weekOffset]);
 
-  const goToWeek = (newOffset: number) => {
-    setWeekOffset(newOffset);
+  const x = useMotionValue(0);
+  useEffect(() => {
+    x.set(-stripWidth);
+  }, [stripWidth, x]);
+
+  const goToWeek = (direction: -1 | 1) => {
+    const target = direction === 1 ? -stripWidth * 2 : 0;
     haptics.selection();
     sounds.select();
+    animate(x, target, {
+      type: "spring",
+      stiffness: 360,
+      damping: 34,
+      onComplete: () => {
+        setWeekOffset((w) => w + direction);
+        x.set(-stripWidth);
+      },
+    });
   };
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const threshold = 60;
     const velocityThreshold = 400;
     if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
-      goToWeek(weekOffset + 1);
+      goToWeek(1);
     } else if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
-      goToWeek(weekOffset - 1);
+      goToWeek(-1);
+    } else {
+      animate(x, -stripWidth, SNAP);
     }
   };
 
