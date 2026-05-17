@@ -300,7 +300,7 @@ export const TheVaultPage = () => {
 
   // Subject folder counts respect the current file filter
   const filteredCountForSubject = (subjectId: string) =>
-    files.filter((f) => f.subject_id === subjectId && matchesFilter(f, fileFilter)).length;
+    files.filter((f) => f.subject_id === subjectId && matchesSemester(f, fileFilter)).length;
 
   const inSubject = selectedSubject && !isSearchMode;
   const inSearch = isSearchMode;
