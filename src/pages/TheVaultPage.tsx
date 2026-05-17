@@ -500,7 +500,7 @@ export const TheVaultPage = () => {
               </Button>
             </div>
           ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-6">
               {subjectStats
                 .slice()
                 .sort((a, b) => filteredCountForSubject(b.id) - filteredCountForSubject(a.id))
