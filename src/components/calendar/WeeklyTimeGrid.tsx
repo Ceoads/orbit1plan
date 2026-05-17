@@ -4,9 +4,9 @@ import { motion } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { FilteredEvent } from "@/lib/eventFilter";
 import { cn } from "@/lib/utils";
-import { Clock } from "lucide-react";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { getCourseColor } from "@/lib/courseColors";
 
 interface WeeklyTimeGridProps {
   weekDays: Date[];
