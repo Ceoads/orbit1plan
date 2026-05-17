@@ -392,23 +392,41 @@ export const TheVaultPage = () => {
         />
       </div>
 
-      {/* Home: filter chips */}
+      {/* Home: semester chips */}
       {inHome && (
         <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
-          {FILE_FILTERS.map((f) => (
+          <button
+            onClick={() => setFileFilter("all")}
+            className={cn(
+              "flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-all",
+              fileFilter === "all"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-transparent text-foreground border-border hover:border-foreground/40"
+            )}
+          >
+            Tous
+          </button>
+          {semesters.map((s) => (
             <button
-              key={f}
-              onClick={() => setFileFilter(f)}
+              key={s.id}
+              onClick={() => setFileFilter(s.id)}
               className={cn(
                 "flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-all",
-                fileFilter === f
+                fileFilter === s.id
                   ? "bg-foreground text-background border-foreground"
                   : "bg-transparent text-foreground border-border hover:border-foreground/40"
               )}
             >
-              {f}
+              {s.name}
             </button>
           ))}
+          <button
+            onClick={() => setShowAddSemester(true)}
+            className="flex-shrink-0 w-9 h-9 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-all flex items-center justify-center"
+            aria-label="Ajouter un semestre"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
       )}
 
