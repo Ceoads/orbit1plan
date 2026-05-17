@@ -346,23 +346,6 @@ export const CalendarPocketSpace = ({
                     >
                       <ChevronRight className="w-5 h-5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        haptics.selection();
-                        sounds.tap();
-                        setViewMode((v) => (v === 'week' ? 'list' : 'week'));
-                      }}
-                      className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
-                      aria-label={viewMode === 'week' ? 'Vue liste' : 'Vue semaine'}
-                    >
-                      {viewMode === 'week' ? (
-                        <LayoutList className="w-5 h-5" />
-                      ) : (
-                        <CalendarRange className="w-5 h-5" />
-                      )}
-                    </Button>
                   </div>
                 </div>
               </motion.header>
@@ -381,32 +364,19 @@ export const CalendarPocketSpace = ({
                 />
               </motion.div>
 
-              {/* Main view */}
+              {/* Main view — liste uniquement */}
               <motion.div
-                className="flex-1 overflow-hidden px-2 weekly-time-grid"
+                className="flex-1 overflow-hidden px-2"
                 variants={gridVariants}
-                drag={viewMode === 'week' ? 'x' : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.1}
-                onDragEnd={(_, info) => viewMode === 'week' && handleHorizontalSwipe(info)}
               >
-                {viewMode === 'week' ? (
-                  <WeeklyTimeGrid
-                    weekDays={weekDays}
-                    events={events}
-                    subjects={subjects}
-                    getExamsOnDate={getExamsOnDate}
-                    onExamClick={handleExamClick}
-                  />
-                ) : (
-                  <CalendarTodayList
-                    currentDate={selectedDate}
-                    weekDays={weekDays}
-                    events={events}
-                    subjects={subjects}
-                    onSelectDay={(d) => setSelectedDate(d)}
-                  />
-                )}
+                <CalendarTodayList
+                  currentDate={selectedDate}
+                  weekDays={weekDays}
+                  events={events}
+                  subjects={subjects}
+                  onSelectDay={(d) => setSelectedDate(d)}
+                  onEventClick={handleEventClick}
+                />
               </motion.div>
 
               {/* Bottom padding for floating dock */}
