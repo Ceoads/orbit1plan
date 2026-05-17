@@ -51,17 +51,11 @@ interface PendingConfirmation {
   confidence: number;
 }
 
-type FileFilter = "Tous" | "PDF" | "Slides" | "Notes";
-const FILE_FILTERS: FileFilter[] = ["Tous", "PDF", "Slides", "Notes"];
-
-const matchesFilter = (file: VaultFile, filter: FileFilter): boolean => {
-  if (filter === "Tous") return true;
-  const t = (file.file_type || "").toLowerCase();
-  const name = (file.original_filename || "").toLowerCase();
-  if (filter === "PDF") return t === "pdf" || name.endsWith(".pdf");
-  if (filter === "Notes") return t === "note";
-  if (filter === "Slides") return /ppt|pptx|key|slide/.test(t) || /\.(ppt|pptx|key)$/.test(name);
-  return true;
+// "all" → tous fichiers, sinon un semester id
+type SemesterFilter = string; // "all" | semester.id
+const matchesSemester = (file: VaultFile, filter: SemesterFilter): boolean => {
+  if (filter === "all") return true;
+  return file.semester_id === filter;
 };
 
 export const TheVaultPage = () => {
