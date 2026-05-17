@@ -40,7 +40,8 @@
     --secondary-foreground: 20 15% 25%;
     
     --muted: 30 20% 92%;
-    --muted-foreground: 20 10% 50%;
+    /* Bumped from 50% → 38% lightness for WCAG AA contrast on cream bg */
+    --muted-foreground: 20 12% 38%;
     
     --accent: 16 70% 94%;
     --accent-foreground: 16 85% 50%;
