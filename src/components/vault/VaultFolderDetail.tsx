@@ -1,18 +1,55 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { FileText, Image as ImageIcon, PenLine, File as FileIcon, MoreHorizontal } from "lucide-react";
+import {
+  FileText,
+  Image as ImageIcon,
+  PenLine,
+  File as FileIcon,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Share2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { VaultFile, Subject } from "@/hooks/useVaultData";
 import { getCourseColor } from "@/lib/courseColors";
 import { VaultAddContentMenu } from "./VaultAddContentMenu";
 import { useHaptics } from "@/hooks/useHaptics";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface VaultFolderDetailProps {
   subject: Subject;
   files: VaultFile[];
   onContentAdded: () => void;
+  onRename?: (subjectId: string, newName: string) => Promise<boolean> | boolean;
+  onDelete?: (subjectId: string) => Promise<boolean> | boolean;
 }
 
 function groupByDay(files: VaultFile[]) {
