@@ -267,13 +267,10 @@ export const TasksPage = () => {
             <motion.div
               className="flex"
               drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
+              dragConstraints={{ left: -stripWidth * 2, right: 0 }}
               dragElastic={0.18}
               onDragEnd={handleDragEnd}
-              animate={{ x: -stripWidth }}
-              transition={SNAP}
-              key={weekOffset}
-              initial={{ x: -stripWidth }}
+              style={{ x }}
             >
               {visibleWeeks.map(({ offset, days }) => (
                 <div
