@@ -122,26 +122,6 @@ export const CalendarPocketSpace = ({
     setDatePickerOpen(false);
   };
 
-  // Handle horizontal swipe for week navigation
-  const handleHorizontalSwipe = (info: PanInfo) => {
-    const threshold = 80;
-    const velocity = Math.abs(info.velocity.x);
-    const offset = info.offset.x;
-    
-    if (Math.abs(offset) > threshold || velocity > 400) {
-      if (offset > 0) {
-        if (lastSwipeDirection.current !== 'right') {
-          lastSwipeDirection.current = 'right';
-          navigateWeek('prev');
-        }
-      } else {
-        if (lastSwipeDirection.current !== 'left') {
-          lastSwipeDirection.current = 'left';
-          navigateWeek('next');
-        }
-      }
-    }
-  };
 
   const weekDays = useMemo(() => {
     const days: Date[] = [];
