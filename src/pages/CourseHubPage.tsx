@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/GlassCard";
+import { IOSBackButton } from "@/components/IOSBackButton";
 import { Button } from "@/components/ui/button";
 import { PostCaptureActionMenu, CapturedNote } from "@/components/vault/PostCaptureActionMenu";
 import { buildCourseVaultPath } from "@/lib/courseNavigation";
