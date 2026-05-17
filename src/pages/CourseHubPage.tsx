@@ -208,7 +208,7 @@ export const CourseHubPage = () => {
         description: "Classement automatique effectué",
         action: {
           label: "Voir le dossier",
-          onClick: () => navigate('/vault'),
+          onClick: () => navigate('/?tab=vault'),
         },
       });
 
@@ -578,7 +578,7 @@ export const CourseHubPage = () => {
                     <div>
                       <p className="font-semibold text-success">Note classée !</p>
                       <button
-                        onClick={() => navigate('/vault')}
+                        onClick={() => navigate('/?tab=vault')}
                         className="text-xs text-success/70 hover:text-success underline"
                       >
                         Voir le dossier: {subject?.icon} {subject?.name}
@@ -656,7 +656,7 @@ export const CourseHubPage = () => {
               <motion.button
                 onClick={() => {
                   haptics.selection();
-                  navigate('/vault');
+                  navigate('/?tab=vault');
                 }}
                 className="w-full p-3 rounded-xl flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 whileHover={{ scale: 1.02 }}
@@ -681,7 +681,7 @@ export const CourseHubPage = () => {
                     <motion.button
                       onClick={() => {
                         haptics.selection();
-                        navigate('/exams');
+                        navigate('/?tab=exams');
                       }}
                       className="w-full p-3 rounded-xl flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                       whileHover={{ scale: 1.02 }}
@@ -704,7 +704,7 @@ export const CourseHubPage = () => {
           >
             <GlassCard 
               className="p-4 text-center cursor-pointer hover:bg-white/60 transition-colors"
-              onClick={() => navigate('/vault')}
+              onClick={() => navigate('/?tab=vault')}
             >
               <div className="flex items-center justify-center gap-2 mb-1">
                 <FileText className="w-4 h-4 text-primary" />
