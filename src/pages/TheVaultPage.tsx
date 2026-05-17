@@ -78,7 +78,9 @@ export const TheVaultPage = () => {
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [fileFilter, setFileFilter] = useState<FileFilter>("Tous");
+  const [fileFilter, setFileFilter] = useState<SemesterFilter>("all");
+  const [showAddSemester, setShowAddSemester] = useState(false);
+  const [newSemesterName, setNewSemesterName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     type: "subject" | "file";
     id: string;
