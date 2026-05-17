@@ -63,6 +63,7 @@ export const TheVaultPage = () => {
   const {
     files,
     subjects,
+    semesters,
     loading,
     getFilesBySubject,
     searchFiles,
