@@ -527,11 +527,13 @@ export const TheVaultPage = () => {
           subject={selectedSubject!}
           files={displayedFiles}
           onContentAdded={refetch}
+          onRename={handleRenameSubject}
+          onDelete={handleDeleteSubject}
         />
       )}
 
-      {/* Floating Add FAB (home only) */}
-      {inHome && (
+      {/* Floating Add FAB (home + subject) */}
+      {(inHome || inSubject) && (
         <div className="fixed bottom-24 right-4 z-40">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
