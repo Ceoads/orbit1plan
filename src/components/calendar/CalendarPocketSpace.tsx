@@ -1,10 +1,10 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
-import { WeeklyTimeGrid } from "./WeeklyTimeGrid";
 import { CalendarTodayList } from "./CalendarTodayList";
 import { ExamDetailModal } from "./ExamDetailModal";
-import { ChevronLeft, ChevronRight, ArrowLeft, Sparkles, LayoutList, CalendarRange } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -31,9 +31,9 @@ export const CalendarPocketSpace = ({
   const { t } = useTranslation();
   const haptics = useHaptics();
   const sounds = useSoundEffects();
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const lastSwipeDirection = useRef<'left' | 'right' | null>(null);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const [showTopShadow, setShowTopShadow] = useState(true);
   const wasAtTop = useRef(true);
@@ -49,7 +49,6 @@ export const CalendarPocketSpace = ({
   
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'week' | 'list'>('week');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
   // Track scroll position for conditional dismiss
@@ -94,10 +93,16 @@ export const CalendarPocketSpace = ({
   const navigateWeek = (direction: 'prev' | 'next') => {
     haptics.selection();
     sounds.tap();
+    const delta = direction === 'next' ? 7 : -7;
     setCurrentWeekStart(prev => {
-      const newDate = new Date(prev);
-      newDate.setDate(prev.getDate() + (direction === 'next' ? 7 : -7));
-      return newDate;
+      const d = new Date(prev);
+      d.setDate(prev.getDate() + delta);
+      return d;
+    });
+    setSelectedDate(prev => {
+      const d = new Date(prev);
+      d.setDate(prev.getDate() + delta);
+      return d;
     });
   };
 
@@ -110,6 +115,7 @@ export const CalendarPocketSpace = ({
     start.setDate(now.getDate() - dayOfWeek + 1);
     start.setHours(0, 0, 0, 0);
     setCurrentWeekStart(start);
+    setSelectedDate(new Date());
   };
 
   const goToDate = (date: Date) => {
@@ -120,28 +126,8 @@ export const CalendarPocketSpace = ({
     start.setDate(date.getDate() - dayOfWeek + 1);
     start.setHours(0, 0, 0, 0);
     setCurrentWeekStart(start);
+    setSelectedDate(date);
     setDatePickerOpen(false);
-  };
-
-  // Handle horizontal swipe for week navigation
-  const handleHorizontalSwipe = (info: PanInfo) => {
-    const threshold = 80;
-    const velocity = Math.abs(info.velocity.x);
-    const offset = info.offset.x;
-    
-    if (Math.abs(offset) > threshold || velocity > 400) {
-      if (offset > 0) {
-        if (lastSwipeDirection.current !== 'right') {
-          lastSwipeDirection.current = 'right';
-          navigateWeek('prev');
-        }
-      } else {
-        if (lastSwipeDirection.current !== 'left') {
-          lastSwipeDirection.current = 'left';
-          navigateWeek('next');
-        }
-      }
-    }
   };
 
   const weekDays = useMemo(() => {
@@ -159,18 +145,21 @@ export const CalendarPocketSpace = ({
     year: 'numeric' 
   });
 
-  const getExamsOnDate = (date: Date): CalendarEvent[] => {
-    return events.filter(e => {
-      if (e.event_type !== 'exam' || !e.exam_date) return false;
-      const examDate = new Date(e.exam_date);
-      return examDate.toDateString() === date.toDateString();
-    });
-  };
-
   const handleExamClick = (exam: CalendarEvent) => {
     haptics.soft();
     sounds.open();
     setSelectedExam(exam);
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    haptics.selection();
+    sounds.tap();
+    if (event.event_type === 'exam') {
+      handleExamClick(event);
+    } else {
+      navigate(`/course/${event.id}`);
+      onClose();
+    }
   };
 
   const handleClose = () => {
@@ -178,6 +167,7 @@ export const CalendarPocketSpace = ({
     sounds.close();
     onClose();
   };
+
 
   const backdropVariants = {
     hidden: { opacity: 0 },
@@ -264,7 +254,6 @@ export const CalendarPocketSpace = ({
               if (!isScrolledDown && (info.offset.y > 80 || info.velocity.y > 400)) {
                 handleClose();
               }
-              lastSwipeDirection.current = null;
             }}
             style={{ 
               willChange: 'transform',
@@ -368,23 +357,6 @@ export const CalendarPocketSpace = ({
                     >
                       <ChevronRight className="w-5 h-5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        haptics.selection();
-                        sounds.tap();
-                        setViewMode((v) => (v === 'week' ? 'list' : 'week'));
-                      }}
-                      className="rounded-full min-h-[44px] min-w-[44px] touch-manipulation"
-                      aria-label={viewMode === 'week' ? 'Vue liste' : 'Vue semaine'}
-                    >
-                      {viewMode === 'week' ? (
-                        <LayoutList className="w-5 h-5" />
-                      ) : (
-                        <CalendarRange className="w-5 h-5" />
-                      )}
-                    </Button>
                   </div>
                 </div>
               </motion.header>
@@ -403,32 +375,19 @@ export const CalendarPocketSpace = ({
                 />
               </motion.div>
 
-              {/* Main view */}
+              {/* Main view — liste uniquement */}
               <motion.div
-                className="flex-1 overflow-hidden px-2 weekly-time-grid"
+                className="flex-1 overflow-hidden px-2"
                 variants={gridVariants}
-                drag={viewMode === 'week' ? 'x' : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.1}
-                onDragEnd={(_, info) => viewMode === 'week' && handleHorizontalSwipe(info)}
               >
-                {viewMode === 'week' ? (
-                  <WeeklyTimeGrid
-                    weekDays={weekDays}
-                    events={events}
-                    subjects={subjects}
-                    getExamsOnDate={getExamsOnDate}
-                    onExamClick={handleExamClick}
-                  />
-                ) : (
-                  <CalendarTodayList
-                    currentDate={selectedDate}
-                    weekDays={weekDays}
-                    events={events}
-                    subjects={subjects}
-                    onSelectDay={(d) => setSelectedDate(d)}
-                  />
-                )}
+                <CalendarTodayList
+                  currentDate={selectedDate}
+                  weekDays={weekDays}
+                  events={events}
+                  subjects={subjects}
+                  onSelectDay={(d) => setSelectedDate(d)}
+                  onEventClick={handleEventClick}
+                />
               </motion.div>
 
               {/* Bottom padding for floating dock */}
