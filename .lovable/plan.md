@@ -1,35 +1,40 @@
-## Vault — Glass Folder Redesign
+## Fond premium « crème chaud » — global
 
-Replace the colorful 3D gradient folders with the **frosted, neutral folder** style from the reference (Invoices screenshot). The course color moves *inside* the folder as tinted peeking papers — the folder body itself becomes a soft, glassy off‑white.
+Le fond actuel (`--background: 30 40% 96%`) est plat et froid. On le remplace par une **base crème chaud papier** + une **couche mesh très diffuse** (deux halos pêche/sable à <8% d'opacité) appliquée une seule fois au niveau du `body`, pour que toutes les pages (Vault, Pulse, Tasks, Exams, Lab, Settings) en héritent automatiquement.
 
-### Visual spec (matches reference)
+### Palette retenue
+- Base : `#FAF7F2`
+- Mid  : `#F5EFE6`
+- Deep : `#EFE7D8` (utilisé uniquement pour les halos)
 
-**Folder card (160×180, radius ~28px)**
-- Body: frosted off‑white `#F2F2F2 → #E8E8E8` vertical gradient, soft inner highlight at the top
-- Drop shadow: `0 10px 24px rgba(0,0,0,0.08)` + tiny `0 1px 0 rgba(255,255,255,0.6)` inner top edge
-- Folder tab: short rounded bump on the top‑left (~45% width, 14% height), same off‑white, slightly darker
-- 2–3 papers peeking out the top‑left corner, tinted with the course color at low opacity (~`color + 35% white`), each rotated a few degrees, with a tiny status chip (green check / orange dot) on the top paper
-- Center of the folder body stays empty (no big logo) — keeps it minimalist
-- Status dot removed from the card corner (the peeking‑paper chip replaces it)
+### Changements
 
-**Label below card**
-- `Course name  4` — name in `#1A1A1A` 14px medium, count in `#9A9A9A` 14px, inline, centered under the card (reference uses centered text)
+**1. `src/index.css` — tokens (light + dark)**
+- `--background` light : `30 40% 96%` → `36 38% 96%` (≈ `#FAF7F2`, crème chaud)
+- `--secondary`, `--muted`, `--border` : décalés d'1–2 pts pour rester cohérents avec la nouvelle base
+- Nouveau token `--gradient-app-bg` :
+  ```
+  radial-gradient(ellipse 70% 50% at 15% 0%, hsl(30 60% 92% / 0.55), transparent 60%),
+  radial-gradient(ellipse 60% 55% at 100% 100%, hsl(24 55% 90% / 0.45), transparent 60%),
+  linear-gradient(180deg, hsl(36 38% 96%), hsl(34 35% 94%))
+  ```
+- Variante dark : halos très sombres chauds sur base `20 15% 10%` (inchangée), opacité ≤ 25%
 
-**Empty folder**
-- Same frosted body, no peeking papers, gray dot chip only
+**2. `body` (dans `@layer base`)**
+- `background: var(--gradient-app-bg) fixed;`
+- `background-attachment: fixed;` pour que le mesh ne bouge pas au scroll (sensation premium)
+- `min-height: 100dvh;`
 
-### Layout changes on the Vault home
+**3. Nettoyage ciblé**
+- Pages qui forcent `bg-background` plein blanc cassé (Vault, Pulse, Tasks, Exams, Settings) : retirer `bg-background` ou passer en `bg-transparent` pour laisser passer le mesh global. Vérifier ces 5 fichiers seulement, sans toucher au reste.
+- Landing Page : **exclue** (a déjà son propre fond marketing animé)
+- Modales / Sheets / Cards : inchangés, restent sur `--card` blanc pur — le contraste subtil carte/fond renforce l'effet premium.
 
-- Center the folder labels (currently left‑aligned)
-- Tighten grid gap to ~20px to match reference breathing room
-- Keep semester chips row and `+` button exactly as they are now
+### Hors scope
+- Pas de changement sur les couleurs accent (pêche/corail conservées)
+- Pas de refonte de la Landing
+- Pas de changement des cartes dossiers Vault (déjà refaites)
 
-### Files to change
-
-- `src/components/vault/VaultFolderCard.tsx` — full rewrite of the grid variant (list variant untouched)
-- No changes to `TheVaultPage.tsx`, data hooks, or Supabase
-
-### Out of scope
-
-- The big orange hero folder in the second reference (folder detail header) — not part of this request
-- Bottom nav redesign from the reference — keep existing nav
+### Fichiers modifiés
+- `src/index.css` (tokens + body)
+- `src/pages/TheVaultPage.tsx`, `PulsePage.tsx`, `TasksPage.tsx`, `ExamsPage.tsx`, `SettingsPage.tsx` — retrait de `bg-background` sur le wrapper racine si présent
