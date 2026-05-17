@@ -106,7 +106,8 @@
     --secondary-foreground: 30 20% 92%;
     
     --muted: 20 12% 18%;
-    --muted-foreground: 20 15% 60%;
+    /* Bumped from 60% → 72% for WCAG AA contrast on dark bg */
+    --muted-foreground: 20 15% 72%;
     
     --accent: 16 60% 20%;
     --accent-foreground: 16 75% 70%;
