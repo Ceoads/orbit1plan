@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useVaultData, VaultFile, Subject } from "@/hooks/useVaultData";
 import { useAuth } from "@/hooks/useAuth";
 import { VaultSubjectCard, VaultFileCard, FilingConfirmationBanner } from "@/components/vault";
