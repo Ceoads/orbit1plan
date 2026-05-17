@@ -1,110 +1,164 @@
-import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { Plus, Zap, Sun, Moon, CheckCircle2, Sparkles } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { motion, AnimatePresence, useScroll, useTransform, PanInfo, useMotionValue, animate } from "framer-motion";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { AddTaskModal } from "@/components/modals/AddTaskModal";
 import { cn } from "@/lib/utils";
 
-type EnergyFilter = 'all' | 'high' | 'medium' | 'low';
-
-const SPRING = { type: "spring" as const, stiffness: 320, damping: 22 };
+const SPRING = { type: "spring" as const, stiffness: 320, damping: 28 };
+const SNAP = { type: "spring" as const, stiffness: 360, damping: 34 };
 
 const DAY_SHORT_FR = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
-const DAY_LETTER_FR = ["D", "L", "M", "M", "J", "V", "S"];
+const DAY_3_FR = ["DIM", "LUN", "MAR", "MER", "JEU", "VEN", "SAM"];
 const MONTH_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
 
+const startOfDay = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+const mondayOf = (d: Date) => {
+  const x = startOfDay(d);
+  const dow = x.getDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+  x.setDate(x.getDate() + offset);
+  return x;
+};
+
+const buildWeek = (monday: Date) =>
+  Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+
 export const TasksPage = () => {
   const { user } = useAuth();
   const { tasks, subjects, toggleTask, createTask, getUpcomingExams } = useOrbitData();
   const haptics = useHaptics();
+  const sounds = useSoundEffects();
 
-  const [energyFilter, setEnergyFilter] = useState<EnergyFilter>('all');
-  const [selectedDay, setSelectedDay] = useState<Date>(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const anchorMonday = useMemo(() => mondayOf(today), [today]);
+
+  const [selectedDay, setSelectedDay] = useState<Date>(today);
+  const [weekOffset, setWeekOffset] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [stripWidth, setStripWidth] = useState(0);
+  useEffect(() => {
+    const update = () => setStripWidth(stripRef.current?.offsetWidth ?? 0);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   // Scroll-reactive header
   const { scrollY } = useScroll();
   const [isCompact, setIsCompact] = useState(false);
-  useEffect(() => {
-    return scrollY.on("change", (v) => setIsCompact(v > 40));
-  }, [scrollY]);
-
+  useEffect(() => scrollY.on("change", (v) => setIsCompact(v > 40)), [scrollY]);
   const briefingOpacity = useTransform(scrollY, [0, 60], [1, 0]);
-  const briefingY = useTransform(scrollY, [0, 80], [0, -16]);
 
-  // Week strip (Mon-Sun) around today
-  const weekDays = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dow = today.getDay(); // 0 Sun
-    const mondayOffset = dow === 0 ? -6 : 1 - dow;
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() + mondayOffset + i);
-      return d;
+  // Three visible weeks
+  const visibleWeeks = useMemo(() => {
+    return [-1, 0, 1].map((delta) => {
+      const m = new Date(anchorMonday);
+      m.setDate(m.getDate() + (weekOffset + delta) * 7);
+      return { offset: weekOffset + delta, days: buildWeek(m) };
     });
-  }, []);
+  }, [anchorMonday, weekOffset]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const x = useMotionValue(0);
+  useEffect(() => {
+    x.set(-stripWidth);
+  }, [stripWidth, x]);
 
-  // Filter tasks for selected day + energy
+  const goToWeek = (direction: -1 | 1) => {
+    const target = direction === 1 ? -stripWidth * 2 : 0;
+    haptics.selection();
+    sounds.select();
+    animate(x, target, {
+      type: "spring",
+      stiffness: 360,
+      damping: 34,
+      onComplete: () => {
+        setWeekOffset((w) => w + direction);
+        x.set(-stripWidth);
+      },
+    });
+  };
+
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    const threshold = 60;
+    const velocityThreshold = 400;
+    if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
+      goToWeek(1);
+    } else if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
+      goToWeek(-1);
+    } else {
+      animate(x, -stripWidth, SNAP);
+    }
+  };
+
+  // Filter tasks for selected day
   const dayTasks = useMemo(() => {
     const dayStart = new Date(selectedDay);
     const dayEnd = new Date(selectedDay);
     dayEnd.setDate(dayEnd.getDate() + 1);
 
     return tasks
-      .filter(t => !t.is_subtask)
-      .filter(t => energyFilter === 'all' || t.energy_level === energyFilter)
-      .filter(t => {
-        if (!t.due_date) {
-          // Show undated tasks only on today
-          return selectedDay.getTime() === today.getTime();
-        }
+      .filter((t) => !t.is_subtask)
+      .filter((t) => {
+        if (!t.due_date) return selectedDay.getTime() === today.getTime();
         const due = new Date(t.due_date);
         return due >= dayStart && due < dayEnd;
       })
       .sort((a, b) => {
-        if (a.status !== b.status) return a.status === 'todo' ? -1 : 1;
+        if (a.status !== b.status) return a.status === "todo" ? -1 : 1;
         const at = a.due_date ? new Date(a.due_date).getTime() : Infinity;
         const bt = b.due_date ? new Date(b.due_date).getTime() : Infinity;
         if (at !== bt) return at - bt;
         return b.priority_score - a.priority_score;
       });
-  }, [tasks, selectedDay, energyFilter]);
+  }, [tasks, selectedDay, today]);
 
-  const todoCount = dayTasks.filter(t => t.status === 'todo').length;
-  const doneCount = dayTasks.filter(t => t.status === 'done').length;
+  const todoCount = dayTasks.filter((t) => t.status === "todo").length;
+  const doneCount = dayTasks.filter((t) => t.status === "done").length;
   const examsCount = getUpcomingExams().length;
 
-  const firstName = (user?.user_metadata as any)?.first_name
-    || (user?.user_metadata as any)?.full_name?.split(' ')[0]
-    || user?.email?.split('@')[0]
-    || 'toi';
+  const firstName =
+    (user?.user_metadata as any)?.first_name ||
+    (user?.user_metadata as any)?.full_name?.split(" ")[0] ||
+    user?.email?.split("@")[0] ||
+    "toi";
 
   const dayLabel = DAY_SHORT_FR[selectedDay.getDay()];
   const isToday = selectedDay.getTime() === today.getTime();
 
-  const energyFilters = [
-    { id: 'all' as const, label: 'Tous', icon: null },
-    { id: 'high' as const, label: 'Max', icon: Zap },
-    { id: 'medium' as const, label: 'Moyen', icon: Sun },
-    { id: 'low' as const, label: 'Zen', icon: Moon },
-  ];
-
   const handleToggle = (id: string) => {
     haptics.success();
+    sounds.success();
     toggleTask(id);
+  };
+
+  const handlePickDay = (d: Date) => {
+    haptics.selection();
+    sounds.tap();
+    setSelectedDay(d);
+  };
+
+  const handleOpenAdd = () => {
+    haptics.soft();
+    sounds.open();
+    setShowAddModal(true);
   };
 
   const handleAdd = async (data: any) => {
@@ -132,34 +186,33 @@ export const TasksPage = () => {
         transition={SPRING}
         className="sticky top-0 z-30 -mx-4 px-4 pt-3 pb-3 backdrop-blur-xl"
         style={{
-          background: "linear-gradient(to bottom, hsl(var(--background)) 70%, hsl(var(--background) / 0))",
+          background:
+            "linear-gradient(to bottom, hsl(var(--background)) 70%, hsl(var(--background) / 0))",
         }}
       >
-        {/* Top row: Day + date stack */}
         <motion.div layout transition={SPRING} className="flex items-start justify-between">
-          <motion.div layout transition={SPRING} className="flex items-center gap-2">
+          <motion.div layout transition={SPRING} className="flex items-end gap-1.5">
             <h1
-              className="font-display font-bold tracking-tight text-foreground leading-none"
-              style={{ fontSize: isCompact ? 32 : 48, transition: "font-size 0.3s ease" }}
+              className="font-display font-bold tracking-tight text-foreground leading-[0.9]"
+              style={{ fontSize: isCompact ? 36 : 56, transition: "font-size 0.3s ease" }}
             >
               {dayLabel}
             </h1>
-            <motion.span
-              layout
-              className="rounded-full bg-primary"
-              style={{ width: isCompact ? 8 : 12, height: isCompact ? 8 : 12 }}
-              transition={SPRING}
-            />
+            <span
+              className="text-primary font-bold leading-none"
+              style={{ fontSize: isCompact ? 36 : 56 }}
+            >
+              .
+            </span>
           </motion.div>
-          <div className="text-right leading-tight">
+          <div className="text-right leading-tight pt-1">
             <p className="text-sm text-muted-foreground font-medium">
-              {MONTH_FR[selectedDay.getMonth()]} {selectedDay.getDate()}
+              {selectedDay.getDate()} {MONTH_FR[selectedDay.getMonth()]}
             </p>
             <p className="text-xs text-muted-foreground/70">{selectedDay.getFullYear()}</p>
           </div>
         </motion.div>
 
-        {/* Expanded briefing */}
         <AnimatePresence initial={false}>
           {!isCompact && (
             <motion.div
@@ -168,110 +221,140 @@ export const TasksPage = () => {
               animate={{ opacity: 1, y: 0, height: "auto" }}
               exit={{ opacity: 0, y: -8, height: 0 }}
               transition={SPRING}
-              style={{ opacity: briefingOpacity, y: briefingY }}
+              style={{ opacity: briefingOpacity }}
               className="overflow-hidden"
             >
-              <p className="mt-4 text-[19px] leading-snug text-muted-foreground/70 font-medium">
-                <span className="text-foreground font-semibold">{greeting}, {firstName}.</span>{" "}
-                Tu as <span className="text-foreground font-semibold">{todoCount} tâche{todoCount > 1 ? 's' : ''}</span>
+              <p className="mt-4 text-[18px] leading-snug text-muted-foreground/80 font-medium">
+                <span className="text-foreground font-semibold">
+                  {greeting}, {firstName}.
+                </span>{" "}
+                Tu as{" "}
+                <span className="text-foreground font-semibold">
+                  {todoCount} tâche{todoCount > 1 ? "s" : ""}
+                </span>
                 {examsCount > 0 && (
-                  <> et <span className="text-foreground font-semibold">{examsCount} examen{examsCount > 1 ? 's' : ''}</span> à venir</>
-                )}.{" "}
-                {todoCount === 0
-                  ? <span className="text-foreground font-semibold">Tu es libre aujourd'hui.</span>
-                  : <>Reste concentré{todoCount > 3 ? ', ça va passer.' : '.'}</>
-                }
+                  <>
+                    {" "}et{" "}
+                    <span className="text-foreground font-semibold">
+                      {examsCount} examen{examsCount > 1 ? "s" : ""}
+                    </span>
+                  </>
+                )}{" "}
+                {isToday ? "aujourd'hui" : "ce jour"}.
               </p>
 
-              <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  <span className="text-foreground font-semibold">{todoCount}</span> à faire
+              <div className="mt-3 flex items-center gap-5 text-sm text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-foreground font-semibold">{todoCount}</span> items
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-foreground font-semibold">{doneCount}</span> terminé{doneCount > 1 ? 's' : ''}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-foreground font-semibold">{examsCount}</span> examen{examsCount > 1 ? 's' : ''}
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                  <span className="text-foreground font-semibold">{doneCount}</span> terminées
                 </span>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Week strip */}
-        <motion.div layout transition={SPRING} className="mt-4 flex items-center justify-between">
-          {weekDays.map((d, i) => {
-            const isSelected = d.getTime() === selectedDay.getTime();
-            const isPast = d < today;
-            return (
-              <motion.button
-                key={i}
-                whileTap={{ scale: 0.92 }}
-                onClick={() => { haptics.selection(); setSelectedDay(d); }}
-                className="relative flex flex-col items-center gap-1 px-2 py-1 hit-target"
-              >
-                <span className={cn(
-                  "text-[10px] font-semibold uppercase tracking-wide",
-                  isSelected ? "text-foreground" : isPast ? "text-muted-foreground/40" : "text-muted-foreground/70"
-                )}>
-                  {DAY_LETTER_FR[d.getDay()]}
-                </span>
-                <span className={cn(
-                  "text-base font-bold tabular-nums",
-                  isSelected ? "text-foreground" : isPast ? "text-muted-foreground/40" : "text-muted-foreground/80"
-                )}>
-                  {d.getDate()}
-                </span>
-                {isSelected && (
-                  <motion.span
-                    layoutId="day-indicator"
-                    transition={SPRING}
-                    className="absolute -bottom-1 h-1 w-6 rounded-full bg-primary"
-                  />
-                )}
-              </motion.button>
-            );
-          })}
-        </motion.div>
-      </motion.header>
-
-      {/* ENERGY FILTERS */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ ...SPRING, delay: 0.05 }}
-        className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide"
-      >
-        {energyFilters.map(({ id, label, icon: Icon }) => {
-          const active = energyFilter === id;
-          return (
-            <motion.button
-              key={id}
-              whileTap={{ scale: 0.97 }}
-              whileHover={{ scale: 1.03 }}
-              onClick={() => { haptics.selection(); setEnergyFilter(id); }}
-              className={cn(
-                "flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-foreground/[0.04] text-muted-foreground border border-foreground/5"
-              )}
+        {/* SWIPEABLE WEEK STRIP */}
+        <div className="mt-5 relative">
+          <div
+            ref={stripRef}
+            className="overflow-hidden"
+            style={{ touchAction: "pan-y" }}
+          >
+            <motion.div
+              className="flex"
+              drag="x"
+              dragConstraints={{ left: -stripWidth * 2, right: 0 }}
+              dragElastic={0.18}
+              onDragEnd={handleDragEnd}
+              style={{ x }}
             >
-              {Icon && <Icon className="w-3.5 h-3.5" />}
-              {label}
-            </motion.button>
-          );
-        })}
-      </motion.div>
+              {visibleWeeks.map(({ offset, days }) => (
+                <div
+                  key={offset}
+                  className="flex items-center justify-between shrink-0"
+                  style={{ width: stripWidth }}
+                >
+                  {days.map((d) => {
+                    const isSelected = d.getTime() === selectedDay.getTime();
+                    const isPast = d < today;
+                    const isCurrentDay = d.getTime() === today.getTime();
+                    return (
+                      <motion.button
+                        key={d.toISOString()}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handlePickDay(d)}
+                        className="relative flex flex-col items-center gap-1.5 px-1 py-1.5 hit-target flex-1"
+                      >
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold uppercase tracking-[0.08em]",
+                            isSelected
+                              ? "text-foreground"
+                              : isPast
+                              ? "text-muted-foreground/35"
+                              : "text-muted-foreground/60"
+                          )}
+                        >
+                          {DAY_3_FR[d.getDay()]}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[22px] font-bold tabular-nums leading-none",
+                            isSelected
+                              ? "text-foreground"
+                              : isPast
+                              ? "text-muted-foreground/35"
+                              : isCurrentDay
+                              ? "text-primary"
+                              : "text-muted-foreground/80"
+                          )}
+                        >
+                          {d.getDate()}
+                        </span>
+                        <span className="h-1.5 w-1.5">
+                          {isSelected && (
+                            <motion.span
+                              layoutId={`day-dot-${offset}`}
+                              transition={SPRING}
+                              className="block w-1.5 h-1.5 rounded-full bg-primary"
+                            />
+                          )}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              ))}
+            </motion.div>
+          </div>
+
+          {/* Edge chevron taps (subtle) */}
+          <button
+            onClick={() => goToWeek(-1)}
+            aria-label="Semaine précédente"
+            className="absolute -left-1 top-1/2 -translate-y-1/2 p-1 opacity-0 hover:opacity-60 transition-opacity"
+          >
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <button
+            onClick={() => goToWeek(1)}
+            aria-label="Semaine suivante"
+            className="absolute -right-1 top-1/2 -translate-y-1/2 p-1 opacity-0 hover:opacity-60 transition-opacity"
+          >
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      </motion.header>
 
       {/* TASK LIST */}
       <motion.div
         layout
-        className="mt-5 rounded-3xl bg-card/60 backdrop-blur-sm overflow-hidden"
-        style={{ boxShadow: "0 8px 30px rgb(0 0 0 / 0.03)" }}
+        className="mt-5 rounded-3xl bg-card overflow-hidden"
+        style={{ boxShadow: "0 8px 30px rgb(0 0 0 / 0.04)" }}
       >
         <AnimatePresence initial={false} mode="popLayout">
           {dayTasks.length === 0 ? (
@@ -283,88 +366,103 @@ export const TasksPage = () => {
               transition={SPRING}
               className="py-16 px-6 text-center"
             >
-              <p className="text-foreground font-semibold">Rien de prévu {isToday ? "aujourd'hui" : "ce jour"} 🎉</p>
+              <p className="text-foreground font-semibold">
+                Rien de prévu {isToday ? "aujourd'hui" : "ce jour"} 🎉
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
                 Touche + pour ajouter une tâche
               </p>
             </motion.div>
           ) : (
-            dayTasks.map((task, i) => (
-              <motion.div
-                key={task.id}
-                layout
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20, scale: 0.96 }}
-                transition={{ ...SPRING, delay: i * 0.04 }}
-                className={cn(
-                  "relative flex items-center gap-4 px-5 py-4",
-                  i !== 0 && "before:content-[''] before:absolute before:top-0 before:left-5 before:right-5 before:border-t before:border-dotted before:border-foreground/10"
-                )}
-              >
-                <motion.button
-                  whileTap={{ scale: 0.85 }}
-                  whileHover={{ scale: 1.08 }}
-                  transition={SPRING}
-                  onClick={() => handleToggle(task.id)}
+            dayTasks.map((task, i) => {
+              const subject = subjects.find((s) => s.id === task.subject_id);
+              const hasIcon = !!subject?.icon && task.status === "todo";
+              return (
+                <motion.div
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20, scale: 0.96 }}
+                  transition={{ ...SPRING, delay: i * 0.035 }}
                   className={cn(
-                    "shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
-                    task.status === 'done'
-                      ? "bg-primary/15 border-primary"
-                      : "border-foreground/20 hover:border-primary"
+                    "relative flex items-center gap-4 px-5 py-4",
+                    i !== 0 &&
+                      "before:content-[''] before:absolute before:top-0 before:left-5 before:right-5 before:border-t before:border-dotted before:border-foreground/10"
                   )}
                 >
-                  <AnimatePresence>
-                    {task.status === 'done' && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        transition={SPRING}
-                        className="block w-2.5 h-2.5 rounded-full bg-primary"
-                      />
-                    )}
-                  </AnimatePresence>
-                </motion.button>
-
-                <div className="flex-1 min-w-0">
-                  <motion.p
-                    animate={{
-                      opacity: task.status === 'done' ? 0.45 : 1,
-                    }}
-                    transition={{ duration: 0.25 }}
+                  <motion.button
+                    whileTap={{ scale: 0.85 }}
+                    whileHover={{ scale: 1.08 }}
+                    transition={SPRING}
+                    onClick={() => handleToggle(task.id)}
                     className={cn(
-                      "font-semibold text-foreground text-[15px] leading-snug truncate relative",
-                      task.status === 'done' && "line-through decoration-foreground/40"
+                      "shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors",
+                      hasIcon
+                        ? "text-xl"
+                        : task.status === "done"
+                        ? "border-2 bg-primary/15 border-primary"
+                        : "border-2 border-foreground/20 hover:border-primary"
                     )}
                   >
-                    {task.title}
-                  </motion.p>
-                </div>
+                    {hasIcon ? (
+                      <span>{subject!.icon}</span>
+                    ) : (
+                      <AnimatePresence>
+                        {task.status === "done" && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            transition={SPRING}
+                            className="block w-2.5 h-2.5 rounded-full bg-primary"
+                          />
+                        )}
+                      </AnimatePresence>
+                    )}
+                  </motion.button>
 
-                <span className="shrink-0 text-xs font-medium text-muted-foreground/70 tabular-nums">
-                  {task.due_date
-                    ? new Date(task.due_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                    : '—'}
-                </span>
-              </motion.div>
-            ))
+                  <div className="flex-1 min-w-0">
+                    <motion.p
+                      animate={{ opacity: task.status === "done" ? 0.45 : 1 }}
+                      transition={{ duration: 0.25 }}
+                      className={cn(
+                        "font-semibold text-foreground text-[15px] leading-snug truncate",
+                        task.status === "done" && "line-through decoration-foreground/40"
+                      )}
+                    >
+                      {task.title}
+                    </motion.p>
+                  </div>
+
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground/70 tabular-nums">
+                    {task.due_date
+                      ? new Date(task.due_date).toLocaleTimeString("fr-FR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—"}
+                  </span>
+                </motion.div>
+              );
+            })
           )}
         </AnimatePresence>
       </motion.div>
 
-      {/* FLOATING ACTION BUTTON */}
+      {/* FAB */}
       <motion.button
         initial={{ opacity: 0, y: 30, scale: 0.8 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         whileTap={{ scale: 0.92 }}
         whileHover={{ scale: 1.06 }}
         transition={SPRING}
-        onClick={() => { haptics.soft(); setShowAddModal(true); }}
+        onClick={handleOpenAdd}
         className="fixed left-1/2 -translate-x-1/2 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center backdrop-blur-md"
         style={{
           bottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)",
-          boxShadow: "0 12px 32px hsl(var(--primary) / 0.35), 0 2px 8px hsl(var(--primary) / 0.2)",
+          boxShadow:
+            "0 12px 32px hsl(var(--primary) / 0.35), 0 2px 8px hsl(var(--primary) / 0.2)",
         }}
         aria-label="Ajouter une tâche"
       >

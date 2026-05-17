@@ -1,40 +1,55 @@
-## Fond premium « crème chaud » — global
+## Goal
+Refine `TasksPage` to match the reference (IMG_1387.jpeg): a calmer, cleaner Apple-style layout, and make the week strip **horizontally swipeable** to jump weeks/dates — with Apple-grade spring motion, haptics, and earcon sounds.
 
-Le fond actuel (`--background: 30 40% 96%`) est plat et froid. On le remplace par une **base crème chaud papier** + une **couche mesh très diffuse** (deux halos pêche/sable à <8% d'opacité) appliquée une seule fois au niveau du `body`, pour que toutes les pages (Vault, Pulse, Tasks, Exams, Lab, Settings) en héritent automatiquement.
+## Reference vibe deltas (vs current Tasks page)
 
-### Palette retenue
-- Base : `#FAF7F2`
-- Mid  : `#F5EFE6`
-- Deep : `#EFE7D8` (utilisé uniquement pour les halos)
+The current page is close but slightly noisy. Align with the reference:
 
-### Changements
+- **Date labels**: switch from single letters ("L M M J V S D") to **3-letter uppercase** ("LUN MAR MER JEU VEN SAM DIM") — bolder, more readable.
+- **Date numbers**: bigger, heavier (≈ `text-xl`, `font-bold`), more vertical breathing room.
+- **Selected day indicator**: small coral dot **below** the number (matching reference), not a wide pill.
+- **Stats row**: simplify to two clean items — `● {todo} items` and `○ {done} terminées` — drop the "examens" chip (already shown in the narrative above).
+- **Narrative line**: keep, slightly tighter leading.
+- **Energy filters**: hide on this view (not in reference). Keep the state/code but remove them from the render to match the screenshot's calmness. (Out of scope to delete logic.)
+- **Task rows**: keep current minimal style — small subject emoji on the left when available (reference shows 🤝 for "Nego"), checkmark circle for done tasks, time on the right. Use the subject icon if `task.subject_id` resolves to a subject with an icon; otherwise show the existing circle checkbox.
+- **Card**: pure white-ish (`bg-card`) with very soft shadow, no backdrop blur tint.
 
-**1. `src/index.css` — tokens (light + dark)**
-- `--background` light : `30 40% 96%` → `36 38% 96%` (≈ `#FAF7F2`, crème chaud)
-- `--secondary`, `--muted`, `--border` : décalés d'1–2 pts pour rester cohérents avec la nouvelle base
-- Nouveau token `--gradient-app-bg` :
-  ```
-  radial-gradient(ellipse 70% 50% at 15% 0%, hsl(30 60% 92% / 0.55), transparent 60%),
-  radial-gradient(ellipse 60% 55% at 100% 100%, hsl(24 55% 90% / 0.45), transparent 60%),
-  linear-gradient(180deg, hsl(36 38% 96%), hsl(34 35% 94%))
-  ```
-- Variante dark : halos très sombres chauds sur base `20 15% 10%` (inchangée), opacité ≤ 25%
+## Swipeable week strip (the big new feature)
 
-**2. `body` (dans `@layer base`)**
-- `background: var(--gradient-app-bg) fixed;`
-- `background-attachment: fixed;` pour que le mesh ne bouge pas au scroll (sensation premium)
-- `min-height: 100dvh;`
+Wrap the week row in a horizontally-draggable `motion.div` with **paged snap** behavior.
 
-**3. Nettoyage ciblé**
-- Pages qui forcent `bg-background` plein blanc cassé (Vault, Pulse, Tasks, Exams, Settings) : retirer `bg-background` ou passer en `bg-transparent` pour laisser passer le mesh global. Vérifier ces 5 fichiers seulement, sans toucher au reste.
-- Landing Page : **exclue** (a déjà son propre fond marketing animé)
-- Modales / Sheets / Cards : inchangés, restent sur `--card` blanc pur — le contraste subtil carte/fond renforce l'effet premium.
+- State: `weekOffset` (integer, 0 = current week, -1 = prev, +1 = next).
+- Render **3 weeks side-by-side** (`weekOffset - 1`, `weekOffset`, `weekOffset + 1`), each taking 100% width, inside an `overflow-hidden` container. Translate horizontally with `x = -weekOffset * 100%`.
+- `motion.div` with `drag="x"`, `dragConstraints={{ left: 0, right: 0 }}` and `dragElastic={0.2}` for rubber-banding.
+- `onDragEnd`: if `offset.x < -60 || velocity.x < -400` → `weekOffset += 1` (next week). Inverse for previous. Use `transition={{ type: "spring", stiffness: 320, damping: 32 }}` for the snap (Apple-like critically damped).
+- On week change: `haptics.selection()` + `sounds.select()`.
+- On tapping a day: `haptics.selection()` + `sounds.tap()`, `setSelectedDay(d)`.
+- Smoothly animate the coral underline dot between days using `layoutId="day-dot"`.
 
-### Hors scope
-- Pas de changement sur les couleurs accent (pêche/corail conservées)
-- Pas de refonte de la Landing
-- Pas de changement des cartes dossiers Vault (déjà refaites)
+Also add chevron tap targets (left/right) for accessibility — same handlers as swipe.
 
-### Fichiers modifiés
-- `src/index.css` (tokens + body)
-- `src/pages/TheVaultPage.tsx`, `PulsePage.tsx`, `TasksPage.tsx`, `ExamsPage.tsx`, `SettingsPage.tsx` — retrait de `bg-background` sur le wrapper racine si présent
+## Apple-style motion + sound polish
+
+- Global spring: `{ stiffness: 320, damping: 28 }` (slightly more damping than current 22 for that calm iOS feel).
+- Hook in `useSoundEffects`:
+  - week change → `sounds.select()`
+  - day tap → `sounds.tap()`
+  - task complete → `sounds.success()` (already haptic)
+  - FAB open → `sounds.open()`
+- Keep current haptics calls; add sounds alongside.
+
+## Files to modify
+
+- `src/pages/TasksPage.tsx` (only)
+
+## Technical notes
+
+- Use `useMemo` to compute the 3 visible weeks from `weekOffset` + a fixed `anchorMonday` (this week's Monday at mount).
+- When user picks a day in a non-current week, `selectedDay` updates accordingly; the big "DIM" header and date stack reflect it.
+- Keep `layoutId="day-indicator"` for the dot but scope it per-week to avoid cross-week layout glitches (use `layoutId={`dot-${weekOffset}`}`).
+- No backend changes; no other pages touched (Pulse/Vault/Exams/Lab untouched per prior instruction).
+
+## Out of scope
+
+- Removing energy filter logic (just hidden in JSX).
+- Subject-icon rendering for tasks — only add if trivial via existing `subjects` array; otherwise keep current circle. (Will add: lookup `subjects.find(s => s.id === task.subject_id)?.icon` and show as emoji if present, falling back to the circle.)
