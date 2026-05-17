@@ -291,7 +291,7 @@ export const PulsePage = () => {
         transition={{ ...SPRING, delay: 0.4 }}
         whileTap={{ scale: 0.92 }}
         whileHover={{ scale: 1.06 }}
-        onClick={() => { haptics.medium(); setShowAddTask(true); }}
+        onClick={() => { haptics.soft(); setShowAddTask(true); }}
         className="fixed z-30 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full flex items-center justify-center"
         style={{
           bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
@@ -305,9 +305,9 @@ export const PulsePage = () => {
 
       <AddTaskModal
         open={showAddTask}
-        onOpenChange={setShowAddTask}
+        onClose={() => setShowAddTask(false)}
         subjects={subjects}
-        onTaskAdded={() => refetch()}
+        onAdd={(data) => { createTask(data as any); setShowAddTask(false); }}
       />
     </div>
   );
