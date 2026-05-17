@@ -93,10 +93,16 @@ export const CalendarPocketSpace = ({
   const navigateWeek = (direction: 'prev' | 'next') => {
     haptics.selection();
     sounds.tap();
+    const delta = direction === 'next' ? 7 : -7;
     setCurrentWeekStart(prev => {
-      const newDate = new Date(prev);
-      newDate.setDate(prev.getDate() + (direction === 'next' ? 7 : -7));
-      return newDate;
+      const d = new Date(prev);
+      d.setDate(prev.getDate() + delta);
+      return d;
+    });
+    setSelectedDate(prev => {
+      const d = new Date(prev);
+      d.setDate(prev.getDate() + delta);
+      return d;
     });
   };
 
@@ -109,6 +115,7 @@ export const CalendarPocketSpace = ({
     start.setDate(now.getDate() - dayOfWeek + 1);
     start.setHours(0, 0, 0, 0);
     setCurrentWeekStart(start);
+    setSelectedDate(new Date());
   };
 
   const goToDate = (date: Date) => {
@@ -119,9 +126,9 @@ export const CalendarPocketSpace = ({
     start.setDate(date.getDate() - dayOfWeek + 1);
     start.setHours(0, 0, 0, 0);
     setCurrentWeekStart(start);
+    setSelectedDate(date);
     setDatePickerOpen(false);
   };
-
 
   const weekDays = useMemo(() => {
     const days: Date[] = [];
@@ -138,18 +145,21 @@ export const CalendarPocketSpace = ({
     year: 'numeric' 
   });
 
-  const getExamsOnDate = (date: Date): CalendarEvent[] => {
-    return events.filter(e => {
-      if (e.event_type !== 'exam' || !e.exam_date) return false;
-      const examDate = new Date(e.exam_date);
-      return examDate.toDateString() === date.toDateString();
-    });
-  };
-
   const handleExamClick = (exam: CalendarEvent) => {
     haptics.soft();
     sounds.open();
     setSelectedExam(exam);
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    haptics.selection();
+    sounds.tap();
+    if (event.event_type === 'exam') {
+      handleExamClick(event);
+    } else {
+      navigate(`/course/${event.id}`);
+      onClose();
+    }
   };
 
   const handleClose = () => {
@@ -157,6 +167,7 @@ export const CalendarPocketSpace = ({
     sounds.close();
     onClose();
   };
+
 
   const backdropVariants = {
     hidden: { opacity: 0 },
