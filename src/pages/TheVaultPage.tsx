@@ -647,6 +647,54 @@ export const TheVaultPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={showAddSemester} onOpenChange={setShowAddSemester}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nouveau semestre</AlertDialogTitle>
+            <AlertDialogDescription>
+              Donne un nom à ton semestre (ex : 1er semestre, 2e semestre…)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <input
+            autoFocus
+            value={newSemesterName}
+            onChange={(e) => setNewSemesterName(e.target.value)}
+            placeholder="1er semestre"
+            className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary/40"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setNewSemesterName("")}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const name = newSemesterName.trim();
+                if (!name || !user) return;
+                const today = new Date();
+                const end = new Date();
+                end.setMonth(end.getMonth() + 6);
+                const { error } = await supabase.from("semesters").insert({
+                  user_id: user.id,
+                  name,
+                  start_date: today.toISOString().slice(0, 10),
+                  end_date: end.toISOString().slice(0, 10),
+                });
+                if (error) {
+                  toast.error("Erreur lors de l'ajout");
+                  return;
+                }
+                toast.success("Semestre ajouté");
+                setNewSemesterName("");
+                setShowAddSemester(false);
+                refetch();
+              }}
+            >
+              Ajouter
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
