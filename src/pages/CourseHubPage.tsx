@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { PostCaptureActionMenu, CapturedNote } from "@/components/vault/PostCaptureActionMenu";
+import { buildCourseVaultPath } from "@/lib/courseNavigation";
 
 export const CourseHubPage = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -662,7 +663,7 @@ export const CourseHubPage = () => {
                     });
                     return;
                   }
-                  navigate(`/?tab=vault&subject=${subject.id}`);
+                  navigate(buildCourseVaultPath(subject));
                 }}
                 className="w-full p-3 rounded-xl flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 whileHover={{ scale: 1.02 }}
