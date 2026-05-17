@@ -34,7 +34,7 @@ const getWeekDays = (ref: Date) => {
 
 export const PulsePage = () => {
   const { user } = useAuth();
-  const { tasks, events, getTodayEvents, toggleTask, subjects, refetch } = useOrbitData();
+  const { tasks, getTodayEvents, toggleTask, createTask, subjects } = useOrbitData();
   const haptics = useHaptics();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
