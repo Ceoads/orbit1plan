@@ -49,6 +49,8 @@ export const CalendarPocketSpace = ({
   
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'week' | 'list'>('week');
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
   // Track scroll position for conditional dismiss
   const handleGridScroll = useCallback((e: Event) => {
