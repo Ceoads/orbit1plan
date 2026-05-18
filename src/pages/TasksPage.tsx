@@ -16,7 +16,7 @@ const fmtDue = (iso?: string | null): string => {
 };
 
 export const TasksPage = () => {
-  const { tasks, subjects, toggleTask, getSubjectById } = useOrbitData();
+  const { tasks, subjects, toggleTask, createTask, getSubjectById } = useOrbitData();
   const haptics = useHaptics();
   const sounds = useSoundEffects();
   const [filter, setFilter] = useState<Filter>("all");
@@ -144,7 +144,10 @@ export const TasksPage = () => {
       <AddTaskModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        onAdd={() => setShowAdd(false)}
+        onAdd={async (data) => {
+          await createTask(data);
+          setShowAdd(false);
+        }}
         subjects={subjects}
       />
     </div>
