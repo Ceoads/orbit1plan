@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { ClassRecapCard, ClassTimeline } from "@/components/dashboard";
-import { ScheduleWidget } from "@/components/calendar";
+import { CalendarPocketSpace } from "@/components/calendar";
 import { useOrbitData } from "@/hooks/useOrbitData";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { Clock, BookOpen, CalendarDays, Sparkles, MapPin, Bell, ChevronRight } from "lucide-react";
 
 export const PulsePage = () => {
