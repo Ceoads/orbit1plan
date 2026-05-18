@@ -538,7 +538,7 @@ const SettingsPage = () => {
           <div className="h-px bg-border/30 ml-4" />
 
           {/* Save + Sync CTA */}
-          <div className="p-4">
+          <div className="p-4 space-y-2.5">
             <Button
               onClick={handleSaveUrl}
               disabled={saving}
@@ -546,6 +546,15 @@ const SettingsPage = () => {
             >
               {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Check className="w-5 h-5 mr-2" />}
               Enregistrer et synchroniser
+            </Button>
+            <Button
+              onClick={handleSync}
+              disabled={syncing || !icalUrl}
+              variant="outline"
+              className="w-full h-[52px] rounded-2xl font-semibold text-[16px] border-primary/40 text-primary hover:bg-primary/5"
+            >
+              {syncing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <RefreshCw className="w-5 h-5 mr-2" />}
+              {syncing ? "Synchronisation…" : "Synchroniser maintenant"}
             </Button>
           </div>
         </IOSCard>

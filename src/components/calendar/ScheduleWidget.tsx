@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { toLocalDateStr } from "@/lib/dateFormat";
 import { motion } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { CalendarPocketSpace } from "./CalendarPocketSpace";
@@ -43,7 +44,7 @@ export const ScheduleWidget = ({
 
   // Get today's events summary
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toLocalDateStr(today);
   const todayEvents = events.filter(e => {
     if (e.event_date) return e.event_date === todayStr;
     return e.day_of_week === today.getDay();

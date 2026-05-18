@@ -1,4 +1,5 @@
 import { useMemo, useRef, useEffect } from "react";
+import { toLocalDateStr } from "@/lib/dateFormat";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
@@ -56,7 +57,7 @@ export const WeeklyTimeGrid = ({
   };
 
   const getEventsForDayAndHour = (date: Date, hour: number): CalendarEvent[] => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(date);
     const dayOfWeek = date.getDay();
     const today = new Date();
     today.setHours(0, 0, 0, 0);

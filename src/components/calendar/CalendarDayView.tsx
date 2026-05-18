@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { toLocalDateStr } from "@/lib/dateFormat";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { FilteredEvent } from "@/lib/eventFilter";
 import { GlassCard } from "@/components/GlassCard";
@@ -61,7 +62,7 @@ export const CalendarDayView = ({
     return days;
   }, [date]);
 
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = toLocalDateStr(date);
   
   const dayEvents = events
     .filter(e => {
@@ -75,7 +76,7 @@ export const CalendarDayView = ({
     });
 
   const getEventsForDay = (d: Date) => {
-    const dStr = d.toISOString().split('T')[0];
+    const dStr = toLocalDateStr(d);
     return events.filter(e => {
       if (e.event_date) return e.event_date === dStr;
       return e.day_of_week === d.getDay();

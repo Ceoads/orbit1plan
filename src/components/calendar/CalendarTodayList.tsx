@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { toLocalDateStr } from "@/lib/dateFormat";
 import { motion } from "framer-motion";
 import { Sun, Moon, Search, CheckSquare, Pencil, Plus } from "lucide-react";
 import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
@@ -37,7 +38,7 @@ export const CalendarTodayList = ({
   onSelectDay,
   onEventClick,
 }: Props) => {
-  const dateStr = currentDate.toISOString().split("T")[0];
+  const dateStr = toLocalDateStr(currentDate);
   const isToday = (d: Date) =>
     d.toDateString() === new Date().toDateString();
   const isSelected = (d: Date) =>

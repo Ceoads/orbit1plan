@@ -1,54 +1,59 @@
-## Problème
-Sur plusieurs pages, le bouton "Retour" appelle `navigate('/')` au lieu de `navigate(-1)`, ce qui ramène toujours à l'accueil au lieu de la page précédente. Certains textes utilisent aussi des contrastes trop faibles (gris clair sur crème).
+## Problèmes identifiés
 
-## 1. Navigation "Retour" — toujours revenir à la page précédente
+### 1. Bouton « Sync maintenant » peu visible
+Il existe déjà une ligne `Resynchroniser maintenant` dans Paramètres → Synchronisation, mais elle est noyée en bas de la page, sans hiérarchie visuelle. L'utilisateur ne la trouve pas.
 
-Créer un petit hook `useSmartBack()` dans `src/hooks/useSmartBack.tsx` :
-- Si `window.history.length > 1` et qu'on n'est pas sur `/landing` ou `/auth` → `navigate(-1)`
-- Sinon fallback intelligent (`/` pour pages app, `/landing` si non connecté)
-- Joue `haptics.selection()` + `sounds.tap()` pour la cohérence iOS
+### 2. Cours qui apparaissent au mauvais jour (dimanche) et cours manquants
+**Cause racine identifiée** dans les vues calendrier (`WeeklyTimeGrid.tsx`, `CalendarDayView.tsx`, `CalendarTodayList.tsx`) :
 
-Remplacer tous les "retour" qui pointent en dur vers `/` :
+```ts
+const dateStr = date.toISOString().split('T')[0];
+```
 
-| Fichier | Ligne | Avant | Après |
-|---|---|---|---|
-| `src/pages/SettingsPage.tsx` | 448, 468, 655, 677 | `navigate('/')` (bouton "Retour") | `smartBack()` |
-| `src/pages/StudyHubPage.tsx` | 75 | `navigate('/')` (close) | `smartBack()` |
-| `src/pages/CourseHubPage.tsx` | 330 | `navigate('/lab')` (close après quiz) | garder mais ajouter bouton retour explicite |
-| `src/pages/ResetPasswordPage.tsx` | 36 | OK (flow auth, garder) | — |
+`toISOString()` retourne la date en **UTC**, pas en heure locale. Pour un utilisateur en France (UTC+1/+2), `new Date(2026, 4, 18)` (lundi minuit Paris) devient `"2026-05-17"` une fois converti en UTC. Conséquences :
 
-Garder `navigate(-1)` là où il est déjà correct (CourseHubPage 76/386, StudyHubPage 106/219).
+- Les `event_date` stockés en heure de Paris (`YYYY-MM-DD` Paris) ne matchent plus la bonne colonne.
+- Tout l'affichage est **décalé d'un jour** : un cours du lundi atterrit dans la colonne du dimanche, etc.
+- Certains cours disparaissent côté bord de semaine (le lundi tombe avant la fenêtre visible).
 
-## 2. Header iOS standardisé — bouton Retour visible partout
+Le filtrage de groupe (`eventFilter.ts`, `eventMatchesGroup` backend) n'est pas en cause : l'utilisateur a confirmé n'avoir aucun filtre actif.
 
-Créer `src/components/IOSBackButton.tsx` : chevron + label ("Retour"), 44×44pt min, position top-left, safe-area aware, `aria-label="Retour"`.
+## Plan d'action
 
-L'utiliser dans :
-- `SettingsPage` (remplace le bouton custom ligne 468)
-- `CourseHubPage` (header)
-- `StudyHubPage` (remplace le bouton ligne 219)
+### 1. Bouton Sync proéminent (`src/pages/SettingsPage.tsx`)
+- Sous le champ URL iCal, ajouter un second bouton secondaire **« Synchroniser maintenant »** (icône `RefreshCw`, hauteur 52px, style outline coral) directement à côté ou sous le bouton « Enregistrer et synchroniser » existant.
+- Désactivé tant que `icalUrl` est vide. Affiche `Loader2` + texte « Synchronisation… » quand `syncing`.
+- Garder la ligne `Resynchroniser maintenant` existante (les power users la trouveront aussi).
 
-Sur les pages "racines" (Pulse/Vault/Tasks/Exams/Lab dans `Index.tsx`) → pas de bouton retour, la Tab Bar suffit (déjà conforme HIG).
+### 2. Fix du bug timezone (3 fichiers)
+Créer un util `src/lib/dateFormat.ts` :
+```ts
+export const toLocalDateStr = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+```
 
-## 3. Lisibilité & contrastes (WCAG AA)
+Remplacer `date.toISOString().split('T')[0]` par `toLocalDateStr(date)` dans :
+- `src/components/calendar/WeeklyTimeGrid.tsx` (ligne 59)
+- `src/components/calendar/CalendarDayView.tsx` (lignes ~68, ~80)
+- `src/components/calendar/CalendarTodayList.tsx` (ligne ~49)
+- `src/pages/TasksPage.tsx` si même pattern présent (à vérifier).
 
-Audit rapide dans `src/index.css` du token `--muted-foreground` : actuellement trop clair sur fond crème chaud.
+### 3. Forcer un resync après le fix
+Le bug masquait peut-être de vrais cours et créait des dimanches fantômes côté affichage uniquement. Une fois le fix appliqué, dire à l'utilisateur de cliquer « Synchroniser maintenant » pour rafraîchir et confirmer que tout s'affiche au bon jour.
 
-- Augmenter le contraste de `--muted-foreground` (cible ratio ≥ 4.5:1 sur `--background`).
-- Remplacer dans les composants les usages de `text-muted-foreground/50`, `/60`, `/70` (timestamps tâches, métadonnées) par `text-muted-foreground` plein, ou `text-foreground/70` minimum.
-- Vérifier les placeholders d'input : `placeholder:text-muted-foreground` (token), pas de gris arbitraire.
+## Hors-scope
+- Pas de changement de la logique backend `sync-calendar` (le parsing Paris est correct).
+- Pas de modification du filtre groupe `eventFilter.ts`.
+- Pas de redesign de la page Paramètres au-delà de l'ajout du bouton.
 
-Fichiers à passer en revue : `TasksPage.tsx`, `PulsePage.tsx`, `TheVaultPage.tsx`, `ExamsPage.tsx`, `ExamLabPage.tsx`, `CollapsibleHeader.tsx`, cartes (`ExamCard`, `PriorityTaskCard`, `VaultFileCard`, `NoteCard`).
-
-## 4. Garde-fou navigation
-
-Dans `Index.tsx`, ajouter un effet qui, lors d'un retour navigateur, réapplique le `tab` depuis l'URL si présent — déjà partiellement géré, à compléter pour que l'historique des onglets fonctionne avec le bouton retour natif iOS / Android.
-
-## Hors scope
-- Aucune logique backend, aucune migration.
-- Pas de refonte visuelle des pages Pulse/Vault/Exams/Lab (uniquement contrastes).
-- TasksPage : on garde le design iOS récent, on ajuste seulement les contrastes des métadonnées.
-
-## Fichiers touchés
-- Nouveau : `src/hooks/useSmartBack.tsx`, `src/components/IOSBackButton.tsx`
-- Modifiés : `src/pages/SettingsPage.tsx`, `src/pages/StudyHubPage.tsx`, `src/pages/CourseHubPage.tsx`, `src/pages/Index.tsx`, `src/index.css`, plus ajustements ponctuels de contrastes dans les pages/cartes listées.
+## Fichiers modifiés
+- `src/pages/SettingsPage.tsx` (bouton Sync proéminent)
+- `src/lib/dateFormat.ts` (nouveau)
+- `src/components/calendar/WeeklyTimeGrid.tsx`
+- `src/components/calendar/CalendarDayView.tsx`
+- `src/components/calendar/CalendarTodayList.tsx`
+- `src/pages/TasksPage.tsx` (si concerné)

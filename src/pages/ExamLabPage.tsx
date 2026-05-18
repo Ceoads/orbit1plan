@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toLocalDateStr } from "@/lib/dateFormat";
 import { motion } from "framer-motion";
 import { Brain, Sparkles, BookOpen, Plus, Loader2, AlertCircle, GraduationCap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,7 +76,7 @@ export const ExamLabPage = () => {
       setSubjects(subjectsData || []);
 
       // Fetch upcoming exams
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDateStr(new Date());
       const { data: examsData, error: examsError } = await supabase
         .from('calendar_events')
         .select('*')
