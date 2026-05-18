@@ -92,6 +92,18 @@ export const CalendarPocketSpace = ({
     };
   }, [isOpen, handleGridScroll]);
 
+  // When opened with an initialDate, jump to that day/week
+  useEffect(() => {
+    if (!isOpen || !initialDate) return;
+    const d = new Date(initialDate);
+    const dayOfWeek = d.getDay();
+    const start = new Date(d);
+    start.setDate(d.getDate() - dayOfWeek + 1);
+    start.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(start);
+    setSelectedDate(d);
+  }, [isOpen, initialDate]);
+
   const navigateWeek = (direction: 'prev' | 'next') => {
     haptics.selection();
     sounds.tap();
