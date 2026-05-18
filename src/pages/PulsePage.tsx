@@ -204,6 +204,11 @@ export const PulsePage = () => {
         events={events}
         subjects={subjects}
         originRect={originRect}
+        initialDate={
+          displayClass?.event_date
+            ? new Date(displayClass.event_date)
+            : new Date()
+        }
       />
 
       {/* Focus Task */}
