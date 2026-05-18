@@ -19,6 +19,7 @@ interface CalendarPocketSpaceProps {
   events: CalendarEvent[];
   subjects: Subject[];
   originRect?: DOMRect;
+  initialDate?: Date;
 }
 
 export const CalendarPocketSpace = ({
@@ -27,6 +28,7 @@ export const CalendarPocketSpace = ({
   events,
   subjects,
   originRect,
+  initialDate,
 }: CalendarPocketSpaceProps) => {
   const { t } = useTranslation();
   const haptics = useHaptics();
