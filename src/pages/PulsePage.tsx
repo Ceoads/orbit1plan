@@ -1,231 +1,222 @@
-import { useState, useEffect } from "react";
-import { GlassCard } from "@/components/GlassCard";
-import { ClassRecapCard, ClassTimeline } from "@/components/dashboard";
-import { ScheduleWidget } from "@/components/calendar";
+import { useEffect, useMemo, useState } from "react";
 import { useOrbitData } from "@/hooks/useOrbitData";
-import { Clock, BookOpen, CalendarDays, Sparkles, MapPin, Bell, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { toLocalDateStr } from "@/lib/dateFormat";
+import { cn } from "@/lib/utils";
+import { AddClassModal } from "@/components/modals";
+
+const DAY_3 = ["DIM", "LUN", "MAR", "MER", "JEU", "VEN", "SAM"];
+const MONTH_FR = [
+  "janvier", "février", "mars", "avril", "mai", "juin",
+  "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+];
+
+const startOfDay = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+const addDays = (d: Date, n: number) => {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+};
 
 export const PulsePage = () => {
-  const { 
-    getCurrentClass, 
-    getNextClass, 
-    getSubjectById, 
-    getHighestPriorityTask, 
-    getUpcomingExams, 
-    getTodayEvents,
-    events,
-    subjects,
-    notes, 
-    tasks 
-  } = useOrbitData();
-  
-  const [showRoomReminder, setShowRoomReminder] = useState(false);
-  const [minutesToClass, setMinutesToClass] = useState<number | null>(null);
+  const navigate = useNavigate();
+  const haptics = useHaptics();
+  const sounds = useSoundEffects();
+  const { events, subjects, tasks, getSubjectById, getUpcomingExams } = useOrbitData();
 
-  const today = new Date();
-  const currentClass = getCurrentClass();
-  const nextClass = getNextClass();
-  const displayClass = currentClass || nextClass;
-  const classSubject = displayClass ? getSubjectById(displayClass.subject_id) : null;
-  const isCurrentlyInClass = !!currentClass;
-  const priorityTask = getHighestPriorityTask();
-  const upcomingExams = getUpcomingExams();
-  const nextExam = upcomingExams[0];
-  const examSubject = nextExam ? getSubjectById(nextExam.subject_id) : null;
-  
-  // Get today's events for the timeline
-  const todayEvents = getTodayEvents?.() || [];
-  
-  // Transform events for the timeline component
-  const timelineEvents = todayEvents
-    .filter(event => {
-      // Filter out the current/main display class to avoid duplication
-      if (displayClass && event.id === displayClass.id) return false;
-      // Only show future events
-      const now = new Date();
-      const [hours, mins] = event.end_time.split(':').map(Number);
-      const eventEnd = new Date();
-      eventEnd.setHours(hours, mins, 0, 0);
-      return eventEnd > now;
-    })
-    .slice(0, 4) // Show max 4 upcoming events
-    .map(event => {
-      const subject = getSubjectById(event.subject_id);
-      const now = new Date();
-      const [startH, startM] = event.start_time.split(':').map(Number);
-      const [endH, endM] = event.end_time.split(':').map(Number);
-      const eventStart = new Date();
-      eventStart.setHours(startH, startM, 0, 0);
-      const eventEnd = new Date();
-      eventEnd.setHours(endH, endM, 0, 0);
-      
-      return {
-        id: event.id,
-        title: event.title,
-        startTime: event.start_time,
-        endTime: event.end_time,
-        subjectName: subject?.name || event.title,
-        colorKey: subject?.color_key,
-        eventType: event.event_type,
-        isCurrentEvent: now >= eventStart && now <= eventEnd,
-      };
-    });
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const [selectedDate, setSelectedDate] = useState<Date>(today);
+  const [showAddClass, setShowAddClass] = useState(false);
 
+  // Two weeks of strip centred on today (-7..+7)
+  const stripDays = useMemo(
+    () => Array.from({ length: 21 }, (_, i) => addDays(today, i - 7)),
+    [today]
+  );
+
+  // Scroll today into view on mount
   useEffect(() => {
-    const checkClassTime = () => {
-      if (!nextClass || isCurrentlyInClass) { 
-        setShowRoomReminder(false); 
-        return; 
-      }
-      const now = new Date();
-      const [startHour, startMin] = nextClass.start_time.split(':').map(Number);
-      const classStart = new Date();
-      classStart.setHours(startHour, startMin, 0, 0);
-      const diff = classStart.getTime() - now.getTime();
-      const minutesUntil = Math.floor(diff / 60000);
-      if (minutesUntil > 0 && minutesUntil <= 10 && nextClass.room_number) {
-        setShowRoomReminder(true);
-        setMinutesToClass(minutesUntil);
-      } else {
-        setShowRoomReminder(false);
-        setMinutesToClass(null);
-      }
-    };
-    checkClassTime();
-    const interval = setInterval(checkClassTime, 30000);
-    return () => clearInterval(interval);
-  }, [nextClass, isCurrentlyInClass]);
+    const el = document.getElementById("strip-day-today");
+    el?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, []);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bonjour";
-    if (hour < 18) return "Bon après-midi";
-    return "Bonsoir";
+  const dateStr = toLocalDateStr(selectedDate);
+  const dayOfWeek = selectedDate.getDay();
+
+  const dayEvents = useMemo(() => {
+    return events
+      .filter((e) => {
+        if (e.event_date) return e.event_date === dateStr;
+        return e.day_of_week === dayOfWeek;
+      })
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+  }, [events, dateStr, dayOfWeek]);
+
+  const todayTasks = useMemo(
+    () =>
+      tasks.filter((t) => {
+        if (t.status === "done" || t.is_subtask) return false;
+        if (!t.due_date) return false;
+        return toLocalDateStr(new Date(t.due_date)) === dateStr;
+      }),
+    [tasks, dateStr]
+  );
+
+  const todayExams = useMemo(
+    () => getUpcomingExams().filter((e) => e.exam_date === dateStr),
+    [getUpcomingExams, dateStr]
+  );
+
+  const completedCount = dayEvents.filter((e) => {
+    const [eh, em] = e.end_time.split(":").map(Number);
+    const end = new Date(selectedDate);
+    end.setHours(eh, em, 0, 0);
+    return end < new Date();
+  }).length;
+
+  const greeting = useMemo(() => {
+    const w = selectedDate.toLocaleDateString("en-US", { weekday: "long" });
+    return `${w}, ${MONTH_FR[selectedDate.getMonth()].charAt(0).toUpperCase()}${MONTH_FR[selectedDate.getMonth()].slice(1)} ${selectedDate.getDate()}`;
+  }, [selectedDate]);
+
+  const handleDayClick = (d: Date) => {
+    haptics.selection();
+    sounds.tap();
+    setSelectedDate(d);
   };
-
-  const getDaysUntil = (dateStr: string): number => {
-    return Math.ceil((new Date(dateStr).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  const todoCount = tasks.filter(t => t.status === 'todo' && !t.is_subtask).length;
-  const doneCount = tasks.filter(t => t.status === 'done').length;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-24">
-      {/* Mesh Background Decorations */}
-      <div className="fixed inset-0 pointer-events-none -z-10 mesh-background opacity-70" />
-      
-      {/* Header */}
-      <div className="pt-4">
-        <p className="text-muted-foreground text-sm font-medium">
-          {today.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
-        <h1 className="font-display text-3xl font-bold text-foreground mt-1">
-          {getGreeting()}! ✨
-        </h1>
+    <div className="font-mono pb-32">
+      {/* Title */}
+      <h1 className="text-mono-title text-foreground">Schedule</h1>
+
+      {/* Greeting */}
+      <p className="text-mono-body text-foreground mt-3">{greeting}</p>
+
+      {/* Sub-summary */}
+      <p className="text-mono-meta mt-1">
+        Tu as {todayTasks.length} tâche{todayTasks.length === 1 ? "" : "s"} et{" "}
+        {todayExams.length} examen{todayExams.length === 1 ? "" : "s"} aujourd'hui.
+      </p>
+
+      {/* Stats line */}
+      <p className="text-mono-meta mt-6">
+        {dayEvents.length} items · {completedCount} completed
+      </p>
+
+      {/* Week strip — horizontal scroll */}
+      <div className="mt-10 -mx-6 px-6 overflow-x-auto scrollbar-thin">
+        <div className="flex gap-0 min-w-max">
+          {stripDays.map((d) => {
+            const isSelected = toLocalDateStr(d) === toLocalDateStr(selectedDate);
+            const isToday = toLocalDateStr(d) === toLocalDateStr(today);
+            return (
+              <button
+                key={d.toISOString()}
+                id={isToday ? "strip-day-today" : undefined}
+                onClick={() => handleDayClick(d)}
+                className={cn(
+                  "relative flex flex-col items-center justify-center gap-1 w-14 py-3 transition-colors duration-150 ease-out",
+                  "border-r border-[hsl(var(--border))] last:border-r-0",
+                  isSelected
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="text-[10px] font-medium tracking-[0.08em]">
+                  {DAY_3[d.getDay()]}
+                </span>
+                <span
+                  className={cn(
+                    "text-base font-semibold tabular-nums",
+                    isSelected && "text-primary"
+                  )}
+                >
+                  {d.getDate()}
+                </span>
+                {isToday && (
+                  <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Room Reminder Alert */}
-      {showRoomReminder && nextClass?.room_number && (
-        <div className="soft-card p-4 border-l-4 border-l-primary animate-scale-in">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">Cours dans {minutesToClass} min</p>
-              <p className="font-display font-bold text-foreground text-lg">📍 {nextClass.room_number}</p>
-            </div>
-            <Bell className="w-5 h-5 text-primary animate-bounce" />
-          </div>
-        </div>
-      )}
+      {/* Section label */}
+      <p className="text-mono-section mt-14 mb-4">Today</p>
 
-      {/* Main Class Card */}
-      {displayClass && classSubject ? (
-        <ClassRecapCard
-          subjectName={classSubject.name}
-          subjectIcon={classSubject.icon}
-          startTime={displayClass.start_time.slice(0, 5)}
-          endTime={displayClass.end_time.slice(0, 5)}
-          teacherName={displayClass.teacher_name || classSubject.teacher_name}
-          roomNumber={displayClass.room_number}
-          isCurrentClass={isCurrentlyInClass}
-        />
+      {/* Courses list */}
+      {dayEvents.length === 0 ? (
+        <div className="py-16 text-center">
+          <p className="text-mono-body text-foreground">Pas de cours aujourd'hui</p>
+          <p className="text-mono-meta mt-2">
+            Tu peux profiter de ton temps libre.
+          </p>
+        </div>
       ) : (
-        <div className="soft-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
-              <BookOpen className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Aucun cours prévu</p>
-              <p className="font-display font-semibold text-lg">Profite de ton temps libre ! 🎉</p>
-            </div>
-          </div>
+        <div className="space-y-3">
+          {dayEvents.map((event) => {
+            const subject = getSubjectById(event.subject_id);
+            return (
+              <button
+                key={event.id}
+                onClick={() => navigate(`/course/${event.id}`)}
+                className="w-full text-left bg-card border border-[hsl(var(--border))] rounded-[12px] p-7 transition-[border-color] duration-150 ease-out hover:border-[hsl(var(--border-hover))]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-mono-body text-foreground truncate">
+                      {subject?.name || event.title}
+                    </p>
+                    <p className="text-mono-meta mt-1.5">
+                      {event.start_time.slice(0, 5)} — {event.end_time.slice(0, 5)}
+                      {event.room_number && (
+                        <>
+                          {" · "}
+                          {event.room_number}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  {event.event_type === "exam" && (
+                    <span className="text-[10px] font-medium tracking-[0.08em] uppercase text-primary border border-primary/30 rounded-[8px] px-2 py-1">
+                      Exam
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Schedule Widget - Opens Pocket Space */}
-      <section>
-        <ScheduleWidget 
-          events={events} 
-          subjects={subjects} 
-        />
-      </section>
+      {/* Add course button — bottom of content */}
+      <button
+        onClick={() => {
+          haptics.medium();
+          sounds.tap();
+          setShowAddClass(true);
+        }}
+        className="mt-14 w-full h-[52px] bg-primary text-primary-foreground rounded-[12px] font-mono text-sm font-medium flex items-center justify-center gap-2 transition-opacity duration-150 ease-out hover:opacity-90"
+      >
+        <Plus className="w-4 h-4" strokeWidth={2.5} />
+        Add course
+      </button>
 
-      {/* Focus Task */}
-      {priorityTask && (
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-warning" />
-            <h2 className="font-display font-semibold text-foreground">À réviser maintenant</h2>
-          </div>
-          <div className="soft-card p-5 border-l-4 border-l-primary">
-            <div className="flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">{priorityTask.title}</h3>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Upcoming Exam Alert */}
-      {nextExam && examSubject && nextExam.exam_date && getDaysUntil(nextExam.exam_date) <= 7 && (
-        <div className="soft-card p-5 border-l-4 border-l-warning">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-warning/10 flex items-center justify-center">
-              <CalendarDays className="w-6 h-6 text-warning" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground">Examen à venir</p>
-              <p className="font-display font-semibold text-foreground">
-                {examSubject.icon} {nextExam.title}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-warning">{getDaysUntil(nextExam.exam_date)}</p>
-              <p className="text-xs text-muted-foreground">jours</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Grid */}
-      <section className="grid grid-cols-3 gap-3">
-        <div className="soft-card p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{notes.length}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Notes</p>
-        </div>
-        <div className="soft-card p-4 text-center">
-          <p className="text-2xl font-bold text-success">{doneCount}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Terminées</p>
-        </div>
-        <div className="soft-card p-4 text-center">
-          <p className="text-2xl font-bold text-warning">{upcomingExams.length}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Examens</p>
-        </div>
-      </section>
+      <AddClassModal
+        open={showAddClass}
+        onOpenChange={setShowAddClass}
+        subjects={subjects}
+      />
     </div>
   );
 };
