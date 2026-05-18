@@ -1,59 +1,35 @@
-## Problèmes identifiés
+## Objectif
 
-### 1. Bouton « Sync maintenant » peu visible
-Il existe déjà une ligne `Resynchroniser maintenant` dans Paramètres → Synchronisation, mais elle est noyée en bas de la page, sans hiérarchie visuelle. L'utilisateur ne la trouve pas.
+Mémoriser la préférence de vue du Vault (liste/grille) entre les sessions, et confirmer/affiner la recherche OCR temps réel sur toutes les notes.
 
-### 2. Cours qui apparaissent au mauvais jour (dimanche) et cours manquants
-**Cause racine identifiée** dans les vues calendrier (`WeeklyTimeGrid.tsx`, `CalendarDayView.tsx`, `CalendarTodayList.tsx`) :
+## 1. Persistance du mode de vue (liste / grille)
 
-```ts
-const dateStr = date.toISOString().split('T')[0];
-```
+Stocker la préférence dans `profiles.preferences` (colonne jsonb déjà existante, déjà lue par TheVaultPage pour `vault_initialized`).
 
-`toISOString()` retourne la date en **UTC**, pas en heure locale. Pour un utilisateur en France (UTC+1/+2), `new Date(2026, 4, 18)` (lundi minuit Paris) devient `"2026-05-17"` une fois converti en UTC. Conséquences :
+Dans `src/pages/TheVaultPage.tsx` :
+- Au montage (dans le `useEffect` qui lit `profiles.preferences`), récupérer `prefs?.vault_view_mode` et l'utiliser comme valeur initiale de `viewMode` (fallback `"list"`).
+- Pour éviter le flash, initialiser `viewMode` à `null` puis n'afficher la liste/grille qu'une fois la préférence chargée (ou garder `"list"` par défaut — flash minime).
+- Lors du clic sur les boutons grille/liste, mettre à jour l'état local **et** persister via `supabase.from("profiles").update({ preferences: { ...prefs, vault_view_mode: mode } }).eq("user_id", user.id)`.
+- Encapsuler dans un petit helper `setAndPersistViewMode(mode)` pour éviter la duplication.
 
-- Les `event_date` stockés en heure de Paris (`YYYY-MM-DD` Paris) ne matchent plus la bonne colonne.
-- Tout l'affichage est **décalé d'un jour** : un cours du lundi atterrit dans la colonne du dimanche, etc.
-- Certains cours disparaissent côté bord de semaine (le lundi tombe avant la fenêtre visible).
+Aucune migration n'est nécessaire : la colonne `preferences jsonb` existe déjà sur `profiles`.
 
-Le filtrage de groupe (`eventFilter.ts`, `eventMatchesGroup` backend) n'est pas en cause : l'utilisateur a confirmé n'avoir aucun filtre actif.
+## 2. Recherche OCR temps réel
 
-## Plan d'action
+La recherche existe déjà :
+- `useVaultData.searchFiles(query)` filtre sur `extracted_text`, `ai_summary` et `tags` (insensible à la casse).
+- L'input dans `TheVaultPage` met à jour `searchQuery` à chaque frappe → filtrage en temps réel, sur **tous** les fichiers de l'utilisateur (pas seulement la matière courante).
+- Le placeholder mentionne déjà l'OCR.
 
-### 1. Bouton Sync proéminent (`src/pages/SettingsPage.tsx`)
-- Sous le champ URL iCal, ajouter un second bouton secondaire **« Synchroniser maintenant »** (icône `RefreshCw`, hauteur 52px, style outline coral) directement à côté ou sous le bouton « Enregistrer et synchroniser » existant.
-- Désactivé tant que `icalUrl` est vide. Affiche `Loader2` + texte « Synchronisation… » quand `syncing`.
-- Garder la ligne `Resynchroniser maintenant` existante (les power users la trouveront aussi).
+Améliorations légères pour répondre clairement à la demande :
+- S'assurer que cliquer sur la barre de recherche bascule en `isSearchMode` même depuis l'intérieur d'une matière (actuellement bloqué par `!inSubject`), afin que la recherche couvre toujours toutes les notes.
+- Ajouter une mise en évidence du terme recherché dans `VaultFileCard` (surligner les occurrences dans `ai_summary` / extrait OCR) — optionnel mais utile.
+- Afficher un petit compteur "Recherche dans X fichiers OCR" sous la barre quand `isSearchMode` est actif et vide.
 
-### 2. Fix du bug timezone (3 fichiers)
-Créer un util `src/lib/dateFormat.ts` :
-```ts
-export const toLocalDateStr = (d: Date): string => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-```
+## Détails techniques
 
-Remplacer `date.toISOString().split('T')[0]` par `toLocalDateStr(date)` dans :
-- `src/components/calendar/WeeklyTimeGrid.tsx` (ligne 59)
-- `src/components/calendar/CalendarDayView.tsx` (lignes ~68, ~80)
-- `src/components/calendar/CalendarTodayList.tsx` (ligne ~49)
-- `src/pages/TasksPage.tsx` si même pattern présent (à vérifier).
+Fichiers modifiés :
+- `src/pages/TheVaultPage.tsx` — lecture/écriture de `preferences.vault_view_mode`, déblocage de `isSearchMode` depuis une matière, micro-UI search.
+- (Optionnel) `src/components/vault/VaultFileCard.tsx` — surlignage du terme recherché (prop `highlight?: string`).
 
-### 3. Forcer un resync après le fix
-Le bug masquait peut-être de vrais cours et créait des dimanches fantômes côté affichage uniquement. Une fois le fix appliqué, dire à l'utilisateur de cliquer « Synchroniser maintenant » pour rafraîchir et confirmer que tout s'affiche au bon jour.
-
-## Hors-scope
-- Pas de changement de la logique backend `sync-calendar` (le parsing Paris est correct).
-- Pas de modification du filtre groupe `eventFilter.ts`.
-- Pas de redesign de la page Paramètres au-delà de l'ajout du bouton.
-
-## Fichiers modifiés
-- `src/pages/SettingsPage.tsx` (bouton Sync proéminent)
-- `src/lib/dateFormat.ts` (nouveau)
-- `src/components/calendar/WeeklyTimeGrid.tsx`
-- `src/components/calendar/CalendarDayView.tsx`
-- `src/components/calendar/CalendarTodayList.tsx`
-- `src/pages/TasksPage.tsx` (si concerné)
+Aucun changement de base de données, aucune nouvelle dépendance.

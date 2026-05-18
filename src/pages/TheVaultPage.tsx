@@ -146,9 +146,27 @@ export const TheVaultPage = () => {
 
       const prefs = data?.preferences as any;
       setVaultInitialized(prefs?.vault_initialized === true);
+      if (prefs?.vault_view_mode === "grid" || prefs?.vault_view_mode === "list") {
+        setViewMode(prefs.vault_view_mode);
+      }
     };
     checkInit();
   }, [user]);
+
+  const setAndPersistViewMode = async (mode: "grid" | "list") => {
+    setViewMode(mode);
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("preferences")
+      .eq("user_id", user.id)
+      .single();
+    const prefs = (data?.preferences as any) || {};
+    await supabase
+      .from("profiles")
+      .update({ preferences: { ...prefs, vault_view_mode: mode } })
+      .eq("user_id", user.id);
+  };
 
   const subjectStats = getSubjectStats().filter(
     (s, i, arr) => arr.findIndex((x) => x.id === s.id) === i
@@ -343,7 +361,7 @@ export const TheVaultPage = () => {
             {/* View toggle */}
             <div className="flex items-center bg-muted/60 rounded-full p-1">
               <button
-                onClick={() => setViewMode("grid")}
+                onClick={() => setAndPersistViewMode("grid")}
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center transition-all",
                   viewMode === "grid"
@@ -355,7 +373,7 @@ export const TheVaultPage = () => {
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setViewMode("list")}
+                onClick={() => setAndPersistViewMode("list")}
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center transition-all",
                   viewMode === "list"
@@ -381,7 +399,7 @@ export const TheVaultPage = () => {
       </div>
 
       {/* Search */}
-      <div className="relative" onClick={() => !inSubject && setIsSearchMode(true)}>
+      <div className="relative" onClick={() => setIsSearchMode(true)}>
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
