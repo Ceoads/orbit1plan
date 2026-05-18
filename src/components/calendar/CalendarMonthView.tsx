@@ -48,7 +48,7 @@ export const CalendarMonthView = ({
   };
   
   const getEventsForDay = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(date);
     return events.filter(e => {
       if (e.event_date) return e.event_date === dateStr;
       return e.day_of_week === date.getDay();

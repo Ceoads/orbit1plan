@@ -37,7 +37,7 @@ export const CalendarTodayList = ({
   onSelectDay,
   onEventClick,
 }: Props) => {
-  const dateStr = currentDate.toISOString().split("T")[0];
+  const dateStr = toLocalDateStr(currentDate);
   const isToday = (d: Date) =>
     d.toDateString() === new Date().toDateString();
   const isSelected = (d: Date) =>

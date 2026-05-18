@@ -56,7 +56,7 @@ export const WeeklyTimeGrid = ({
   };
 
   const getEventsForDayAndHour = (date: Date, hour: number): CalendarEvent[] => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(date);
     const dayOfWeek = date.getDay();
     const today = new Date();
     today.setHours(0, 0, 0, 0);

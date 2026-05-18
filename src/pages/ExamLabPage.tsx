@@ -75,7 +75,7 @@ export const ExamLabPage = () => {
       setSubjects(subjectsData || []);
 
       // Fetch upcoming exams
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDateStr(new Date());
       const { data: examsData, error: examsError } = await supabase
         .from('calendar_events')
         .select('*')

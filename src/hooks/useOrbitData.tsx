@@ -343,7 +343,7 @@ export const useOrbitData = () => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTime = currentHour * 60 + currentMinute;
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = toLocalDateStr(now);
 
     const todayClasses = filteredEvents.filter(e => {
       if (e.event_type !== 'class') return false;
@@ -371,7 +371,7 @@ export const useOrbitData = () => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTime = currentHour * 60 + currentMinute;
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = toLocalDateStr(now);
 
     const todayClasses = filteredEvents
       .filter(e => {
@@ -397,7 +397,7 @@ export const useOrbitData = () => {
     // Return first class of tomorrow
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowStr = toLocalDateStr(tomorrow);
     const tomorrowClasses = filteredEvents.filter(e => {
       if (e.event_type !== 'class') return false;
       if (e.event_date) return e.event_date === tomorrowStr;
@@ -435,7 +435,7 @@ export const useOrbitData = () => {
   // Get today's events (classes and exams)
   const getTodayEvents = (): CalendarEvent[] => {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = toLocalDateStr(today);
     
     return filteredEvents
       .filter(e => {
