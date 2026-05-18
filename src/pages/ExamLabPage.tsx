@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toLocalDateStr } from "@/lib/dateFormat";
 import { motion } from "framer-motion";
 import { Brain, Sparkles, BookOpen, Plus, Loader2, AlertCircle, GraduationCap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
