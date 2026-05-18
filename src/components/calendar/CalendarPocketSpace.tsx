@@ -19,6 +19,7 @@ interface CalendarPocketSpaceProps {
   events: CalendarEvent[];
   subjects: Subject[];
   originRect?: DOMRect;
+  initialDate?: Date;
 }
 
 export const CalendarPocketSpace = ({
@@ -27,6 +28,7 @@ export const CalendarPocketSpace = ({
   events,
   subjects,
   originRect,
+  initialDate,
 }: CalendarPocketSpaceProps) => {
   const { t } = useTranslation();
   const haptics = useHaptics();
@@ -89,6 +91,18 @@ export const CalendarPocketSpace = ({
       }
     };
   }, [isOpen, handleGridScroll]);
+
+  // When opened with an initialDate, jump to that day/week
+  useEffect(() => {
+    if (!isOpen || !initialDate) return;
+    const d = new Date(initialDate);
+    const dayOfWeek = d.getDay();
+    const start = new Date(d);
+    start.setDate(d.getDate() - dayOfWeek + 1);
+    start.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(start);
+    setSelectedDate(d);
+  }, [isOpen, initialDate]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     haptics.selection();
