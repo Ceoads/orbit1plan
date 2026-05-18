@@ -361,7 +361,7 @@ export const TheVaultPage = () => {
             {/* View toggle */}
             <div className="flex items-center bg-muted/60 rounded-full p-1">
               <button
-                onClick={() => setViewMode("grid")}
+                onClick={() => setAndPersistViewMode("grid")}
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center transition-all",
                   viewMode === "grid"
@@ -373,7 +373,7 @@ export const TheVaultPage = () => {
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setViewMode("list")}
+                onClick={() => setAndPersistViewMode("list")}
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center transition-all",
                   viewMode === "list"
