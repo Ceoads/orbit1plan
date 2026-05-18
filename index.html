@@ -10,8 +10,8 @@
     <meta name="author" content="Orbit Plan" />
     
     <!-- Theme & Colors -->
-    <meta name="theme-color" content="#F5A26B" />
-    <meta name="msapplication-TileColor" content="#F5A26B" />
+    <meta name="theme-color" content="#FAFAF8" />
+    <meta name="msapplication-TileColor" content="#FAFAF8" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     
     <!-- iOS PWA -->
@@ -46,7 +46,7 @@
         -webkit-tap-highlight-color: transparent;
       }
       
-      /* Splash screen while app loads */
+      /* Splash screen — stark mono */
       #splash-screen {
         position: fixed;
         inset: 0;
@@ -55,32 +55,34 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #FDF6F0 0%, #FFF5ED 50%, #FFEDE0 100%);
+        background: #FAFAF8;
         transition: opacity 0.3s ease-out;
       }
-      
+
       #splash-screen.hidden {
         opacity: 0;
         pointer-events: none;
       }
-      
-      #splash-logo {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        animation: pulse 2s ease-in-out infinite;
-      }
-      
+
       #splash-text {
-        font-family: 'Quicksand', system-ui, sans-serif;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #3D2E26;
-        letter-spacing: 0.05em;
+        font-family: 'JetBrains Mono', 'Courier New', monospace;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1A1A1A;
+        letter-spacing: -0.02em;
       }
-      
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
+
+      #splash-dot {
+        width: 6px;
+        height: 6px;
+        background: #FF6B35;
+        margin-top: 12px;
+        animation: splash-pulse 1.2s ease-in-out infinite;
+      }
+
+      @keyframes splash-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
       }
     </style>
   </head>
@@ -88,8 +90,8 @@
   <body>
     <!-- Splash Screen -->
     <div id="splash-screen">
-      <div id="splash-logo">✨</div>
-      <div id="splash-text">Orbit</div>
+      <div id="splash-text">orbit</div>
+      <div id="splash-dot"></div>
     </div>
     
     <div id="root"></div>
