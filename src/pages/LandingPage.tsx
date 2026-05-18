@@ -93,7 +93,7 @@ const LandingPage = () => {
     {/* Demo Theatre Modal */}
     <DemoTheatre isOpen={showDemo} onClose={() => setShowDemo(false)} />
     
-    <div className={`landing-scope min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10 overflow-x-hidden transition-all duration-500 ${showDemo ? 'blur-xl scale-95' : ''}`}>
+    <div className={`min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10 overflow-x-hidden transition-all duration-500 ${showDemo ? 'blur-xl scale-95' : ''}`}>
       {/* Floating Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div 
