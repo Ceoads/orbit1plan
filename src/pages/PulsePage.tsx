@@ -202,7 +202,7 @@ export const PulsePage = () => {
       {/* Add course button — bottom of content */}
       <button
         onClick={() => {
-          haptics.medium();
+          haptics.soft();
           sounds.tap();
           setShowAddClass(true);
         }}
