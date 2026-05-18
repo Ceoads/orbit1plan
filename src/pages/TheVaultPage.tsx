@@ -146,9 +146,27 @@ export const TheVaultPage = () => {
 
       const prefs = data?.preferences as any;
       setVaultInitialized(prefs?.vault_initialized === true);
+      if (prefs?.vault_view_mode === "grid" || prefs?.vault_view_mode === "list") {
+        setViewMode(prefs.vault_view_mode);
+      }
     };
     checkInit();
   }, [user]);
+
+  const setAndPersistViewMode = async (mode: "grid" | "list") => {
+    setViewMode(mode);
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("preferences")
+      .eq("user_id", user.id)
+      .single();
+    const prefs = (data?.preferences as any) || {};
+    await supabase
+      .from("profiles")
+      .update({ preferences: { ...prefs, vault_view_mode: mode } })
+      .eq("user_id", user.id);
+  };
 
   const subjectStats = getSubjectStats().filter(
     (s, i, arr) => arr.findIndex((x) => x.id === s.id) === i
