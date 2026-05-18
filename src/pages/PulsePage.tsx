@@ -23,6 +23,23 @@ export const PulsePage = () => {
   
   const [showRoomReminder, setShowRoomReminder] = useState(false);
   const [minutesToClass, setMinutesToClass] = useState<number | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const classCardRef = useRef<HTMLButtonElement>(null);
+  const [originRect, setOriginRect] = useState<DOMRect | undefined>();
+  const haptics = useHaptics();
+  const sounds = useSoundEffects();
+
+  const handleOpenCalendar = () => {
+    haptics.soft();
+    sounds.open();
+    if (classCardRef.current) setOriginRect(classCardRef.current.getBoundingClientRect());
+    setIsCalendarOpen(true);
+  };
+  const handleCloseCalendar = () => {
+    haptics.soft();
+    sounds.close();
+    setIsCalendarOpen(false);
+  };
 
   const today = new Date();
   const currentClass = getCurrentClass();
@@ -143,19 +160,31 @@ export const PulsePage = () => {
         </div>
       )}
 
-      {/* Main Class Card */}
+      {/* Main Class Card - tap to open full calendar */}
       {displayClass && classSubject ? (
-        <ClassRecapCard
-          subjectName={classSubject.name}
-          subjectIcon={classSubject.icon}
-          startTime={displayClass.start_time.slice(0, 5)}
-          endTime={displayClass.end_time.slice(0, 5)}
-          teacherName={displayClass.teacher_name || classSubject.teacher_name}
-          roomNumber={displayClass.room_number}
-          isCurrentClass={isCurrentlyInClass}
-        />
+        <button
+          ref={classCardRef}
+          onClick={handleOpenCalendar}
+          className="block w-full text-left hit-target rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99] transition-transform"
+          aria-label="Voir le calendrier complet"
+        >
+          <ClassRecapCard
+            subjectName={classSubject.name}
+            subjectIcon={classSubject.icon}
+            startTime={displayClass.start_time.slice(0, 5)}
+            endTime={displayClass.end_time.slice(0, 5)}
+            teacherName={displayClass.teacher_name || classSubject.teacher_name}
+            roomNumber={displayClass.room_number}
+            isCurrentClass={isCurrentlyInClass}
+          />
+        </button>
       ) : (
-        <div className="soft-card p-6">
+        <button
+          ref={classCardRef}
+          onClick={handleOpenCalendar}
+          className="block w-full text-left soft-card p-6 hit-target"
+          aria-label="Voir le calendrier complet"
+        >
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
               <BookOpen className="w-7 h-7 text-muted-foreground" />
@@ -165,16 +194,17 @@ export const PulsePage = () => {
               <p className="font-display font-semibold text-lg">Profite de ton temps libre ! 🎉</p>
             </div>
           </div>
-        </div>
+        </button>
       )}
 
-      {/* Schedule Widget - Opens Pocket Space */}
-      <section>
-        <ScheduleWidget 
-          events={events} 
-          subjects={subjects} 
-        />
-      </section>
+      {/* Full Calendar Pocket Space */}
+      <CalendarPocketSpace
+        isOpen={isCalendarOpen}
+        onClose={handleCloseCalendar}
+        events={events}
+        subjects={subjects}
+        originRect={originRect}
+      />
 
       {/* Focus Task */}
       {priorityTask && (
