@@ -143,7 +143,8 @@ export const TasksPage = () => {
 
       <AddTaskModal
         open={showAdd}
-        onOpenChange={setShowAdd}
+        onClose={() => setShowAdd(false)}
+        onAdd={() => setShowAdd(false)}
         subjects={subjects}
       />
     </div>
