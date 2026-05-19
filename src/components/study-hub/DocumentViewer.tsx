@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, X, ZoomIn, ZoomOut, RotateCw, Eye } from "lucide-react";
+import { Maximize2, X, ZoomIn, ZoomOut, RotateCw, Eye, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 import { SectionAnchor } from "./SmartScrollContext";
+import { PdfPagesViewer } from "./PdfPagesViewer";
 
 interface DocumentViewerProps {
   fileUrl: string;
@@ -12,6 +13,12 @@ interface DocumentViewerProps {
   scrollTarget?: SectionAnchor | null;
   onScrollComplete?: () => void;
 }
+
+const isPdfUrl = (url: string, name?: string) => {
+  const u = url.toLowerCase();
+  const n = (name || "").toLowerCase();
+  return u.includes(".pdf") || n.endsWith(".pdf");
+};
 
 export const DocumentViewer = ({ 
   fileUrl, 
@@ -91,6 +98,8 @@ export const DocumentViewer = ({
     setRotation(prev => (prev + 90) % 360);
   };
 
+  const isPdf = isPdfUrl(fileUrl, fileName);
+
   return (
     <>
       {/* Compact viewer with scroll support */}
@@ -98,68 +107,76 @@ export const DocumentViewer = ({
         layoutId="document-viewer"
         className="relative rounded-2xl overflow-hidden bg-card border border-border shadow-soft"
       >
-        <div 
+        <div
           ref={containerRef}
-          className="aspect-[4/3] relative overflow-auto scroll-smooth"
+          className={cn(
+            "relative overflow-auto scroll-smooth overscroll-contain",
+            isPdf ? "max-h-[70vh] p-3" : "aspect-[4/3]"
+          )}
+          style={{
+            WebkitOverflowScrolling: "touch" as any,
+          }}
         >
-          <div className="relative min-h-full">
-            <img
-              ref={imageRef}
-              src={fileUrl}
-              alt={fileName}
-              className="w-full h-auto object-contain bg-muted/50"
-              loading="eager"
-            />
-            
-            {/* Smart scroll highlight overlay */}
-            <AnimatePresence>
-              {showHighlight && highlightPosition && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ type: "spring", damping: 20 }}
-                  className="absolute left-0 right-0 pointer-events-none"
-                  style={{
-                    top: highlightPosition.y,
-                    height: highlightPosition.height,
-                  }}
-                >
-                  {/* Coral highlight with pulse animation */}
+          {isPdf ? (
+            <PdfPagesViewer fileUrl={fileUrl} />
+          ) : (
+            <div className="relative min-h-full">
+              <img
+                ref={imageRef}
+                src={fileUrl}
+                alt={fileName}
+                className="w-full h-auto object-contain bg-muted/50"
+                loading="eager"
+              />
+
+              {/* Smart scroll highlight overlay */}
+              <AnimatePresence>
+                {showHighlight && highlightPosition && (
                   <motion.div
-                    className="absolute inset-0 bg-primary/20 border-2 border-primary/40 rounded-xl"
-                    animate={{
-                      boxShadow: [
-                        "0 0 0 0 rgba(var(--primary), 0.4)",
-                        "0 0 0 12px rgba(var(--primary), 0)",
-                      ],
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: "spring", damping: 20 }}
+                    className="absolute left-0 right-0 pointer-events-none"
+                    style={{
+                      top: highlightPosition.y,
+                      height: highlightPosition.height,
                     }}
-                    transition={{
-                      duration: 1,
-                      repeat: 2,
-                      ease: "easeOut",
-                    }}
-                  />
-                  
-                  {/* Eye indicator */}
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg"
                   >
-                    <Eye className="w-4 h-4 text-primary-foreground" />
+                    <motion.div
+                      className="absolute inset-0 bg-primary/20 border-2 border-primary/40 rounded-xl"
+                      animate={{
+                        boxShadow: [
+                          "0 0 0 0 rgba(var(--primary), 0.4)",
+                          "0 0 0 12px rgba(var(--primary), 0)",
+                        ],
+                      }}
+                      transition={{
+                        duration: 1,
+                        repeat: 2,
+                        ease: "easeOut",
+                      }}
+                    />
+
+                    <motion.div
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg"
+                    >
+                      <Eye className="w-4 h-4 text-primary-foreground" />
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
           {/* Fullscreen button overlay */}
           <Button
             onClick={handleFullscreen}
             size="icon"
             variant="secondary"
-            className="absolute bottom-3 right-3 rounded-xl bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg hit-target z-10"
+            className="sticky float-right bottom-3 right-3 mr-3 mb-3 rounded-xl bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg hit-target z-10"
           >
             <Maximize2 className="w-5 h-5" />
           </Button>
@@ -186,55 +203,75 @@ export const DocumentViewer = ({
                 <X className="w-6 h-6" />
               </Button>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleZoomOut}
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl text-white hover:bg-white/20 hit-target"
-                  disabled={zoom <= 0.5}
+              {isPdf ? (
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-white text-sm font-medium px-3 py-2 rounded-xl hover:bg-white/20"
                 >
-                  <ZoomOut className="w-5 h-5" />
-                </Button>
-                <span className="text-white text-sm font-medium min-w-[3rem] text-center">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <Button
-                  onClick={handleZoomIn}
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl text-white hover:bg-white/20 hit-target"
-                  disabled={zoom >= 3}
-                >
-                  <ZoomIn className="w-5 h-5" />
-                </Button>
-                <Button
-                  onClick={handleRotate}
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl text-white hover:bg-white/20 hit-target"
-                >
-                  <RotateCw className="w-5 h-5" />
-                </Button>
-              </div>
+                  <ExternalLink className="w-4 h-4" />
+                  Onglet
+                </a>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleZoomOut}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-xl text-white hover:bg-white/20 hit-target"
+                    disabled={zoom <= 0.5}
+                  >
+                    <ZoomOut className="w-5 h-5" />
+                  </Button>
+                  <span className="text-white text-sm font-medium min-w-[3rem] text-center">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <Button
+                    onClick={handleZoomIn}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-xl text-white hover:bg-white/20 hit-target"
+                    disabled={zoom >= 3}
+                  >
+                    <ZoomIn className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    onClick={handleRotate}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-xl text-white hover:bg-white/20 hit-target"
+                  >
+                    <RotateCw className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {/* Image container with zoom and pan */}
-            <div className="absolute inset-0 flex items-center justify-center overflow-auto">
-              <motion.img
-                layoutId="document-viewer"
-                src={fileUrl}
-                alt={fileName}
-                className="max-w-none"
-                style={{
-                  transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                  transition: 'transform 0.2s ease-out',
-                }}
-                drag
-                dragConstraints={{ left: -500, right: 500, top: -500, bottom: 500 }}
-                dragElastic={0.1}
-              />
-            </div>
+            {/* Content */}
+            {isPdf ? (
+              <div className="absolute inset-0 pt-20 pb-6 px-3 overflow-auto overscroll-contain">
+                <div className="max-w-3xl mx-auto">
+                  <PdfPagesViewer fileUrl={fileUrl} />
+                </div>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center overflow-auto">
+                <motion.img
+                  layoutId="document-viewer"
+                  src={fileUrl}
+                  alt={fileName}
+                  className="max-w-none"
+                  style={{
+                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                    transition: 'transform 0.2s ease-out',
+                  }}
+                  drag
+                  dragConstraints={{ left: -500, right: 500, top: -500, bottom: 500 }}
+                  dragElastic={0.1}
+                />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
