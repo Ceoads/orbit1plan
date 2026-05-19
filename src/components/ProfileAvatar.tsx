@@ -63,7 +63,7 @@ export const ProfileAvatar = ({
     <div
       className={cn(
         "relative rounded-full overflow-hidden flex items-center justify-center text-white font-semibold select-none",
-        "bg-gradient-to-br from-[hsl(var(--peach))] to-[hsl(var(--coral))]",
+        "gradient-peach",
         "ring-1 ring-border/40",
         className
       )}
