@@ -19,6 +19,8 @@ import {
   Camera,
   PenLine,
   Upload,
+  Clock,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddSubjectModal } from "@/components/modals";
@@ -92,6 +94,43 @@ export const TheVaultPage = () => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [vaultInitialized, setVaultInitialized] = useState<boolean | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("vault_recent_searches");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveRecentSearch = (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    setRecentSearches((prev) => {
+      const next = [trimmed, ...prev.filter((s) => s.toLowerCase() !== trimmed.toLowerCase())].slice(0, 8);
+      try {
+        localStorage.setItem("vault_recent_searches", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const removeRecentSearch = (q: string) => {
+    setRecentSearches((prev) => {
+      const next = prev.filter((s) => s !== q);
+      try {
+        localStorage.setItem("vault_recent_searches", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    try {
+      localStorage.removeItem("vault_recent_searches");
+    } catch {}
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -405,6 +444,10 @@ export const TheVaultPage = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") saveRecentSearch(searchQuery);
+          }}
+          onBlur={() => saveRecentSearch(searchQuery)}
           placeholder="Rechercher dans tous les fichiers (OCR)..."
           className="w-full pl-10 pr-4 py-3 rounded-2xl bg-transparent border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
         />
@@ -450,9 +493,50 @@ export const TheVaultPage = () => {
 
       {/* Search results */}
       {inSearch && searchQuery === "" && (
-        <div className="text-center py-8">
-          <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-          <p className="text-muted-foreground">Tape un mot pour rechercher</p>
+        <div className="space-y-4">
+          {recentSearches.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <Clock className="w-3.5 h-3.5" />
+                  Recherches récentes
+                </div>
+                <button
+                  onClick={clearRecentSearches}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Effacer
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((q) => (
+                  <div
+                    key={q}
+                    className="group flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full bg-muted/60 border border-border hover:border-foreground/40 transition-all"
+                  >
+                    <button
+                      onClick={() => setSearchQuery(q)}
+                      className="text-sm text-foreground"
+                    >
+                      {q}
+                    </button>
+                    <button
+                      onClick={() => removeRecentSearch(q)}
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:bg-foreground/10 hover:text-foreground transition-colors"
+                      aria-label={`Supprimer ${q}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">Tape un mot pour rechercher</p>
+            </div>
+          )}
         </div>
       )}
       {inSearch && searchQuery !== "" && (
