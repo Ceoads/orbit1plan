@@ -635,30 +635,8 @@ const SettingsPage = () => {
           </div>
         </IOSCard>
 
-        {/* Sync status details */}
-        {(settings?.last_synced_at || filterGroup) && (
-          <>
-            <IOSSectionHeader label="Statut" />
-            <IOSCard>
-              {settings?.last_synced_at && (
-                <IOSDetailRow
-                  label="Dernière synchro"
-                  value={new Date(settings.last_synced_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                />
-              )}
-              {filterGroup && (
-                <IOSDetailRow
-                  label="Filtre actif"
-                  value={filterGroup}
-                  last={true}
-                />
-              )}
-            </IOSCard>
-          </>
-        )}
-
-        {/* Sync options */}
-        <IOSSectionHeader label="Synchronisation" />
+        {/* ──── BLOC 2 : Automatisation & Statut ──── */}
+        <IOSSectionHeader label="Automatisation & Statut" />
         <IOSCard>
           <IOSRow
             icon={RefreshCw}
@@ -673,32 +651,64 @@ const SettingsPage = () => {
             label="Resynchroniser maintenant"
             last
             onClick={syncing ? undefined : handleSync}
-            action={
-              syncing ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : undefined
-            }
+            action={syncing ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : undefined}
+          />
+        </IOSCard>
+        {settings?.last_synced_at && (
+          <p className="px-5 mt-1.5 text-[11px] text-muted-foreground/80"
+             style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}>
+            Dernière synchro : {new Date(settings.last_synced_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
+
+        {/* ──── BLOC 3 : Fonctionnalités intelligentes ──── */}
+        <IOSSectionHeader label="Fonctionnalités intelligentes" />
+        <IOSCard>
+          <IOSRow icon={Users} iconBg="bg-physics" label="Filtrage par groupe TP / TD" />
+          <IOSRow icon={BookOpen} iconBg="bg-warning" label="Détection auto des examens" />
+          <IOSRow icon={MapPin} iconBg="bg-success" label="Extraction des salles" />
+          <IOSRow
+            icon={RotateCcw}
+            iconBg="bg-muted-foreground/70"
+            label="Réinitialiser le Vault"
+            detail="Relancer la configuration des matières"
+            last
+            onClick={async () => {
+              if (!user) return;
+              if (!confirm("Réinitialiser le Vault ? Tu pourras reconfigurer tes matières.")) return;
+              try {
+                await supabase.from('vault_files').delete().eq('user_id', user.id);
+                await supabase.from('subjects').delete().eq('user_id', user.id).in('icon', ['COURS', 'SAE']);
+                const { data: prof } = await supabase.from('profiles').select('preferences').eq('user_id', user.id).single();
+                const prefs = (prof?.preferences as any) || {};
+                delete prefs.vault_initialized;
+                await supabase.from('profiles').update({ preferences: prefs }).eq('user_id', user.id);
+                toast.success("Vault réinitialisé. Retourne dans le Vault pour reconfigurer.");
+              } catch (e) {
+                console.error(e);
+                toast.error("Erreur lors de la réinitialisation");
+              }
+            }}
           />
         </IOSCard>
 
-        {/* ──── CAMPUS ──── */}
-        <IOSSectionHeader label="Localisation" />
+        {/* ──── BLOC 4 : Support & Tutoriels ──── */}
+        <IOSSectionHeader label="Support & Tutoriels" />
         <IOSCard>
           {hasCampusConfigured ? (
-            <>
-              <IOSRow
-                icon={MapPin}
-                iconBg="bg-success"
-                label={campusName || 'Campus configuré'}
-                detail={isOnCampus ? 'Sur le campus' : 'Hors campus'}
-                last
-                action={
-                  <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${isOnCampus ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>
-                    {isOnCampus ? '📍 Actif' : '🏠 Inactif'}
-                  </span>
-                }
-              />
-            </>
+            <IOSRow
+              icon={MapPin}
+              iconBg="bg-success"
+              label={campusName || 'Campus configuré'}
+              detail={isOnCampus ? 'Sur le campus' : 'Hors campus'}
+              action={
+                <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${isOnCampus ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>
+                  {isOnCampus ? '📍 Actif' : '🏠 Inactif'}
+                </span>
+              }
+            />
           ) : (
-            <div className="p-4 space-y-3">
+            <div className="px-4 py-3 space-y-2.5 border-b border-border/30">
               <p className="text-[13px] text-muted-foreground">Configure la position de ton campus pour le mode intelligent.</p>
               <Input
                 placeholder="Nom du campus"
@@ -723,11 +733,6 @@ const SettingsPage = () => {
               </Button>
             </div>
           )}
-        </IOSCard>
-
-        {/* ──── TUTORIEL ──── */}
-        <IOSSectionHeader label="Tutoriel" />
-        <IOSCard>
           <IOSRow
             icon={Play}
             iconBg="bg-primary"
@@ -762,59 +767,15 @@ const SettingsPage = () => {
           />
         </IOSCard>
 
-        {/* ──── AIDE ──── */}
-        <IOSSectionHeader label="À propos" />
-        <IOSCard>
-          <IOSRow icon={Calendar} iconBg="bg-primary/80" label="Import auto de l'emploi du temps" last={false} />
-          <IOSRow icon={Users} iconBg="bg-physics" label="Filtrage par groupe TP / TD" last={false} />
-          <IOSRow icon={BookOpen} iconBg="bg-warning" label="Détection auto des examens" last={false} />
-          <IOSRow icon={MapPin} iconBg="bg-success" label="Extraction des salles" last />
-        </IOSCard>
-
-        {/* ──── VAULT ──── */}
-        <IOSSectionHeader label="Vault" />
-        <IOSCard className="mb-3">
-          <IOSRow
-            icon={RotateCcw}
-            iconBg="bg-warning"
-            label="Réinitialiser le Vault"
-            detail="Relancer la configuration des matières"
-            last
-            onClick={async () => {
-              if (!user) return;
-              if (!confirm("Réinitialiser le Vault ? Tu pourras reconfigurer tes matières.")) return;
-              try {
-                await supabase.from('vault_files').delete().eq('user_id', user.id);
-                // Remove vault subjects (icon = COURS or SAE)
-                await supabase.from('subjects').delete().eq('user_id', user.id).in('icon', ['COURS', 'SAE']);
-                // Reset vault_initialized flag
-                const { data: profile } = await supabase.from('profiles').select('preferences').eq('user_id', user.id).single();
-                const prefs = (profile?.preferences as any) || {};
-                delete prefs.vault_initialized;
-                await supabase.from('profiles').update({ preferences: prefs }).eq('user_id', user.id);
-                toast.success("Vault réinitialisé. Retourne dans le Vault pour reconfigurer.");
-              } catch (e) {
-                console.error(e);
-                toast.error("Erreur lors de la réinitialisation");
-              }
-            }}
-          />
-        </IOSCard>
-
-        {/* ──── COMPTE ──── */}
-        <IOSSectionHeader label="Compte" />
+        {/* ──── BLOC 5 : Zone de danger ──── */}
+        <IOSSectionHeader label="Zone de danger" />
         <IOSCard className="mb-3">
           <IOSRow
             icon={LogOut}
             iconBg="bg-muted-foreground"
             label="Se déconnecter"
-            last
             onClick={signOut}
           />
-        </IOSCard>
-
-        {/* Danger zone — separate red-tinted card */}
-        <IOSCard className="mb-8 bg-destructive/[0.04]">
           <IOSRow
             icon={Trash2}
             iconBg="bg-destructive"
@@ -824,6 +785,17 @@ const SettingsPage = () => {
             onClick={handleClearData}
           />
         </IOSCard>
+
+        {/* ──── FOOTER ──── */}
+        <div className="mt-6 mb-2 text-center space-y-1 text-[11px] text-muted-foreground/70"
+             style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}>
+          <p>
+            <button className="hover:text-foreground transition-colors" onClick={() => toast.info("Aide bientôt disponible")}>Aide &amp; Support</button>
+            <span className="mx-2">·</span>
+            <button className="hover:text-foreground transition-colors" onClick={() => toast.info("Politique de confidentialité bientôt disponible")}>Politique de confidentialité</button>
+          </p>
+          <p>Orbit OS — v1.0.0 (Production)</p>
+        </div>
 
       </main>
 
