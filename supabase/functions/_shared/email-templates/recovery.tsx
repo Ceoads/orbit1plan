@@ -10,62 +10,41 @@ import {
   Heading,
   Html,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+import { main, container, card, h1, text, button, footer, brand } from './_styles.ts'
 
 interface RecoveryEmailProps {
   siteName: string
   confirmationUrl: string
 }
 
-export const RecoveryEmail = ({
-  siteName,
-  confirmationUrl,
-}: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
+export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps) => (
+  <Html lang="fr" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>Réinitialise ton mot de passe pour {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
-        <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Reset Password
-        </Button>
-        <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
-        </Text>
+        <Text style={brand}>Orbit</Text>
+        <Section style={card}>
+          <Heading style={h1}>Réinitialise ton mot de passe</Heading>
+          <Text style={text}>
+            Tu as demandé à réinitialiser ton mot de passe pour {siteName}. Clique sur le bouton
+            ci-dessous pour en choisir un nouveau.
+          </Text>
+          <Button style={button} href={confirmationUrl}>
+            Choisir un nouveau mot de passe
+          </Button>
+          <Text style={footer}>
+            Si tu n'es pas à l'origine de cette demande, tu peux ignorer cet email. Ton mot de
+            passe restera inchangé.
+          </Text>
+        </Section>
       </Container>
     </Body>
   </Html>
 )
 
 export default RecoveryEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

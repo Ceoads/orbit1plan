@@ -11,8 +11,11 @@ import {
   Html,
   Link,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+import { main, container, card, h1, text, link, button, footer, brand } from './_styles.ts'
 
 interface InviteEmailProps {
   siteName: string
@@ -20,60 +23,32 @@ interface InviteEmailProps {
   confirmationUrl: string
 }
 
-export const InviteEmail = ({
-  siteName,
-  siteUrl,
-  confirmationUrl,
-}: InviteEmailProps) => (
-  <Html lang="en" dir="ltr">
+export const InviteEmail = ({ siteName, siteUrl, confirmationUrl }: InviteEmailProps) => (
+  <Html lang="fr" dir="ltr">
     <Head />
-    <Preview>You've been invited to join {siteName}</Preview>
+    <Preview>Tu es invité·e à rejoindre {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>You've been invited</Heading>
-        <Text style={text}>
-          You've been invited to join{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          . Click the button below to accept the invitation and create your
-          account.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Accept Invitation
-        </Button>
-        <Text style={footer}>
-          If you weren't expecting this invitation, you can safely ignore this
-          email.
-        </Text>
+        <Text style={brand}>Orbit</Text>
+        <Section style={card}>
+          <Heading style={h1}>Tu es invité·e 🎉</Heading>
+          <Text style={text}>
+            Tu as été invité·e à rejoindre{' '}
+            <Link href={siteUrl} style={link}>
+              <strong>{siteName}</strong>
+            </Link>
+            . Accepte l'invitation pour créer ton compte.
+          </Text>
+          <Button style={button} href={confirmationUrl}>
+            Accepter l'invitation
+          </Button>
+          <Text style={footer}>
+            Si tu n'attendais pas cette invitation, tu peux ignorer cet email.
+          </Text>
+        </Section>
       </Container>
     </Body>
   </Html>
 )
 
 export default InviteEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
