@@ -739,11 +739,12 @@ export const TheVaultPage = () => {
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept=".pdf,.doc,.docx,.ppt,.pptx,image/*"
         className="hidden"
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) uploadFile(f, false);
+          const files = Array.from(e.target.files || []);
+          if (files.length) uploadFiles(files, false);
           e.target.value = "";
         }}
       />
@@ -754,8 +755,8 @@ export const TheVaultPage = () => {
         capture="environment"
         className="hidden"
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) uploadFile(f, true);
+          const files = Array.from(e.target.files || []);
+          if (files.length) uploadFiles(files, true);
           e.target.value = "";
         }}
       />
