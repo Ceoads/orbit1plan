@@ -565,10 +565,19 @@ const SettingsPage = () => {
             />
           </label>
           <div className="min-w-0 flex-1">
-            <p className="text-[17px] font-semibold text-foreground truncate"
-               style={{ fontFamily: 'Outfit, system-ui, sans-serif' }}>
-              {profile.display_name || user?.email?.split('@')[0] || 'Étudiant'}
-            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={displayNameInput}
+                onChange={(e) => setDisplayNameInput(e.target.value)}
+                onBlur={handleSaveDisplayName}
+                onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+                className="text-[17px] font-semibold text-foreground bg-transparent border-none p-0 m-0 w-full focus:outline-none focus:ring-0 placeholder:text-muted-foreground/50 truncate"
+                style={{ fontFamily: 'Outfit, system-ui, sans-serif' }}
+                placeholder="Ton nom d'affichage"
+              />
+              {savingName && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground flex-shrink-0" />}
+            </div>
             <p className="text-[13px] text-muted-foreground truncate mt-0.5">
               {primaryGroupLabel || 'Pas de groupe configuré'}
             </p>
