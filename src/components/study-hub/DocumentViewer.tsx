@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, X, ZoomIn, ZoomOut, RotateCw, Eye } from "lucide-react";
+import { Maximize2, X, ZoomIn, ZoomOut, RotateCw, Eye, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 import { SectionAnchor } from "./SmartScrollContext";
+import { PdfPagesViewer } from "./PdfPagesViewer";
 
 interface DocumentViewerProps {
   fileUrl: string;
@@ -12,6 +13,12 @@ interface DocumentViewerProps {
   scrollTarget?: SectionAnchor | null;
   onScrollComplete?: () => void;
 }
+
+const isPdfUrl = (url: string, name?: string) => {
+  const u = url.toLowerCase();
+  const n = (name || "").toLowerCase();
+  return u.includes(".pdf") || n.endsWith(".pdf");
+};
 
 export const DocumentViewer = ({ 
   fileUrl, 
