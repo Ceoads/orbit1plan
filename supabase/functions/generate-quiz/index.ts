@@ -27,45 +27,83 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Structured logging with unique request id
+  const reqId = (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8);
+  const t0 = Date.now();
+  const log = (
+    level: 'info' | 'warn' | 'error',
+    step: string,
+    data: Record<string, unknown> = {}
+  ) => {
+    const payload = {
+      reqId,
+      fn: 'generate-quiz',
+      step,
+      level,
+      elapsed_ms: Date.now() - t0,
+      ...data,
+    };
+    const line = JSON.stringify(payload);
+    if (level === 'error') console.error(line);
+    else if (level === 'warn') console.warn(line);
+    else console.log(line);
+  };
+
+  log('info', 'request.start', { method: req.method });
+
   try {
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      log('warn', 'auth.missing_header');
+      return new Response(JSON.stringify({ error: 'Unauthorized', reqId }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const supabaseClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      log('warn', 'auth.invalid', { error: userError?.message });
+      return new Response(JSON.stringify({ error: 'Unauthorized', reqId }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    log('info', 'auth.ok', { userId: user.id });
 
     if (!checkRateLimit(user.id)) {
-      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.' }), {
+      log('warn', 'rate_limit.exceeded', { userId: user.id });
+      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.', reqId }), {
         status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const { imageBase64, extractedText, noteId, subjectId } = await req.json();
+    log('info', 'request.parsed', {
+      noteId,
+      subjectId,
+      hasExtractedText: !!extractedText,
+      extractedTextLen: extractedText?.length ?? 0,
+      hasImageBase64: !!imageBase64,
+      imageBase64Kind: imageBase64?.startsWith?.('data:')
+        ? 'data-url'
+        : imageBase64?.startsWith?.('http')
+          ? 'http-url'
+          : imageBase64 ? 'base64' : 'none',
+    });
 
     if (!imageBase64 && !extractedText) {
+      log('warn', 'validation.no_content');
       return new Response(
-        JSON.stringify({ error: 'Image or extracted text is required' }),
+        JSON.stringify({ error: 'Image or extracted text is required', reqId }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
+      log('error', 'config.missing_api_key');
       return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
+        JSON.stringify({ error: 'AI service not configured', reqId }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Generating QCM from content...');
-    console.log('Has extractedText:', !!extractedText);
-    console.log('Has imageBase64:', !!imageBase64);
 
     const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de 5 questions à choix multiples.
 
@@ -116,14 +154,17 @@ Règles:
 
     // PRIORITY: Use extractedText if available (more reliable than image processing)
     if (extractedText && extractedText.length > 50) {
-      console.log('Using text mode with extracted content');
+      log('info', 'content.mode', { mode: 'text', length: extractedText.length });
       messages.push({
         role: 'user',
         content: `Génère un QCM de 5 questions basé sur ce contenu de cours:\n\n${extractedText}`
       });
     } else if (isValidBase64) {
-      // Use base64 image if it's valid
-      console.log('Using image mode with base64');
+      log('info', 'content.mode', {
+        mode: 'image-base64',
+        hasDataPrefix: imageBase64.startsWith('data:'),
+        approxBytes: Math.round((imageBase64.length * 3) / 4),
+      });
       messages.push({
         role: 'user',
         content: [
@@ -139,19 +180,36 @@ Règles:
     } else if (isUrl) {
       // Fetch the file and convert to data URL — Gemini doesn't accept arbitrary URLs
       // and only accepts PNG/JPEG/WebP/GIF as images. PDFs must be inlined as application/pdf.
-      console.log('Fetching remote file to inline as data URL');
+      log('info', 'fetch.start', { url: imageBase64.slice(0, 120) });
+      const fetchT0 = Date.now();
       try {
         const fileRes = await fetch(imageBase64);
+        log('info', 'fetch.response', {
+          status: fileRes.status,
+          ok: fileRes.ok,
+          contentType: fileRes.headers.get('content-type'),
+          contentLength: fileRes.headers.get('content-length'),
+          duration_ms: Date.now() - fetchT0,
+        });
         if (!fileRes.ok) throw new Error(`fetch ${fileRes.status}`);
-        const contentType = fileRes.headers.get('content-type') ||
+        const headerCt = fileRes.headers.get('content-type');
+        const contentType = headerCt ||
           (imageBase64.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg');
         const buf = new Uint8Array(await fileRes.arrayBuffer());
-        // base64 encode
+
+        const encT0 = Date.now();
         let binary = '';
         for (let i = 0; i < buf.length; i++) binary += String.fromCharCode(buf[i]);
         const b64 = btoa(binary);
         const dataUrl = `data:${contentType};base64,${b64}`;
-        console.log('Inlined file as', contentType, 'size:', buf.length);
+        log('info', 'base64.encoded', {
+          contentType,
+          inferredFromHeader: !!headerCt,
+          bytes: buf.length,
+          base64Len: b64.length,
+          duration_ms: Date.now() - encT0,
+        });
+
         messages.push({
           role: 'user',
           content: [
@@ -160,61 +218,72 @@ Règles:
           ],
         });
       } catch (e) {
-        console.error('Failed to inline remote file:', e);
+        log('error', 'fetch.failed', {
+          error: e instanceof Error ? e.message : String(e),
+          duration_ms: Date.now() - fetchT0,
+        });
         return new Response(
-          JSON.stringify({ error: 'Impossible de récupérer le document. Réessaie après extraction OCR.' }),
+          JSON.stringify({ error: 'Impossible de récupérer le document. Réessaie après extraction OCR.', reqId }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
     } else {
-      // Fallback to text if nothing valid
-      console.log('Fallback: no valid content');
+      log('warn', 'content.invalid');
       return new Response(
-        JSON.stringify({ error: 'No valid content provided' }),
+        JSON.stringify({ error: 'No valid content provided', reqId }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const model = 'google/gemini-2.5-flash';
+    log('info', 'ai.request', { model, messages: messages.length });
+    const aiT0 = Date.now();
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages,
-      }),
+      body: JSON.stringify({ model, messages }),
+    });
+    log('info', 'ai.response', {
+      status: response.status,
+      ok: response.ok,
+      duration_ms: Date.now() - aiT0,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
-      
+      log('error', 'ai.error', { status: response.status, body: errorText.slice(0, 500) });
+
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.', reqId }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }),
+          JSON.stringify({ error: 'AI credits exhausted. Please add funds.', reqId }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
+
       return new Response(
-        JSON.stringify({ error: 'Failed to generate quiz' }),
+        JSON.stringify({ error: 'Failed to generate quiz', reqId }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
-    
-    console.log('AI Response:', content);
+    log('info', 'ai.parsed', {
+      contentLen: content.length,
+      finishReason: data.choices?.[0]?.finish_reason,
+      usage: data.usage,
+    });
 
     // Parse the JSON response
     let quiz = null;
@@ -224,37 +293,46 @@ Règles:
         const parsed = JSON.parse(jsonMatch[0]);
         quiz = parsed.quiz || null;
       }
+      log('info', 'parse.ok', {
+        matched: !!jsonMatch,
+        hasQuiz: !!quiz,
+        questions: quiz?.questions?.length ?? 0,
+      });
     } catch (parseError) {
-      console.error('Failed to parse quiz JSON:', parseError);
+      log('error', 'parse.failed', {
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        contentSample: content.slice(0, 200),
+      });
       return new Response(
-        JSON.stringify({ error: 'Failed to parse AI response', quiz: null }),
+        JSON.stringify({ error: 'Failed to parse AI response', quiz: null, reqId }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!quiz) {
+      log('warn', 'parse.empty_quiz', { contentSample: content.slice(0, 200) });
       return new Response(
-        JSON.stringify({ error: 'No quiz generated', quiz: null }),
+        JSON.stringify({ error: 'No quiz generated', quiz: null, reqId }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Generated quiz with ${quiz.questions?.length || 0} questions`);
+    log('info', 'request.success', { questions: quiz.questions?.length ?? 0 });
 
     return new Response(
-      JSON.stringify({ 
-        quiz,
-        noteId,
-        subjectId
-      }),
+      JSON.stringify({ quiz, noteId, subjectId, reqId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in generate-quiz:', error);
+    log('error', 'request.unhandled', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack?.slice(0, 500) : undefined,
+    });
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', reqId }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
