@@ -506,14 +506,51 @@ const SettingsPage = () => {
       <header className="fixed top-0 left-0 right-0 z-40 bg-secondary/70 backdrop-blur-2xl border-b border-border/30">
         <div className="max-w-lg mx-auto px-4 h-[52px] flex items-center gap-3">
           <IOSBackButton fallback="/" />
-          <h1 className="flex-1 text-center text-[17px] font-semibold text-foreground -mr-12">Paramètres</h1>
+          <h1 className="flex-1 text-center text-[17px] font-semibold text-foreground -mr-12">Profil</h1>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-[68px] pb-safe" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 2rem)' }}>
 
-        {/* ──── CALENDRIER ──── */}
-        <IOSSectionHeader label="Calendrier" />
+        {/* ──── HERO PROFIL ──── */}
+        <div className="mt-2 mb-2 bg-card rounded-3xl shadow-soft p-5 flex items-center gap-4">
+          <label className="relative cursor-pointer group" aria-label="Changer la photo de profil">
+            <ProfileAvatar
+              size={64}
+              avatarUrl={profile.avatar_url}
+              displayName={profile.display_name}
+              email={user?.email}
+            />
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity flex items-center justify-center">
+              {uploadingAvatar
+                ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                : <Camera className="w-5 h-5 text-white" />}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingAvatar}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleAvatarUpload(f);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <div className="min-w-0 flex-1">
+            <p className="text-[17px] font-semibold text-foreground truncate"
+               style={{ fontFamily: 'Outfit, system-ui, sans-serif' }}>
+              {profile.display_name || user?.email?.split('@')[0] || 'Étudiant'}
+            </p>
+            <p className="text-[13px] text-muted-foreground truncate mt-0.5">
+              {primaryGroupLabel || 'Pas de groupe configuré'}
+            </p>
+          </div>
+        </div>
+
+        {/* ──── EMPLOI DU TEMPS ──── */}
+        <IOSSectionHeader label="Emploi du temps" />
         <IOSCard>
           {/* URL iCal input area */}
           <div className="px-4 pt-3 pb-3 space-y-2.5">
