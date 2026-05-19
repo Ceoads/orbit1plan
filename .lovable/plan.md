@@ -1,46 +1,95 @@
-## Problème
+## Objectif
 
-1. **PDF ne charge pas** ("Impossible de charger le PDF") — le worker `pdf.worker.min.mjs?url` n'est pas toujours résolu correctement par Vite en preview (MIME `.mjs` / chemin worker). Le viewer affiche systématiquement le fallback.
-2. **Tout le PDF se charge d'un coup** — chaque `<Page>` rend immédiatement, ce qui gèle l'UI sur les longs PDF (10+ pages).
-3. **Plein écran lourd** — même problème, plus `<motion.div>` avec `layoutId` qui re-mesure tout pendant l'ouverture.
-4. **Bouton "Onglet" peu visible** sur fond noir et fermeture peu accessible au pouce.
+Remplacer le duo `Settings + LogOut` dans le header par un **avatar circulaire unique** qui ouvre la page `/settings` (push iOS classique). Restructurer cette page en **Hero Profil + blocs cartes hiérarchisés**, avec la déconnexion logée dans une « Zone de danger » en bas.
 
-## Plan
+---
 
-### 1. `PdfPagesViewer.tsx` — lazy loading + worker fiable
+## 1. Header — avatar unique avec possibilité d'ajouter une photo bien crop
 
-- Charger le worker depuis CDN (`unpkg`) avec la version exacte de `pdfjs-dist` pour éviter le résolveur Vite :
-  ```ts
-  pdfjs.GlobalWorkerOptions.workerSrc =
-    `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-  ```
-  (résout l'erreur de chargement vue sur la capture).
-- Nouveau composant interne `LazyPage` :
-  - Wrapper `div` placeholder avec hauteur estimée (ratio A4 = `width * 1.414`) pour préserver le scroll.
-  - `IntersectionObserver` avec `rootMargin: "800px 0px"` → ne monte le `<Page>` que lorsqu'il approche du viewport.
-  - Garde la page montée une fois vue (évite re-render au scroll arrière), mais avec une option `unmountFarPages` pour libérer la mémoire au-delà de ±5 pages dans le mode plein écran.
-- Ajout d'un prop `containerRef?: RefObject<HTMLDivElement>` pour utiliser le scroll-container parent comme `root` de l'observer (sinon viewport global rate les pages en modal).
-- Passer `renderMode="canvas"` explicitement + `devicePixelRatio` capé à 2 pour éviter les canvas géants sur Retina.
-- Compteur de pages chargées dans le placeholder ("Page X / N").
+Fichier : `src/components/CollapsibleHeader.tsx`
 
-### 2. `DocumentViewer.tsx` — plein écran fluide
+- Supprimer les deux boutons icônes (`Settings`, `LogOut`) et la prop `onSignOut`.
+- Remplacer par un **bouton avatar 36×36 rond** à droite :
+  - Image de profil si disponible, sinon **initiales** sur fond dégradé Peach/Coral (cohérent avec la palette Orbit).
+  - Anneau subtil `ring-1 ring-border/40`, `active:scale-95`, haptique `selection` au tap.
+  - Tap → `navigate('/settings')`.
+- `showSettings` reste la condition d'affichage de l'avatar (caché pendant setup/onboarding).
+- Mettre à jour `src/pages/Index.tsx` pour retirer `onSignOut` du header (la déconnexion vit désormais dans `/settings`).
 
-- Passer la `ref` du conteneur scrollable à `PdfPagesViewer` dans les deux modes (compact + fullscreen) pour que l'IntersectionObserver fonctionne dans la modal.
-- Plein écran PDF :
-  - Retirer `layoutId` du wrapper PDF (image only) — évite le coût de FLIP layout sur le PDF.
-  - Barre d'outils plus tactile : bouton fermer `44×44` à gauche, bouton "Onglet" avec fond `bg-white/10` + ring, `pt-safe`.
-  - Ajouter un mini-indicateur de pagination flottant en bas ("3 / 12") basé sur le scroll du conteneur, en `bg-black/60 backdrop-blur` `rounded-full`.
-  - Activer `overscroll-contain` + `touch-action: pan-y` sur le scroller pour éviter le pull-to-refresh natif iOS.
-- Ajouter un raccourci : tap sur le fond hors-PDF ferme la modal (avec `stopPropagation` sur la zone PDF).
-- Le bouton "Onglet" ouvre dans un nouvel onglet (déjà fait) — vérifier `rel="noopener noreferrer"`.
+## 2. Page Profil — restructuration
 
-### 3. Hors scope
+Fichier : `src/pages/SettingsPage.tsx` (titre mis à jour, contenu réorganisé)
 
-- Pas de modif backend, RLS, edge functions, ou OCR.
-- Pas de pagination "page par page" — on garde le scroll continu, juste lazy.
-- Pas de mise en cache disque ; pdf.js gère son cache mémoire.
+### Header de page (épuré)
 
-## Fichiers modifiés
+- Gauche : `IOSBackButton` (← Retour).
+- Centre : titre **« Profil »** (Outfit, semibold).
+- Droite : vide (équilibre visuel).
+- Transition push native déjà gérée par React Router + `SwipeablePages` ; pas de changement de routing.
 
-- `src/components/study-hub/PdfPagesViewer.tsx` (lazy + worker CDN + container root)
-- `src/components/study-hub/DocumentViewer.tsx` (passage de ref, toolbar plein écran, indicateur page)
+### Hero Block (haut de page)
+
+Carte blanche `rounded-3xl` :
+
+- Avatar **64×64** (image ou initiales avec dégradé Peach).
+- Nom (`display_name` depuis `profiles`, fallback = local-part de l'email).
+- Sous-texte gris discret : groupe TP/TD principal détecté depuis `user_settings.ical_filter_group` (ex. *TC2 G1*), ou e-mail si non configuré.
+
+### Bloc 1 — Emploi du temps
+
+Réutilise les contrôles existants :
+
+- Lien ADE/Hyperplanning + bouton QR Code.
+- Groupes TP / TD (combobox actuelle).
+- Bouton primaire « Enregistrer et synchroniser » (saumon, pleine largeur).
+
+### Bloc 2 — Automatisation & Statut
+
+- Switch *Sync automatique*.
+- Ligne cliquable *Resynchroniser maintenant*.
+- Metadata gris clair `text-[11px]` : *Dernière synchro : 17 mai à 23h44* (depuis `user_settings.last_synced_at`).
+
+### Bloc 3 — Fonctionnalités intelligentes
+
+- Filtrage par groupe.
+- Détection auto des examens.
+- Extraction des salles.
+- Séparateur fin puis ligne discrète *Réinitialiser le Vault* (gris).
+
+### Bloc 4 — Support & Tutoriels
+
+- Position du campus (Localisation).
+- Relancer le tutoriel.
+
+### Bloc 5 — Zone de danger
+
+Carte isolée, légèrement détachée :
+
+- *Se déconnecter* (icône `LogOut` discrète, texte neutre).
+- *Supprimer toutes mes données* (rouge soft, conservé).
+
+### Footer
+
+Hors cartes, centré, `text-[11px] text-muted-foreground` :
+
+- Aide & Support · Politique de confidentialité
+- *Orbit OS — v1.0.0 (Production)*
+
+---
+
+## Détails techniques
+
+- **Avatar component** : nouveau petit composant `src/components/ProfileAvatar.tsx` (taille variable `sm`/`lg`) — initiales calculées depuis `display_name || email`, dégradé `from-[hsl(var(--peach))] to-[hsl(var(--coral))]`. Réutilisé dans le header et le Hero.
+- **Données profil** : récupérer `profiles.display_name` + `user_settings.ical_filter_group` dans `SettingsPage` (une seule requête combinée au mount).
+- **Déconnexion** : importer `useAuth().signOut` directement dans `SettingsPage` pour la ligne Bloc 5.
+- **Aucune migration DB** nécessaire (champs existants suffisent ; pas d'avatar_url demandé).
+- **Routing inchangé** : `/settings` continue de monter `SettingsPage`, le push iOS est déjà fourni par la navigation existante.
+- **Tokens design** : strictement `hsl(var(--*))` Peach/Coral/Cream, `rounded-3xl`, `shadow-[0_8px_30px_rgb(0,0,0,0.03)]`, fonts Outfit/Quicksand — aucune couleur en dur.
+- **Hit targets** : avatar header et toutes les lignes ≥ 44×44 pt.
+
+---
+
+## Hors scope (à confirmer si souhaité plus tard)
+
+- Upload d'une vraie photo de profil (ajout colonne `avatar_url` + bucket storage).
+- Slide-up sheet alternatif (l'utilisateur a explicitement choisi le push classique).
