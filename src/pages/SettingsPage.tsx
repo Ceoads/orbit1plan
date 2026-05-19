@@ -579,7 +579,7 @@ const SettingsPage = () => {
               disabled={uploadingAvatar}
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) handleAvatarUpload(f);
+                if (f) handleAvatarPick(f);
                 e.target.value = '';
               }}
             />
