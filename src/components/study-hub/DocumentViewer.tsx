@@ -35,6 +35,9 @@ export const DocumentViewer = ({
   const [rotation, setRotation] = useState(0);
   const [highlightPosition, setHighlightPosition] = useState<{ y: number; height: number } | null>(null);
   const [showHighlight, setShowHighlight] = useState(false);
+  const [pageIndicator, setPageIndicator] = useState<{ page: number; total: number } | null>(null);
+  const fullscreenScrollRef = useRef<HTMLDivElement>(null);
+  const compactScrollRef = containerRef;
 
   // Handle scroll to anchor
   useEffect(() => {
@@ -118,7 +121,7 @@ export const DocumentViewer = ({
           }}
         >
           {isPdf ? (
-            <PdfPagesViewer fileUrl={fileUrl} />
+            <PdfPagesViewer fileUrl={fileUrl} scrollRoot={compactScrollRef} />
           ) : (
             <div className="relative min-h-full">
               <img
@@ -193,12 +196,13 @@ export const DocumentViewer = ({
             className="fixed inset-0 z-[100] bg-black"
           >
             {/* Controls header */}
-            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 pt-safe bg-gradient-to-b from-black/50 to-transparent">
+            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 py-2 pt-safe bg-gradient-to-b from-black/70 to-transparent">
               <Button
                 onClick={handleCloseFullscreen}
                 size="icon"
                 variant="ghost"
-                className="rounded-xl text-white hover:bg-white/20 hit-target"
+                className="rounded-full text-white bg-white/10 hover:bg-white/20 hit-target w-11 h-11"
+                aria-label="Fermer"
               >
                 <X className="w-6 h-6" />
               </Button>
@@ -207,8 +211,8 @@ export const DocumentViewer = ({
                 <a
                   href={fileUrl}
                   target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-white text-sm font-medium px-3 py-2 rounded-xl hover:bg-white/20"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-white text-sm font-medium px-3.5 h-11 rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/15"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Onglet
@@ -250,11 +254,29 @@ export const DocumentViewer = ({
 
             {/* Content */}
             {isPdf ? (
-              <div className="absolute inset-0 pt-20 pb-6 px-3 overflow-auto overscroll-contain">
-                <div className="max-w-3xl mx-auto">
-                  <PdfPagesViewer fileUrl={fileUrl} />
+              <>
+                <div
+                  ref={fullscreenScrollRef}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) handleCloseFullscreen();
+                  }}
+                  className="absolute inset-0 pt-20 pb-10 px-3 overflow-auto overscroll-contain"
+                  style={{ WebkitOverflowScrolling: "touch" as any, touchAction: "pan-y" }}
+                >
+                  <div className="max-w-3xl mx-auto" onClick={(e) => e.stopPropagation()}>
+                    <PdfPagesViewer
+                      fileUrl={fileUrl}
+                      scrollRoot={fullscreenScrollRef}
+                      onVisiblePageChange={(page, total) => setPageIndicator({ page, total })}
+                    />
+                  </div>
                 </div>
-              </div>
+                {pageIndicator && pageIndicator.total > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-medium ring-1 ring-white/10">
+                    {pageIndicator.page} / {pageIndicator.total}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center overflow-auto">
                 <motion.img
