@@ -35,6 +35,9 @@ export const DocumentViewer = ({
   const [rotation, setRotation] = useState(0);
   const [highlightPosition, setHighlightPosition] = useState<{ y: number; height: number } | null>(null);
   const [showHighlight, setShowHighlight] = useState(false);
+  const [pageIndicator, setPageIndicator] = useState<{ page: number; total: number } | null>(null);
+  const fullscreenScrollRef = useRef<HTMLDivElement>(null);
+  const compactScrollRef = containerRef;
 
   // Handle scroll to anchor
   useEffect(() => {
