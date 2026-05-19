@@ -137,20 +137,36 @@ Règles:
         ]
       });
     } else if (isUrl) {
-      // If it's a URL, pass it directly to the AI (some models support URLs)
-      console.log('Using image mode with URL');
-      messages.push({
-        role: 'user',
-        content: [
-          { type: 'text', text: 'Analyse cette image de cours et génère un QCM de 5 questions.' },
-          {
-            type: 'image_url',
-            image_url: {
-              url: imageBase64
-            }
-          }
-        ]
-      });
+      // Fetch the file and convert to data URL — Gemini doesn't accept arbitrary URLs
+      // and only accepts PNG/JPEG/WebP/GIF as images. PDFs must be inlined as application/pdf.
+      console.log('Fetching remote file to inline as data URL');
+      try {
+        const fileRes = await fetch(imageBase64);
+        if (!fileRes.ok) throw new Error(`fetch ${fileRes.status}`);
+        const contentType = fileRes.headers.get('content-type') ||
+          (imageBase64.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg');
+        const buf = new Uint8Array(await fileRes.arrayBuffer());
+        // base64 encode
+        let binary = '';
+        for (let i = 0; i < buf.length; i++) binary += String.fromCharCode(buf[i]);
+        const b64 = btoa(binary);
+        const dataUrl = `data:${contentType};base64,${b64}`;
+        console.log('Inlined file as', contentType, 'size:', buf.length);
+        messages.push({
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Analyse ce document de cours et génère un QCM de 5 questions.' },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        });
+      } catch (e) {
+        console.error('Failed to inline remote file:', e);
+        return new Response(
+          JSON.stringify({ error: 'Impossible de récupérer le document. Réessaie après extraction OCR.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
     } else {
       // Fallback to text if nothing valid
       console.log('Fallback: no valid content');
