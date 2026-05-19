@@ -1,69 +1,46 @@
-## Objectif
+## Problème
 
-Permettre l'import de **plusieurs fichiers d'un coup** dans une matière du Vault (et depuis le bouton global), au lieu d'un seul fichier à la fois.
+1. **PDF ne charge pas** ("Impossible de charger le PDF") — le worker `pdf.worker.min.mjs?url` n'est pas toujours résolu correctement par Vite en preview (MIME `.mjs` / chemin worker). Le viewer affiche systématiquement le fallback.
+2. **Tout le PDF se charge d'un coup** — chaque `<Page>` rend immédiatement, ce qui gèle l'UI sur les longs PDF (10+ pages).
+3. **Plein écran lourd** — même problème, plus `<motion.div>` avec `layoutId` qui re-mesure tout pendant l'ouverture.
+4. **Bouton "Onglet" peu visible** sur fond noir et fermeture peu accessible au pouce.
 
-## Problème actuel
+## Plan
 
-Les inputs `<input type="file">` du Vault n'ont pas l'attribut `multiple`. À chaque tap "Importer un fichier", on ne peut choisir qu'un seul PDF/doc/image, puis il faut recommencer toute la séquence (menu → upload → OCR → confirmation) pour le suivant. C'est bloquant quand on veut ajouter un cours complet (10 slides, 5 TD, etc.).
+### 1. `PdfPagesViewer.tsx` — lazy loading + worker fiable
 
-Les emplacements concernés :
-- `src/components/vault/VaultAddContentMenu.tsx` — bouton "+" dans une matière (fichiers + photos).
-- `src/pages/TheVaultPage.tsx` — FAB global du Vault (fichiers + photos).
-- `src/components/vault/SmartVaultCapture.tsx` — capture intelligente (photos + PDF).
+- Charger le worker depuis CDN (`unpkg`) avec la version exacte de `pdfjs-dist` pour éviter le résolveur Vite :
+  ```ts
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  ```
+  (résout l'erreur de chargement vue sur la capture).
+- Nouveau composant interne `LazyPage` :
+  - Wrapper `div` placeholder avec hauteur estimée (ratio A4 = `width * 1.414`) pour préserver le scroll.
+  - `IntersectionObserver` avec `rootMargin: "800px 0px"` → ne monte le `<Page>` que lorsqu'il approche du viewport.
+  - Garde la page montée une fois vue (évite re-render au scroll arrière), mais avec une option `unmountFarPages` pour libérer la mémoire au-delà de ±5 pages dans le mode plein écran.
+- Ajout d'un prop `containerRef?: RefObject<HTMLDivElement>` pour utiliser le scroll-container parent comme `root` de l'observer (sinon viewport global rate les pages en modal).
+- Passer `renderMode="canvas"` explicitement + `devicePixelRatio` capé à 2 pour éviter les canvas géants sur Retina.
+- Compteur de pages chargées dans le placeholder ("Page X / N").
 
-## Changements
+### 2. `DocumentViewer.tsx` — plein écran fluide
 
-### 1. Activer la sélection multiple
+- Passer la `ref` du conteneur scrollable à `PdfPagesViewer` dans les deux modes (compact + fullscreen) pour que l'IntersectionObserver fonctionne dans la modal.
+- Plein écran PDF :
+  - Retirer `layoutId` du wrapper PDF (image only) — évite le coût de FLIP layout sur le PDF.
+  - Barre d'outils plus tactile : bouton fermer `44×44` à gauche, bouton "Onglet" avec fond `bg-white/10` + ring, `pt-safe`.
+  - Ajouter un mini-indicateur de pagination flottant en bas ("3 / 12") basé sur le scroll du conteneur, en `bg-black/60 backdrop-blur` `rounded-full`.
+  - Activer `overscroll-contain` + `touch-action: pan-y` sur le scroller pour éviter le pull-to-refresh natif iOS.
+- Ajouter un raccourci : tap sur le fond hors-PDF ferme la modal (avec `stopPropagation` sur la zone PDF).
+- Le bouton "Onglet" ouvre dans un nouvel onglet (déjà fait) — vérifier `rel="noopener noreferrer"`.
 
-Ajouter `multiple` à tous les `<input type="file">` d'import (hors capture caméra, qui reste 1 photo à la fois côté natif iOS).
+### 3. Hors scope
 
-### 2. Traiter le batch en parallèle contrôlé
+- Pas de modif backend, RLS, edge functions, ou OCR.
+- Pas de pagination "page par page" — on garde le scroll continu, juste lazy.
+- Pas de mise en cache disque ; pdf.js gère son cache mémoire.
 
-Dans chaque handler `onChange` :
-- Lire `e.target.files` comme un `FileList` complet (au lieu de `files[0]`).
-- Afficher un toast de progression unique : « Import de X fichiers… » avec un compteur live.
-- Itérer avec une concurrence limitée (3 en parallèle) pour ne pas saturer le réseau / l'OCR.
-- Pour chaque fichier : upload Storage → signed URL → `createFile` → OCR si image.
-- À la fin : toast récap « X fichiers ajoutés • Y en erreur » + un seul `refetch()`.
+## Fichiers modifiés
 
-### 3. UX pendant l'import
-
-- Le bouton "+" reste en état `isProcessing` (loader) jusqu'à la fin du batch.
-- Si un fichier dépasse 20 Mo (limite Supabase Storage), il est sauté avec un toast d'avertissement nommant le fichier.
-- L'auto-filing AI (suggestion de matière) ne s'active que sur le FAB global ; dans une matière, tous les fichiers vont directement dedans avec `filing_status: "confirmed"` (comportement actuel conservé).
-
-### 4. Flashcards / OCR
-
-L'OCR par image et la génération de flashcards restent **par fichier** (non groupés). Pour éviter de spammer l'API quand on importe 20 photos, on garde l'OCR mais on ne déclenche **pas** automatiquement la génération de flashcards en mode batch — un toast invitera l'utilisateur à le faire depuis le fichier ou la matière.
-
-## Détails techniques
-
-### Fichiers modifiés
-
-- `src/components/vault/VaultAddContentMenu.tsx`
-  - Input fichier : ajouter `multiple`.
-  - Renommer `uploadAndProcess(file)` → `uploadAndProcessBatch(files: File[])`.
-  - Helper `runWithConcurrency(files, 3, processOne)` interne, pas de nouvelle dépendance.
-  - Toast progression via `toast.loading(id)` + `toast.success(id)`.
-
-- `src/pages/TheVaultPage.tsx`
-  - Mêmes changements sur l'input fichier du FAB (ligne ~689).
-  - `uploadFile` → `uploadFiles(files, isPhoto)` avec la même logique de concurrence.
-
-- `src/components/vault/SmartVaultCapture.tsx`
-  - Input PDF/image (ligne ~283) : ajouter `multiple` et itérer.
-  - L'input caméra (ligne ~275) reste single (capture native).
-
-### Pas de changement DB
-
-Aucune migration, aucune nouvelle RLS — on réutilise `vault_files` + bucket `notes`.
-
-### Limite Storage
-
-Supabase Storage : 20 Mo / fichier par défaut sur le bucket `notes`. Pas de changement, juste un message clair quand un fichier dépasse.
-
-## Hors scope
-
-- Import d'un **dossier entier** avec arborescence (drag-and-drop d'un folder) — possible avec `webkitdirectory`, à proposer dans un second temps si besoin.
-- Partage de fichiers à d'autres utilisateurs (collaboration) — pas demandé ici.
-- Upload en arrière-plan persistant (Service Worker) — l'import reste lié à la session active.
+- `src/components/study-hub/PdfPagesViewer.tsx` (lazy + worker CDN + container root)
+- `src/components/study-hub/DocumentViewer.tsx` (passage de ref, toolbar plein écran, indicateur page)
