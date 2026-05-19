@@ -253,6 +253,63 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_debug_runs: {
+        Row: {
+          candidate_questions_count: number | null
+          created_at: string
+          error: string | null
+          final_questions: Json
+          id: string
+          merge_used: boolean
+          note_id: string | null
+          original_bytes: number | null
+          req_id: string
+          segments: Json
+          segments_count: number | null
+          source_kind: string | null
+          source_mime: string | null
+          subject_id: string | null
+          total_duration_ms: number | null
+          user_id: string
+        }
+        Insert: {
+          candidate_questions_count?: number | null
+          created_at?: string
+          error?: string | null
+          final_questions?: Json
+          id?: string
+          merge_used?: boolean
+          note_id?: string | null
+          original_bytes?: number | null
+          req_id: string
+          segments?: Json
+          segments_count?: number | null
+          source_kind?: string | null
+          source_mime?: string | null
+          subject_id?: string | null
+          total_duration_ms?: number | null
+          user_id: string
+        }
+        Update: {
+          candidate_questions_count?: number | null
+          created_at?: string
+          error?: string | null
+          final_questions?: Json
+          id?: string
+          merge_used?: boolean
+          note_id?: string | null
+          original_bytes?: number | null
+          req_id?: string
+          segments?: Json
+          segments_count?: number | null
+          source_kind?: string | null
+          source_mime?: string | null
+          subject_id?: string | null
+          total_duration_ms?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       semesters: {
         Row: {
           academic_year_id: string | null
