@@ -279,8 +279,11 @@ Règles:
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
-    
-    console.log('AI Response:', content);
+    log('info', 'ai.parsed', {
+      contentLen: content.length,
+      finishReason: data.choices?.[0]?.finish_reason,
+      usage: data.usage,
+    });
 
     // Parse the JSON response
     let quiz = null;
@@ -290,37 +293,46 @@ Règles:
         const parsed = JSON.parse(jsonMatch[0]);
         quiz = parsed.quiz || null;
       }
+      log('info', 'parse.ok', {
+        matched: !!jsonMatch,
+        hasQuiz: !!quiz,
+        questions: quiz?.questions?.length ?? 0,
+      });
     } catch (parseError) {
-      console.error('Failed to parse quiz JSON:', parseError);
+      log('error', 'parse.failed', {
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        contentSample: content.slice(0, 200),
+      });
       return new Response(
-        JSON.stringify({ error: 'Failed to parse AI response', quiz: null }),
+        JSON.stringify({ error: 'Failed to parse AI response', quiz: null, reqId }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!quiz) {
+      log('warn', 'parse.empty_quiz', { contentSample: content.slice(0, 200) });
       return new Response(
-        JSON.stringify({ error: 'No quiz generated', quiz: null }),
+        JSON.stringify({ error: 'No quiz generated', quiz: null, reqId }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Generated quiz with ${quiz.questions?.length || 0} questions`);
+    log('info', 'request.success', { questions: quiz.questions?.length ?? 0 });
 
     return new Response(
-      JSON.stringify({ 
-        quiz,
-        noteId,
-        subjectId
-      }),
+      JSON.stringify({ quiz, noteId, subjectId, reqId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in generate-quiz:', error);
+    log('error', 'request.unhandled', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack?.slice(0, 500) : undefined,
+    });
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', reqId }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
