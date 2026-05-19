@@ -294,8 +294,16 @@ const SettingsPage = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null }>({ display_name: null, avatar_url: null });
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [displayNameInput, setDisplayNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => { fetchSettings(); }, [user]);
+
+  useEffect(() => {
+    if (profile.display_name !== null || user?.email) {
+      setDisplayNameInput(profile.display_name || user?.email?.split('@')[0] || "");
+    }
+  }, [profile.display_name, user?.email]);
 
   const fetchSettings = async () => {
     if (!user) return;
