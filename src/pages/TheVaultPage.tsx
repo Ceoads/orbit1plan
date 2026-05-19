@@ -306,42 +306,95 @@ export const TheVaultPage = () => {
   };
 
   // FAB file upload (no subject pre-selected → smart filing)
-  const uploadFile = async (file: File, isPhoto: boolean) => {
-    if (!user) return;
-    try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${Date.now()}.${ext}`;
+  const uploadFiles = async (fileList: File[], isPhoto: boolean) => {
+    if (!user || fileList.length === 0) return;
 
-      const { error: uploadError } = await supabase.storage
-        .from("notes")
-        .upload(path, file);
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = await supabase.storage
-        .from("notes")
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
-
-      const fileType = file.type.startsWith("image/")
-        ? "photo"
-        : file.type.includes("pdf")
-        ? "pdf"
-        : "document";
-
-      await createFile({
-        file_url: urlData?.signedUrl || "",
-        subject_id: selectedSubject?.id || null,
-        original_filename: file.name,
-        file_type: fileType,
-        filing_status: selectedSubject ? "confirmed" : "pending",
-        tags: [fileType],
-      });
-
-      toast.success("Fichier ajouté");
-      refetch();
-    } catch (e) {
-      console.error(e);
-      toast.error("Erreur lors de l'ajout");
+    const MAX_BYTES = 20 * 1024 * 1024;
+    const accepted: File[] = [];
+    for (const f of fileList) {
+      if (f.size > MAX_BYTES) {
+        toast.warning(`"${f.name}" dépasse 20 Mo, ignoré`);
+      } else {
+        accepted.push(f);
+      }
     }
+    if (accepted.length === 0) return;
+
+    const toastId = toast.loading(
+      accepted.length === 1
+        ? "Import du fichier…"
+        : `Import de 0/${accepted.length} fichiers…`
+    );
+
+    let done = 0;
+    let errors = 0;
+
+    const processOne = async (file: File, index: number) => {
+      try {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${user.id}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("notes")
+          .upload(path, file);
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = await supabase.storage
+          .from("notes")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+
+        const fileType = file.type.startsWith("image/")
+          ? "photo"
+          : file.type.includes("pdf")
+          ? "pdf"
+          : "document";
+
+        await createFile({
+          file_url: urlData?.signedUrl || "",
+          subject_id: selectedSubject?.id || null,
+          original_filename: file.name,
+          file_type: fileType,
+          filing_status: selectedSubject ? "confirmed" : "pending",
+          tags: [fileType],
+        });
+      } catch (e) {
+        console.error("Upload error:", file.name, e);
+        errors++;
+      } finally {
+        done++;
+        if (accepted.length > 1) {
+          toast.loading(`Import de ${done}/${accepted.length} fichiers…`, { id: toastId });
+        }
+      }
+    };
+
+    // Concurrency = 3
+    const CONCURRENCY = 3;
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, accepted.length) }, async () => {
+      while (cursor < accepted.length) {
+        const i = cursor++;
+        await processOne(accepted[i], i);
+      }
+    });
+    await Promise.all(workers);
+
+    if (errors === 0) {
+      toast.success(
+        accepted.length === 1
+          ? "Fichier ajouté"
+          : `${accepted.length} fichiers ajoutés`,
+        { id: toastId }
+      );
+    } else if (errors === accepted.length) {
+      toast.error("Aucun fichier ajouté", { id: toastId });
+    } else {
+      toast.success(
+        `${accepted.length - errors} ajouté${accepted.length - errors > 1 ? "s" : ""} • ${errors} en erreur`,
+        { id: toastId }
+      );
+    }
+    refetch();
   };
 
   if (loading || vaultInitialized === null) {
