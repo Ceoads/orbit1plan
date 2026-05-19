@@ -92,6 +92,43 @@ export const TheVaultPage = () => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [vaultInitialized, setVaultInitialized] = useState<boolean | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("vault_recent_searches");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveRecentSearch = (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    setRecentSearches((prev) => {
+      const next = [trimmed, ...prev.filter((s) => s.toLowerCase() !== trimmed.toLowerCase())].slice(0, 8);
+      try {
+        localStorage.setItem("vault_recent_searches", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const removeRecentSearch = (q: string) => {
+    setRecentSearches((prev) => {
+      const next = prev.filter((s) => s !== q);
+      try {
+        localStorage.setItem("vault_recent_searches", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    try {
+      localStorage.removeItem("vault_recent_searches");
+    } catch {}
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
