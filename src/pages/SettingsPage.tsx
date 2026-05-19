@@ -359,6 +359,24 @@ const SettingsPage = () => {
     }
   };
 
+  const handleSaveDisplayName = async () => {
+    if (!user) return;
+    const trimmed = displayNameInput.trim();
+    if (!trimmed || trimmed === (profile.display_name || "")) return;
+    setSavingName(true);
+    try {
+      const { error } = await supabase.from('profiles').update({ display_name: trimmed }).eq('user_id', user.id);
+      if (error) throw error;
+      setProfile(p => ({ ...p, display_name: trimmed }));
+      toast.success("Nom mis à jour !");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Échec de la mise à jour");
+    } finally {
+      setSavingName(false);
+    }
+  };
+
   const primaryGroupLabel = filterGroup
     ? filterGroup.split(',').map(s => s.trim()).filter(Boolean).slice(0, 2).join(' · ')
     : (user?.email || '');
