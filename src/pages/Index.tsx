@@ -155,7 +155,6 @@ const Index = () => {
         activeTab={activeTab}
         onTabChange={handleTabChange}
         showSettings={!needsSetup && !showSetup}
-        onSignOut={signOut}
       />
 
       {/* Main Content - pt-6 since CollapsibleHeader includes spacer */}
