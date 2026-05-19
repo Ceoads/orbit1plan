@@ -19,6 +19,7 @@ import {
   ChevronRight, LogOut, Shield, RotateCcw, HelpCircle, Camera
 } from "lucide-react";
 import { ProfileAvatar, emitProfileUpdated } from "@/components/ProfileAvatar";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -296,6 +297,8 @@ const SettingsPage = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   useEffect(() => { fetchSettings(); }, [user]);
 
