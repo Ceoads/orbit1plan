@@ -444,6 +444,10 @@ export const TheVaultPage = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") saveRecentSearch(searchQuery);
+          }}
+          onBlur={() => saveRecentSearch(searchQuery)}
           placeholder="Rechercher dans tous les fichiers (OCR)..."
           className="w-full pl-10 pr-4 py-3 rounded-2xl bg-transparent border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
         />
