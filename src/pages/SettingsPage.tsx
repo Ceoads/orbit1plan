@@ -327,22 +327,35 @@ const SettingsPage = () => {
     }
   };
 
-  const handleAvatarUpload = async (file: File) => {
-    if (!user) return;
+  const handleAvatarPick = (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast.error("Choisis une image");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image trop grande (max 5 Mo)");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image trop grande (max 10 Mo)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSrc(reader.result as string);
+      setCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCroppedUpload = async (file: File) => {
+    if (!user) return;
+    // Hard cap on output (cropper outputs 512x512 JPEG ~<300KB, but guard anyway)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image recadrée trop volumineuse");
       return;
     }
     setUploadingAvatar(true);
     try {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const path = `${user.id}/avatar-${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
-        upsert: true, contentType: file.type,
+        upsert: true, contentType: 'image/jpeg',
       });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
@@ -352,6 +365,8 @@ const SettingsPage = () => {
       setProfile(p => ({ ...p, avatar_url: url }));
       emitProfileUpdated({ avatar_url: url });
       toast.success("Photo mise à jour !");
+      setCropOpen(false);
+      setCropSrc(null);
     } catch (e: any) {
       console.error(e);
       toast.error("Échec de l'upload");
