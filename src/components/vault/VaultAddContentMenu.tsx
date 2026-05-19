@@ -27,12 +27,11 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const uploadAndProcess = async (file: File, isPhoto: boolean) => {
-    if (!user) return;
-    setIsProcessing(true);
+    if (!user) return { ok: false };
 
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${Date.now()}.${ext}`;
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
@@ -92,25 +91,81 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
         tags: [fileType],
       });
 
-      toast.success("Fichier ajouté avec succès");
-      onContentAdded();
+      return { ok: true };
     } catch (error: any) {
-      console.error("Upload error:", error);
-      toast.error("Erreur lors de l'ajout du fichier");
-    } finally {
-      setIsProcessing(false);
+      console.error("Upload error:", file.name, error);
+      return { ok: false };
     }
   };
 
+  const uploadBatch = async (files: File[], isPhoto: boolean) => {
+    if (!user || files.length === 0) return;
+
+    const MAX_BYTES = 20 * 1024 * 1024;
+    const accepted: File[] = [];
+    for (const f of files) {
+      if (f.size > MAX_BYTES) {
+        toast.warning(`"${f.name}" dépasse 20 Mo, ignoré`);
+      } else {
+        accepted.push(f);
+      }
+    }
+    if (accepted.length === 0) return;
+
+    setIsProcessing(true);
+    const toastId = toast.loading(
+      accepted.length === 1
+        ? "Import du fichier…"
+        : `Import de 0/${accepted.length} fichiers…`
+    );
+
+    let done = 0;
+    let errors = 0;
+    const CONCURRENCY = 3;
+    let cursor = 0;
+
+    const workers = Array.from({ length: Math.min(CONCURRENCY, accepted.length) }, async () => {
+      while (cursor < accepted.length) {
+        const i = cursor++;
+        const res = await uploadAndProcess(accepted[i], isPhoto);
+        if (!res.ok) errors++;
+        done++;
+        if (accepted.length > 1) {
+          toast.loading(`Import de ${done}/${accepted.length} fichiers…`, { id: toastId });
+        }
+      }
+    });
+    await Promise.all(workers);
+
+    if (errors === 0) {
+      toast.success(
+        accepted.length === 1
+          ? "Fichier ajouté avec succès"
+          : `${accepted.length} fichiers ajoutés`,
+        { id: toastId }
+      );
+    } else if (errors === accepted.length) {
+      toast.error("Aucun fichier ajouté", { id: toastId });
+    } else {
+      toast.success(
+        `${accepted.length - errors} ajouté${accepted.length - errors > 1 ? "s" : ""} • ${errors} en erreur`,
+        { id: toastId }
+      );
+    }
+
+    setIsProcessing(false);
+    onContentAdded();
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) uploadAndProcess(file, false);
+    const files = Array.from(e.target.files || []);
+    if (files.length) uploadBatch(files, false);
     e.target.value = "";
   };
 
   const handleCameraSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) uploadAndProcess(file, true);
+    const files = Array.from(e.target.files || []);
+    if (files.length) uploadBatch(files, true);
     e.target.value = "";
   };
 
@@ -187,6 +242,7 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept=".pdf,.doc,.docx,.ppt,.pptx"
         className="hidden"
         onChange={handleFileSelect}

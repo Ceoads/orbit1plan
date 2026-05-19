@@ -259,9 +259,34 @@ export const SmartVaultCapture = ({ onFileCaptured }: SmartVaultCaptureProps) =>
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processImage(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      e.target.value = "";
+      return;
+    }
+    if (files.length === 1) {
+      processImage(files[0]);
+    } else {
+      // Batch mode: process sequentially with progress toast
+      (async () => {
+        const toastId = toast.loading(`Import de 0/${files.length} fichiers…`);
+        let done = 0;
+        let errors = 0;
+        for (const f of files) {
+          try {
+            await processImage(f);
+          } catch {
+            errors++;
+          }
+          done++;
+          toast.loading(`Import de ${done}/${files.length} fichiers…`, { id: toastId });
+        }
+        if (errors === 0) {
+          toast.success(`${files.length} fichiers ajoutés`, { id: toastId });
+        } else {
+          toast.success(`${files.length - errors} ajouté${files.length - errors > 1 ? "s" : ""} • ${errors} en erreur`, { id: toastId });
+        }
+      })();
     }
     e.target.value = "";
   };
@@ -280,6 +305,7 @@ export const SmartVaultCapture = ({ onFileCaptured }: SmartVaultCaptureProps) =>
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept="image/*,application/pdf"
         onChange={handleFileSelect}
         className="hidden"
