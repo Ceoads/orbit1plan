@@ -292,17 +292,18 @@ const SettingsPage = () => {
   const [savingCampus, setSavingCampus] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null }>({ display_name: null, avatar_url: null });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => { fetchSettings(); }, [user]);
 
   const fetchSettings = async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const [{ data, error }, { data: prof }] = await Promise.all([
+        supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('display_name, avatar_url').eq('user_id', user.id).maybeSingle(),
+      ]);
       if (error) throw error;
       if (data) {
         setSettings(data as UserSettings);
@@ -310,12 +311,49 @@ const SettingsPage = () => {
         setFilterGroup(data.ical_filter_group || "");
         setCampusNameInput(data.campus_name || "");
       }
+      if (prof) setProfile({ display_name: (prof as any).display_name ?? null, avatar_url: (prof as any).avatar_url ?? null });
     } catch (error: any) {
       console.error('Error fetching settings:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error("Choisis une image");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image trop grande (max 5 Mo)");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = pub.publicUrl;
+      const { error: updErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('user_id', user.id);
+      if (updErr) throw updErr;
+      setProfile(p => ({ ...p, avatar_url: url }));
+      toast.success("Photo mise à jour !");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Échec de l'upload");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const primaryGroupLabel = filterGroup
+    ? filterGroup.split(',').map(s => s.trim()).filter(Boolean).slice(0, 2).join(' · ')
+    : (user?.email || '');
 
   const scanForGroups = async () => {
     if (!icalUrl) return;
