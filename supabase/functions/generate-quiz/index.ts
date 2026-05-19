@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { PDFDocument } from "npm:pdf-lib@1.17.1";
+import { Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,29 +23,114 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+// ---------- Helpers ----------
 
-  // Structured logging with unique request id
+const TARGET_BYTES = 6 * 1024 * 1024; // soft target per inline payload (~6MB)
+const HARD_MAX_BYTES = 18 * 1024 * 1024; // absolute ceiling (Gemini limit ~20MB)
+const PAGES_PER_SEGMENT = 8; // split long PDFs
+const MAX_SEGMENTS = 5; // cap to limit cost/latency
+
+function bytesToB64(buf: Uint8Array): string {
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < buf.length; i += CHUNK) {
+    binary += String.fromCharCode(...buf.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function compressImage(buf: Uint8Array, target = TARGET_BYTES): Promise<{ bytes: Uint8Array; mime: string; width: number; height: number; quality: number }> {
+  const img = await Image.decode(buf);
+  let w = img.width;
+  let h = img.height;
+  let quality = 80;
+  // First pass: cap longest side at 1800px
+  const MAX_DIM = 1800;
+  if (Math.max(w, h) > MAX_DIM) {
+    const scale = MAX_DIM / Math.max(w, h);
+    w = Math.round(w * scale);
+    h = Math.round(h * scale);
+    img.resize(w, h);
+  }
+  let out = await img.encodeJPEG(quality);
+  // Iterative downscale if still too big
+  let safety = 4;
+  while (out.byteLength > target && safety-- > 0) {
+    if (quality > 50) {
+      quality -= 15;
+    } else {
+      w = Math.round(w * 0.8);
+      h = Math.round(h * 0.8);
+      img.resize(w, h);
+    }
+    out = await img.encodeJPEG(Math.max(quality, 40));
+  }
+  return { bytes: out, mime: 'image/jpeg', width: w, height: h, quality };
+}
+
+async function splitPdf(buf: Uint8Array, pagesPerSegment = PAGES_PER_SEGMENT): Promise<Uint8Array[]> {
+  const src = await PDFDocument.load(buf, { ignoreEncryption: true });
+  const total = src.getPageCount();
+  if (total <= pagesPerSegment) return [buf];
+  const segments: Uint8Array[] = [];
+  for (let start = 0; start < total; start += pagesPerSegment) {
+    const end = Math.min(start + pagesPerSegment, total);
+    const sub = await PDFDocument.create();
+    const indices = Array.from({ length: end - start }, (_, i) => start + i);
+    const pages = await sub.copyPages(src, indices);
+    pages.forEach((p) => sub.addPage(p));
+    segments.push(await sub.save());
+    if (segments.length >= MAX_SEGMENTS) break;
+  }
+  return segments;
+}
+
+async function callAI(LOVABLE_API_KEY: string, messages: any[], log: any) {
+  const model = 'google/gemini-2.5-flash';
+  const t0 = Date.now();
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages }),
+  });
+  log('info', 'ai.response', { status: response.status, ok: response.ok, duration_ms: Date.now() - t0 });
+  if (!response.ok) {
+    const errorText = await response.text();
+    log('error', 'ai.error', { status: response.status, body: errorText.slice(0, 500) });
+    return { ok: false, status: response.status, error: errorText };
+  }
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  return { ok: true, content, usage: data.usage };
+}
+
+function parseQuiz(content: string): { questions?: any[]; title?: string } | null {
+  try {
+    const m = content.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    return parsed.quiz || null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------- Main handler ----------
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
   const reqId = (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8);
   const t0 = Date.now();
-  const log = (
-    level: 'info' | 'warn' | 'error',
-    step: string,
-    data: Record<string, unknown> = {}
-  ) => {
-    const payload = {
-      reqId,
-      fn: 'generate-quiz',
-      step,
-      level,
-      elapsed_ms: Date.now() - t0,
-      ...data,
-    };
-    const line = JSON.stringify(payload);
+  const log = (level: 'info' | 'warn' | 'error', step: string, data: Record<string, unknown> = {}) => {
+    const line = JSON.stringify({ reqId, fn: 'generate-quiz', step, level, elapsed_ms: Date.now() - t0, ...data });
     if (level === 'error') console.error(line);
     else if (level === 'warn') console.warn(line);
     else console.log(line);
@@ -52,82 +139,51 @@ serve(async (req) => {
   log('info', 'request.start', { method: req.method });
 
   try {
-    // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      log('warn', 'auth.missing_header');
       return new Response(JSON.stringify({ error: 'Unauthorized', reqId }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const supabaseClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
-      log('warn', 'auth.invalid', { error: userError?.message });
       return new Response(JSON.stringify({ error: 'Unauthorized', reqId }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     log('info', 'auth.ok', { userId: user.id });
 
     if (!checkRateLimit(user.id)) {
-      log('warn', 'rate_limit.exceeded', { userId: user.id });
-      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.', reqId }), {
-        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { imageBase64, extractedText, noteId, subjectId } = await req.json();
     log('info', 'request.parsed', {
-      noteId,
-      subjectId,
+      noteId, subjectId,
       hasExtractedText: !!extractedText,
       extractedTextLen: extractedText?.length ?? 0,
       hasImageBase64: !!imageBase64,
-      imageBase64Kind: imageBase64?.startsWith?.('data:')
-        ? 'data-url'
-        : imageBase64?.startsWith?.('http')
-          ? 'http-url'
-          : imageBase64 ? 'base64' : 'none',
+      imageBase64Kind: imageBase64?.startsWith?.('data:') ? 'data-url' : imageBase64?.startsWith?.('http') ? 'http-url' : imageBase64 ? 'base64' : 'none',
     });
 
     if (!imageBase64 && !extractedText) {
-      log('warn', 'validation.no_content');
-      return new Response(
-        JSON.stringify({ error: 'Image or extracted text is required', reqId }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Image or extracted text is required', reqId }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      log('error', 'config.missing_api_key');
-      return new Response(
-        JSON.stringify({ error: 'AI service not configured', reqId }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'AI service not configured', reqId }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
 
     const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de 5 questions à choix multiples.
 
 RÈGLE DE LANGUE CRITIQUE :
 Détecte automatiquement la langue du document/contenu source.
 Réponds TOUJOURS dans la même langue que le contenu du document.
-- Document en français → Génère le quiz en français
-- Document en anglais → Génère le quiz en anglais
-- Document en espagnol → Génère le quiz en espagnol
-- Document mixte → Utilise la langue dominante
-Ne jamais répondre dans une langue différente de celle du document source.
 
 Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 {
   "quiz": {
     "title": "Titre du quiz basé sur le sujet",
     "questions": [
-      {
-        "id": 1,
-        "question": "Question claire et précise",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
-        "correctIndex": 0,
-        "explanation": "Explication courte de pourquoi c'est la bonne réponse"
-      }
+      { "id": 1, "question": "...", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }
     ]
   }
 }
@@ -135,272 +191,192 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 Règles:
 - Exactement 5 questions
 - Chaque question a exactement 4 options
-- Les options doivent être plausibles (pas de réponses évidemment fausses)
-- "correctIndex" est l'index (0-3) de la bonne réponse
-- Questions variées: définitions, applications, compréhension
-- Adapte la difficulté au niveau du contenu
+- Options plausibles
+- "correctIndex" est l'index (0-3)
 - Si le contenu est illisible, retourne {"quiz": null, "error": "Contenu non reconnu"}`;
 
-    let messages: any[] = [
-      { role: 'system', content: systemPrompt }
-    ];
+    // ---------- Build payload(s) ----------
+    type Payload =
+      | { kind: 'text'; text: string }
+      | { kind: 'inline'; mime: string; b64: string; label?: string };
 
-    // Determine if imageBase64 is actually a valid base64 string or a URL
-    const isValidBase64 = imageBase64 && (
-      imageBase64.startsWith('data:') || 
-      /^[A-Za-z0-9+/=]+$/.test(imageBase64.substring(0, 100))
-    );
-    const isUrl = imageBase64 && imageBase64.startsWith('http');
+    const payloads: Payload[] = [];
 
-    // PRIORITY: Use extractedText if available (more reliable than image processing)
     if (extractedText && extractedText.length > 50) {
       log('info', 'content.mode', { mode: 'text', length: extractedText.length });
-      messages.push({
-        role: 'user',
-        content: `Génère un QCM de 5 questions basé sur ce contenu de cours:\n\n${extractedText}`
-      });
-    } else if (isValidBase64) {
-      // Limits for inline base64 payloads sent to Gemini (avoids timeouts / oversized requests)
-      const MAX_INLINE_BYTES = 8 * 1024 * 1024; // 8 MB decoded
-      const rawB64 = imageBase64.startsWith('data:')
-        ? imageBase64.slice(imageBase64.indexOf(',') + 1)
-        : imageBase64;
-      const approxBytes = Math.round((rawB64.length * 3) / 4);
-      log('info', 'content.mode', {
-        mode: 'image-base64',
-        hasDataPrefix: imageBase64.startsWith('data:'),
-        approxBytes,
-        maxBytes: MAX_INLINE_BYTES,
-      });
-      if (approxBytes > MAX_INLINE_BYTES) {
-        log('warn', 'payload.too_large', { approxBytes, maxBytes: MAX_INLINE_BYTES });
-        return new Response(
-          JSON.stringify({
-            error: `Document trop volumineux (${(approxBytes / 1024 / 1024).toFixed(1)} Mo). Limite ${(MAX_INLINE_BYTES / 1024 / 1024).toFixed(0)} Mo. Compresse l'image ou utilise l'extraction OCR.`,
-            reqId,
-          }),
-          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      messages.push({
-        role: 'user',
-        content: [
-          { type: 'text', text: 'Analyse cette image de cours et génère un QCM de 5 questions.' },
-          {
-            type: 'image_url',
-            image_url: {
-              url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
-            }
-          }
-        ]
-      });
-    } else if (isUrl) {
-      // Fetch the file and convert to data URL — Gemini doesn't accept arbitrary URLs
-      // and only accepts PNG/JPEG/WebP/GIF as images. PDFs must be inlined as application/pdf.
-      const MAX_INLINE_BYTES = 8 * 1024 * 1024; // 8 MB decoded
-      log('info', 'fetch.start', { url: imageBase64.slice(0, 120), maxBytes: MAX_INLINE_BYTES });
-      const fetchT0 = Date.now();
-      try {
-        // HEAD first to check size cheaply (best-effort)
-        try {
-          const headRes = await fetch(imageBase64, { method: 'HEAD' });
-          const headLen = Number(headRes.headers.get('content-length') || 0);
-          log('info', 'fetch.head', { status: headRes.status, contentLength: headLen });
-          if (headLen && headLen > MAX_INLINE_BYTES) {
-            log('warn', 'payload.too_large.head', { contentLength: headLen, maxBytes: MAX_INLINE_BYTES });
-            return new Response(
-              JSON.stringify({
-                error: `Document trop volumineux (${(headLen / 1024 / 1024).toFixed(1)} Mo). Limite ${(MAX_INLINE_BYTES / 1024 / 1024).toFixed(0)} Mo. Découpe le PDF ou réduis l'image avant de relancer.`,
-                reqId,
-              }),
-              { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        } catch (headErr) {
-          log('warn', 'fetch.head.failed', { error: headErr instanceof Error ? headErr.message : String(headErr) });
-        }
+      payloads.push({ kind: 'text', text: extractedText });
+    } else if (imageBase64) {
+      // 1. Normalize source -> raw bytes + mime
+      let bytes: Uint8Array;
+      let mime = 'image/jpeg';
 
+      if (imageBase64.startsWith('data:')) {
+        const m = imageBase64.match(/^data:([^;]+);base64,(.*)$/);
+        if (!m) {
+          return new Response(JSON.stringify({ error: 'Invalid data URL', reqId }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        mime = m[1];
+        bytes = b64ToBytes(m[2]);
+      } else if (imageBase64.startsWith('http')) {
+        log('info', 'fetch.start', { url: imageBase64.slice(0, 120) });
+        const fetchT0 = Date.now();
         const fileRes = await fetch(imageBase64);
-        log('info', 'fetch.response', {
-          status: fileRes.status,
-          ok: fileRes.ok,
-          contentType: fileRes.headers.get('content-type'),
-          contentLength: fileRes.headers.get('content-length'),
-          duration_ms: Date.now() - fetchT0,
-        });
-        if (!fileRes.ok) throw new Error(`fetch ${fileRes.status}`);
+        if (!fileRes.ok) {
+          log('error', 'fetch.failed', { status: fileRes.status });
+          return new Response(JSON.stringify({ error: 'Impossible de récupérer le document.', reqId }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
         const headerCt = fileRes.headers.get('content-type');
-        const contentType = headerCt ||
-          (imageBase64.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg');
+        mime = headerCt || (imageBase64.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg');
+        bytes = new Uint8Array(await fileRes.arrayBuffer());
+        log('info', 'fetch.response', { status: fileRes.status, mime, bytes: bytes.length, duration_ms: Date.now() - fetchT0 });
+      } else {
+        bytes = b64ToBytes(imageBase64);
+      }
 
-        // Stream and enforce max size to avoid loading huge files into memory
-        const reader = fileRes.body?.getReader();
-        if (!reader) throw new Error('no response body');
-        const chunks: Uint8Array[] = [];
-        let total = 0;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            total += value.byteLength;
-            if (total > MAX_INLINE_BYTES) {
-              try { await reader.cancel(); } catch (_) { /* noop */ }
-              log('warn', 'payload.too_large.stream', { bytesSoFar: total, maxBytes: MAX_INLINE_BYTES });
-              return new Response(
-                JSON.stringify({
-                  error: `Document trop volumineux (> ${(MAX_INLINE_BYTES / 1024 / 1024).toFixed(0)} Mo). Découpe le PDF en plusieurs parties ou compresse l'image.`,
-                  reqId,
-                }),
-                { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
+      if (bytes.byteLength > HARD_MAX_BYTES * 3) {
+        return new Response(JSON.stringify({ error: `Document beaucoup trop volumineux (${(bytes.byteLength/1024/1024).toFixed(1)} Mo).`, reqId }), { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // 2. Compress (image) OR split (PDF)
+      if (mime === 'application/pdf') {
+        try {
+          const segs = await splitPdf(bytes);
+          log('info', 'pdf.split', { totalSegments: segs.length, originalBytes: bytes.length });
+          for (let i = 0; i < segs.length; i++) {
+            const seg = segs[i];
+            if (seg.byteLength > HARD_MAX_BYTES) {
+              log('warn', 'pdf.segment.too_large', { idx: i, bytes: seg.byteLength });
+              continue;
             }
-            chunks.push(value);
+            payloads.push({ kind: 'inline', mime: 'application/pdf', b64: bytesToB64(seg), label: `partie ${i + 1}/${segs.length}` });
+          }
+        } catch (e) {
+          log('error', 'pdf.split.failed', { error: e instanceof Error ? e.message : String(e) });
+          // Fallback: send raw if under limit
+          if (bytes.byteLength <= HARD_MAX_BYTES) {
+            payloads.push({ kind: 'inline', mime, b64: bytesToB64(bytes) });
+          } else {
+            return new Response(JSON.stringify({ error: 'PDF illisible ou trop volumineux.', reqId }), { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
         }
-        const buf = new Uint8Array(total);
-        let offset = 0;
-        for (const c of chunks) { buf.set(c, offset); offset += c.byteLength; }
-
-        const encT0 = Date.now();
-        // Chunked btoa to avoid call-stack overflow on large buffers
-        let binary = '';
-        const CHUNK = 0x8000;
-        for (let i = 0; i < buf.length; i += CHUNK) {
-          binary += String.fromCharCode(...buf.subarray(i, i + CHUNK));
+      } else if (mime.startsWith('image/')) {
+        try {
+          const compressed = bytes.byteLength > TARGET_BYTES
+            ? await compressImage(bytes)
+            : { bytes, mime, width: 0, height: 0, quality: 100 };
+          log('info', 'image.compressed', {
+            originalBytes: bytes.length,
+            compressedBytes: compressed.bytes.length,
+            mime: compressed.mime,
+            width: compressed.width,
+            height: compressed.height,
+            quality: compressed.quality,
+          });
+          payloads.push({ kind: 'inline', mime: compressed.mime, b64: bytesToB64(compressed.bytes) });
+        } catch (e) {
+          log('error', 'image.compress.failed', { error: e instanceof Error ? e.message : String(e) });
+          payloads.push({ kind: 'inline', mime, b64: bytesToB64(bytes) });
         }
-        const b64 = btoa(binary);
-        const dataUrl = `data:${contentType};base64,${b64}`;
-        log('info', 'base64.encoded', {
-          contentType,
-          inferredFromHeader: !!headerCt,
-          bytes: buf.length,
-          base64Len: b64.length,
-          duration_ms: Date.now() - encT0,
-        });
-
-        messages.push({
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Analyse ce document de cours et génère un QCM de 5 questions.' },
-            { type: 'image_url', image_url: { url: dataUrl } },
-          ],
-        });
-      } catch (e) {
-        log('error', 'fetch.failed', {
-          error: e instanceof Error ? e.message : String(e),
-          duration_ms: Date.now() - fetchT0,
-        });
-        return new Response(
-          JSON.stringify({ error: 'Impossible de récupérer le document. Réessaie après extraction OCR.', reqId }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      } else {
+        payloads.push({ kind: 'inline', mime, b64: bytesToB64(bytes) });
       }
-
     } else {
-      log('warn', 'content.invalid');
-      return new Response(
-        JSON.stringify({ error: 'No valid content provided', reqId }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'No valid content provided', reqId }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const model = 'google/gemini-2.5-flash';
-    log('info', 'ai.request', { model, messages: messages.length });
-    const aiT0 = Date.now();
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ model, messages }),
-    });
-    log('info', 'ai.response', {
-      status: response.status,
-      ok: response.ok,
-      duration_ms: Date.now() - aiT0,
-    });
+    log('info', 'payloads.ready', { count: payloads.length });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      log('error', 'ai.error', { status: response.status, body: errorText.slice(0, 500) });
+    // ---------- Generate per-segment quizzes ----------
+    const allQuestions: any[] = [];
+    let titleHint = '';
 
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.', reqId }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    for (let i = 0; i < payloads.length; i++) {
+      const p = payloads[i];
+      const userContent: any =
+        p.kind === 'text'
+          ? `Génère un QCM de 5 questions basé sur ce contenu de cours:\n\n${p.text}`
+          : [
+              { type: 'text', text: `Analyse ce document de cours${p.label ? ' (' + p.label + ')' : ''} et génère un QCM de 5 questions.` },
+              { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.b64}` } },
+            ];
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+      ];
+
+      log('info', 'ai.request', { segment: i + 1, of: payloads.length, kind: p.kind });
+      const res = await callAI(LOVABLE_API_KEY, messages, log);
+      if (!res.ok) {
+        if (res.status === 429) return new Response(JSON.stringify({ error: 'Rate limit exceeded.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        if (res.status === 402) return new Response(JSON.stringify({ error: 'AI credits exhausted.', reqId }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        // Skip failed segment, continue
+        continue;
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add funds.', reqId }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      const quiz = parseQuiz(res.content);
+      if (quiz?.questions?.length) {
+        if (!titleHint && quiz.title) titleHint = quiz.title;
+        allQuestions.push(...quiz.questions);
+        log('info', 'segment.parsed', { segment: i + 1, questions: quiz.questions.length });
+      } else {
+        log('warn', 'segment.empty', { segment: i + 1 });
       }
-
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate quiz', reqId }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
+    if (allQuestions.length === 0) {
+      return new Response(JSON.stringify({ error: 'No quiz generated', quiz: null, reqId }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    log('info', 'ai.parsed', {
-      contentLen: content.length,
-      finishReason: data.choices?.[0]?.finish_reason,
-      usage: data.usage,
+    // ---------- Merge to final 5 questions ----------
+    let finalQuiz: { title: string; questions: any[] };
+    if (payloads.length === 1 || allQuestions.length <= 5) {
+      finalQuiz = {
+        title: titleHint || 'Quiz',
+        questions: allQuestions.slice(0, 5).map((q, idx) => ({ ...q, id: idx + 1 })),
+      };
+      log('info', 'merge.shortcut', { kept: finalQuiz.questions.length });
+    } else {
+      const mergePrompt = `Voici plusieurs QCM générés à partir de segments d'un même document. Sélectionne et reformule les 5 MEILLEURES questions couvrant les thèmes clés (variées, non redondantes). Garde la langue d'origine.
+
+Questions candidates (JSON):
+${JSON.stringify(allQuestions).slice(0, 12000)}
+
+Retourne UNIQUEMENT le JSON final:
+{"quiz":{"title":"...","questions":[{"id":1,"question":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."}]}}`;
+
+      log('info', 'merge.request', { candidates: allQuestions.length });
+      const merged = await callAI(LOVABLE_API_KEY, [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: mergePrompt },
+      ], log);
+
+      const mergedQuiz = merged.ok ? parseQuiz(merged.content) : null;
+      if (mergedQuiz?.questions?.length) {
+        finalQuiz = {
+          title: mergedQuiz.title || titleHint || 'Quiz',
+          questions: mergedQuiz.questions.slice(0, 5).map((q: any, idx: number) => ({ ...q, id: idx + 1 })),
+        };
+      } else {
+        log('warn', 'merge.failed.fallback');
+        finalQuiz = {
+          title: titleHint || 'Quiz',
+          questions: allQuestions.slice(0, 5).map((q, idx) => ({ ...q, id: idx + 1 })),
+        };
+      }
+    }
+
+    log('info', 'request.success', { questions: finalQuiz.questions.length, segments: payloads.length });
+    return new Response(JSON.stringify({ quiz: finalQuiz, noteId, subjectId, reqId }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
-    // Parse the JSON response
-    let quiz = null;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        quiz = parsed.quiz || null;
-      }
-      log('info', 'parse.ok', {
-        matched: !!jsonMatch,
-        hasQuiz: !!quiz,
-        questions: quiz?.questions?.length ?? 0,
-      });
-    } catch (parseError) {
-      log('error', 'parse.failed', {
-        error: parseError instanceof Error ? parseError.message : String(parseError),
-        contentSample: content.slice(0, 200),
-      });
-      return new Response(
-        JSON.stringify({ error: 'Failed to parse AI response', quiz: null, reqId }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!quiz) {
-      log('warn', 'parse.empty_quiz', { contentSample: content.slice(0, 200) });
-      return new Response(
-        JSON.stringify({ error: 'No quiz generated', quiz: null, reqId }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    log('info', 'request.success', { questions: quiz.questions?.length ?? 0 });
-
-    return new Response(
-      JSON.stringify({ quiz, noteId, subjectId, reqId }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
 
   } catch (error) {
     log('error', 'request.unhandled', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack?.slice(0, 500) : undefined,
     });
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', reqId }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', reqId }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
-
