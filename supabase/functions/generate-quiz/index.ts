@@ -27,45 +27,83 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Structured logging with unique request id
+  const reqId = (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8);
+  const t0 = Date.now();
+  const log = (
+    level: 'info' | 'warn' | 'error',
+    step: string,
+    data: Record<string, unknown> = {}
+  ) => {
+    const payload = {
+      reqId,
+      fn: 'generate-quiz',
+      step,
+      level,
+      elapsed_ms: Date.now() - t0,
+      ...data,
+    };
+    const line = JSON.stringify(payload);
+    if (level === 'error') console.error(line);
+    else if (level === 'warn') console.warn(line);
+    else console.log(line);
+  };
+
+  log('info', 'request.start', { method: req.method });
+
   try {
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      log('warn', 'auth.missing_header');
+      return new Response(JSON.stringify({ error: 'Unauthorized', reqId }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const supabaseClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      log('warn', 'auth.invalid', { error: userError?.message });
+      return new Response(JSON.stringify({ error: 'Unauthorized', reqId }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    log('info', 'auth.ok', { userId: user.id });
 
     if (!checkRateLimit(user.id)) {
-      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.' }), {
+      log('warn', 'rate_limit.exceeded', { userId: user.id });
+      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.', reqId }), {
         status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const { imageBase64, extractedText, noteId, subjectId } = await req.json();
+    log('info', 'request.parsed', {
+      noteId,
+      subjectId,
+      hasExtractedText: !!extractedText,
+      extractedTextLen: extractedText?.length ?? 0,
+      hasImageBase64: !!imageBase64,
+      imageBase64Kind: imageBase64?.startsWith?.('data:')
+        ? 'data-url'
+        : imageBase64?.startsWith?.('http')
+          ? 'http-url'
+          : imageBase64 ? 'base64' : 'none',
+    });
 
     if (!imageBase64 && !extractedText) {
+      log('warn', 'validation.no_content');
       return new Response(
-        JSON.stringify({ error: 'Image or extracted text is required' }),
+        JSON.stringify({ error: 'Image or extracted text is required', reqId }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
+      log('error', 'config.missing_api_key');
       return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
+        JSON.stringify({ error: 'AI service not configured', reqId }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Generating QCM from content...');
-    console.log('Has extractedText:', !!extractedText);
-    console.log('Has imageBase64:', !!imageBase64);
 
     const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de 5 questions à choix multiples.
 
