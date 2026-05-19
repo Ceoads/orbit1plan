@@ -121,7 +121,7 @@ export const DocumentViewer = ({
           }}
         >
           {isPdf ? (
-            <PdfPagesViewer fileUrl={fileUrl} />
+            <PdfPagesViewer fileUrl={fileUrl} scrollRoot={compactScrollRef} />
           ) : (
             <div className="relative min-h-full">
               <img
