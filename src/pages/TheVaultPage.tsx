@@ -19,6 +19,8 @@ import {
   Camera,
   PenLine,
   Upload,
+  Clock,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddSubjectModal } from "@/components/modals";
