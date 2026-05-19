@@ -154,14 +154,17 @@ Règles:
 
     // PRIORITY: Use extractedText if available (more reliable than image processing)
     if (extractedText && extractedText.length > 50) {
-      console.log('Using text mode with extracted content');
+      log('info', 'content.mode', { mode: 'text', length: extractedText.length });
       messages.push({
         role: 'user',
         content: `Génère un QCM de 5 questions basé sur ce contenu de cours:\n\n${extractedText}`
       });
     } else if (isValidBase64) {
-      // Use base64 image if it's valid
-      console.log('Using image mode with base64');
+      log('info', 'content.mode', {
+        mode: 'image-base64',
+        hasDataPrefix: imageBase64.startsWith('data:'),
+        approxBytes: Math.round((imageBase64.length * 3) / 4),
+      });
       messages.push({
         role: 'user',
         content: [
@@ -177,19 +180,36 @@ Règles:
     } else if (isUrl) {
       // Fetch the file and convert to data URL — Gemini doesn't accept arbitrary URLs
       // and only accepts PNG/JPEG/WebP/GIF as images. PDFs must be inlined as application/pdf.
-      console.log('Fetching remote file to inline as data URL');
+      log('info', 'fetch.start', { url: imageBase64.slice(0, 120) });
+      const fetchT0 = Date.now();
       try {
         const fileRes = await fetch(imageBase64);
+        log('info', 'fetch.response', {
+          status: fileRes.status,
+          ok: fileRes.ok,
+          contentType: fileRes.headers.get('content-type'),
+          contentLength: fileRes.headers.get('content-length'),
+          duration_ms: Date.now() - fetchT0,
+        });
         if (!fileRes.ok) throw new Error(`fetch ${fileRes.status}`);
-        const contentType = fileRes.headers.get('content-type') ||
+        const headerCt = fileRes.headers.get('content-type');
+        const contentType = headerCt ||
           (imageBase64.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg');
         const buf = new Uint8Array(await fileRes.arrayBuffer());
-        // base64 encode
+
+        const encT0 = Date.now();
         let binary = '';
         for (let i = 0; i < buf.length; i++) binary += String.fromCharCode(buf[i]);
         const b64 = btoa(binary);
         const dataUrl = `data:${contentType};base64,${b64}`;
-        console.log('Inlined file as', contentType, 'size:', buf.length);
+        log('info', 'base64.encoded', {
+          contentType,
+          inferredFromHeader: !!headerCt,
+          bytes: buf.length,
+          base64Len: b64.length,
+          duration_ms: Date.now() - encT0,
+        });
+
         messages.push({
           role: 'user',
           content: [
@@ -198,56 +218,64 @@ Règles:
           ],
         });
       } catch (e) {
-        console.error('Failed to inline remote file:', e);
+        log('error', 'fetch.failed', {
+          error: e instanceof Error ? e.message : String(e),
+          duration_ms: Date.now() - fetchT0,
+        });
         return new Response(
-          JSON.stringify({ error: 'Impossible de récupérer le document. Réessaie après extraction OCR.' }),
+          JSON.stringify({ error: 'Impossible de récupérer le document. Réessaie après extraction OCR.', reqId }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
     } else {
-      // Fallback to text if nothing valid
-      console.log('Fallback: no valid content');
+      log('warn', 'content.invalid');
       return new Response(
-        JSON.stringify({ error: 'No valid content provided' }),
+        JSON.stringify({ error: 'No valid content provided', reqId }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const model = 'google/gemini-2.5-flash';
+    log('info', 'ai.request', { model, messages: messages.length });
+    const aiT0 = Date.now();
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages,
-      }),
+      body: JSON.stringify({ model, messages }),
+    });
+    log('info', 'ai.response', {
+      status: response.status,
+      ok: response.ok,
+      duration_ms: Date.now() - aiT0,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
-      
+      log('error', 'ai.error', { status: response.status, body: errorText.slice(0, 500) });
+
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.', reqId }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }),
+          JSON.stringify({ error: 'AI credits exhausted. Please add funds.', reqId }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
+
       return new Response(
-        JSON.stringify({ error: 'Failed to generate quiz' }),
+        JSON.stringify({ error: 'Failed to generate quiz', reqId }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
