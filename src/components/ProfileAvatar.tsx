@@ -41,12 +41,28 @@ export function useCurrentProfile() {
       .then(({ data }) => {
         if (!cancelled) setProfile((data as any) || { avatar_url: null, display_name: null });
       });
+
+    const onUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail as Partial<{ avatar_url: string | null; display_name: string | null }>;
+      if (!detail) return;
+      setProfile(prev => ({
+        avatar_url: detail.avatar_url !== undefined ? detail.avatar_url : (prev?.avatar_url ?? null),
+        display_name: detail.display_name !== undefined ? detail.display_name : (prev?.display_name ?? null),
+      }));
+    };
+    window.addEventListener("profile:updated", onUpdate);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("profile:updated", onUpdate);
     };
   }, [user?.id]);
 
   return { profile, email: user?.email ?? null };
+}
+
+export function emitProfileUpdated(detail: Partial<{ avatar_url: string | null; display_name: string | null }>) {
+  window.dispatchEvent(new CustomEvent("profile:updated", { detail }));
 }
 
 export const ProfileAvatar = ({

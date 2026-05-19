@@ -18,7 +18,7 @@ import {
   MapPin, Navigation, QrCode, Play, Sparkles, ChevronsUpDown, X,
   ChevronRight, LogOut, Shield, RotateCcw, HelpCircle, Camera
 } from "lucide-react";
-import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { ProfileAvatar, emitProfileUpdated } from "@/components/ProfileAvatar";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -350,6 +350,7 @@ const SettingsPage = () => {
       const { error: updErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('user_id', user.id);
       if (updErr) throw updErr;
       setProfile(p => ({ ...p, avatar_url: url }));
+      emitProfileUpdated({ avatar_url: url });
       toast.success("Photo mise à jour !");
     } catch (e: any) {
       console.error(e);
@@ -368,6 +369,7 @@ const SettingsPage = () => {
       const { error } = await supabase.from('profiles').update({ display_name: trimmed }).eq('user_id', user.id);
       if (error) throw error;
       setProfile(p => ({ ...p, display_name: trimmed }));
+      emitProfileUpdated({ display_name: trimmed });
       toast.success("Nom mis à jour !");
     } catch (e: any) {
       console.error(e);
