@@ -201,10 +201,18 @@ Règles:
       | { kind: 'inline'; mime: string; b64: string; label?: string };
 
     const payloads: Payload[] = [];
+    // Debug metadata accumulator
+    const segmentsMeta: any[] = [];
+    let sourceKind: string = 'none';
+    let sourceMime: string | null = null;
+    let originalBytes: number | null = null;
 
     if (extractedText && extractedText.length > 50) {
       log('info', 'content.mode', { mode: 'text', length: extractedText.length });
       payloads.push({ kind: 'text', text: extractedText });
+      sourceKind = 'text';
+      originalBytes = extractedText.length;
+      segmentsMeta.push({ idx: 0, kind: 'text', length: extractedText.length });
     } else if (imageBase64) {
       // 1. Normalize source -> raw bytes + mime
       let bytes: Uint8Array;
@@ -217,6 +225,7 @@ Règles:
         }
         mime = m[1];
         bytes = b64ToBytes(m[2]);
+        sourceKind = 'data-url';
       } else if (imageBase64.startsWith('http')) {
         log('info', 'fetch.start', { url: imageBase64.slice(0, 120) });
         const fetchT0 = Date.now();
@@ -228,10 +237,14 @@ Règles:
         const headerCt = fileRes.headers.get('content-type');
         mime = headerCt || (imageBase64.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg');
         bytes = new Uint8Array(await fileRes.arrayBuffer());
+        sourceKind = 'http-url';
         log('info', 'fetch.response', { status: fileRes.status, mime, bytes: bytes.length, duration_ms: Date.now() - fetchT0 });
       } else {
         bytes = b64ToBytes(imageBase64);
+        sourceKind = 'base64';
       }
+      sourceMime = mime;
+      originalBytes = bytes.byteLength;
 
       if (bytes.byteLength > HARD_MAX_BYTES * 3) {
         return new Response(JSON.stringify({ error: `Document beaucoup trop volumineux (${(bytes.byteLength/1024/1024).toFixed(1)} Mo).`, reqId }), { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -246,15 +259,17 @@ Règles:
             const seg = segs[i];
             if (seg.byteLength > HARD_MAX_BYTES) {
               log('warn', 'pdf.segment.too_large', { idx: i, bytes: seg.byteLength });
+              segmentsMeta.push({ idx: i, kind: 'pdf', label: `partie ${i + 1}/${segs.length}`, bytes: seg.byteLength, skipped: 'too_large' });
               continue;
             }
             payloads.push({ kind: 'inline', mime: 'application/pdf', b64: bytesToB64(seg), label: `partie ${i + 1}/${segs.length}` });
+            segmentsMeta.push({ idx: i, kind: 'pdf', label: `partie ${i + 1}/${segs.length}`, bytes: seg.byteLength, mime: 'application/pdf' });
           }
         } catch (e) {
           log('error', 'pdf.split.failed', { error: e instanceof Error ? e.message : String(e) });
-          // Fallback: send raw if under limit
           if (bytes.byteLength <= HARD_MAX_BYTES) {
             payloads.push({ kind: 'inline', mime, b64: bytesToB64(bytes) });
+            segmentsMeta.push({ idx: 0, kind: 'pdf', bytes: bytes.byteLength, mime, splitFailed: true });
           } else {
             return new Response(JSON.stringify({ error: 'PDF illisible ou trop volumineux.', reqId }), { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
@@ -273,12 +288,19 @@ Règles:
             quality: compressed.quality,
           });
           payloads.push({ kind: 'inline', mime: compressed.mime, b64: bytesToB64(compressed.bytes) });
+          segmentsMeta.push({
+            idx: 0, kind: 'image', mime: compressed.mime,
+            originalBytes: bytes.byteLength, compressedBytes: compressed.bytes.byteLength,
+            width: compressed.width, height: compressed.height, quality: compressed.quality,
+          });
         } catch (e) {
           log('error', 'image.compress.failed', { error: e instanceof Error ? e.message : String(e) });
           payloads.push({ kind: 'inline', mime, b64: bytesToB64(bytes) });
+          segmentsMeta.push({ idx: 0, kind: 'image', mime, bytes: bytes.byteLength, compressionFailed: true });
         }
       } else {
         payloads.push({ kind: 'inline', mime, b64: bytesToB64(bytes) });
+        segmentsMeta.push({ idx: 0, kind: 'unknown', mime, bytes: bytes.byteLength });
       }
     } else {
       return new Response(JSON.stringify({ error: 'No valid content provided', reqId }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -287,6 +309,7 @@ Règles:
     log('info', 'payloads.ready', { count: payloads.length });
 
     // ---------- Generate per-segment quizzes ----------
+    // Track each candidate question's source segment for debug
     const allQuestions: any[] = [];
     let titleHint = '';
 
@@ -306,43 +329,77 @@ Règles:
       ];
 
       log('info', 'ai.request', { segment: i + 1, of: payloads.length, kind: p.kind });
+      const aiT0 = Date.now();
       const res = await callAI(LOVABLE_API_KEY, messages, log);
+      const segMetaEntry = segmentsMeta.find((s) => s.idx === i) || segmentsMeta[i];
+      if (segMetaEntry) {
+        segMetaEntry.ai_duration_ms = Date.now() - aiT0;
+        segMetaEntry.ai_ok = res.ok;
+      }
       if (!res.ok) {
+        if (segMetaEntry) segMetaEntry.ai_status = res.status;
         if (res.status === 429) return new Response(JSON.stringify({ error: 'Rate limit exceeded.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         if (res.status === 402) return new Response(JSON.stringify({ error: 'AI credits exhausted.', reqId }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        // Skip failed segment, continue
         continue;
       }
       const quiz = parseQuiz(res.content);
       if (quiz?.questions?.length) {
         if (!titleHint && quiz.title) titleHint = quiz.title;
-        allQuestions.push(...quiz.questions);
+        // Tag each candidate with its source segment idx
+        for (const q of quiz.questions) {
+          allQuestions.push({ ...q, _src: i, _srcLabel: p.kind === 'text' ? 'text' : (p.label || `segment ${i + 1}`) });
+        }
+        if (segMetaEntry) segMetaEntry.questions_returned = quiz.questions.length;
         log('info', 'segment.parsed', { segment: i + 1, questions: quiz.questions.length });
       } else {
+        if (segMetaEntry) segMetaEntry.questions_returned = 0;
         log('warn', 'segment.empty', { segment: i + 1 });
       }
     }
 
     if (allQuestions.length === 0) {
+      // Persist debug even on failure
+      try {
+        await supabaseClient.from('quiz_debug_runs').insert({
+          user_id: user.id, req_id: reqId, note_id: noteId ?? null, subject_id: subjectId ?? null,
+          source_kind: sourceKind, source_mime: sourceMime, original_bytes: originalBytes,
+          segments_count: payloads.length, segments: segmentsMeta,
+          candidate_questions_count: 0, merge_used: false, final_questions: [],
+          total_duration_ms: Date.now() - t0, error: 'no_questions_generated',
+        });
+      } catch (e) { log('warn', 'debug.persist.failed', { error: e instanceof Error ? e.message : String(e) }); }
       return new Response(JSON.stringify({ error: 'No quiz generated', quiz: null, reqId }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // ---------- Merge to final 5 questions ----------
     let finalQuiz: { title: string; questions: any[] };
+    let mergeUsed = false;
+    const finalWithSource: any[] = [];
+
     if (payloads.length === 1 || allQuestions.length <= 5) {
+      const picked = allQuestions.slice(0, 5);
       finalQuiz = {
         title: titleHint || 'Quiz',
-        questions: allQuestions.slice(0, 5).map((q, idx) => ({ ...q, id: idx + 1 })),
+        questions: picked.map((q, idx) => {
+          const { _src, _srcLabel, ...rest } = q;
+          return { ...rest, id: idx + 1 };
+        }),
       };
+      picked.forEach((q, idx) => finalWithSource.push({
+        id: idx + 1, question: q.question, source_segment_idx: q._src, source_label: q._srcLabel,
+      }));
       log('info', 'merge.shortcut', { kept: finalQuiz.questions.length });
     } else {
-      const mergePrompt = `Voici plusieurs QCM générés à partir de segments d'un même document. Sélectionne et reformule les 5 MEILLEURES questions couvrant les thèmes clés (variées, non redondantes). Garde la langue d'origine.
+      mergeUsed = true;
+      // Include _src so model can echo it back
+      const candidatesForMerge = allQuestions.map((q, idx) => ({ _cid: idx, _src: q._src, ...q }));
+      const mergePrompt = `Voici plusieurs QCM générés à partir de segments d'un même document. Sélectionne et reformule les 5 MEILLEURES questions couvrant les thèmes clés (variées, non redondantes). Garde la langue d'origine. Pour chaque question retenue, conserve son champ "_src" indiquant le segment source.
 
 Questions candidates (JSON):
-${JSON.stringify(allQuestions).slice(0, 12000)}
+${JSON.stringify(candidatesForMerge).slice(0, 12000)}
 
 Retourne UNIQUEMENT le JSON final:
-{"quiz":{"title":"...","questions":[{"id":1,"question":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."}]}}`;
+{"quiz":{"title":"...","questions":[{"id":1,"_src":0,"question":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."}]}}`;
 
       log('info', 'merge.request', { candidates: allQuestions.length });
       const merged = await callAI(LOVABLE_API_KEY, [
@@ -352,23 +409,66 @@ Retourne UNIQUEMENT le JSON final:
 
       const mergedQuiz = merged.ok ? parseQuiz(merged.content) : null;
       if (mergedQuiz?.questions?.length) {
+        const picked = mergedQuiz.questions.slice(0, 5);
         finalQuiz = {
           title: mergedQuiz.title || titleHint || 'Quiz',
-          questions: mergedQuiz.questions.slice(0, 5).map((q: any, idx: number) => ({ ...q, id: idx + 1 })),
+          questions: picked.map((q: any, idx: number) => {
+            const { _src, _cid, _srcLabel, ...rest } = q;
+            return { ...rest, id: idx + 1 };
+          }),
         };
+        picked.forEach((q: any, idx: number) => {
+          const src = typeof q._src === 'number'
+            ? q._src
+            : (allQuestions.find((c) => c.question === q.question)?._src ?? null);
+          finalWithSource.push({
+            id: idx + 1, question: q.question, source_segment_idx: src,
+            source_label: src != null ? (segmentsMeta[src]?.label || `segment ${src + 1}`) : null,
+          });
+        });
       } else {
         log('warn', 'merge.failed.fallback');
+        const picked = allQuestions.slice(0, 5);
         finalQuiz = {
           title: titleHint || 'Quiz',
-          questions: allQuestions.slice(0, 5).map((q, idx) => ({ ...q, id: idx + 1 })),
+          questions: picked.map((q, idx) => {
+            const { _src, _srcLabel, ...rest } = q;
+            return { ...rest, id: idx + 1 };
+          }),
         };
+        picked.forEach((q, idx) => finalWithSource.push({
+          id: idx + 1, question: q.question, source_segment_idx: q._src, source_label: q._srcLabel,
+        }));
       }
+    }
+
+    // ---------- Persist debug run ----------
+    try {
+      await supabaseClient.from('quiz_debug_runs').insert({
+        user_id: user.id,
+        req_id: reqId,
+        note_id: noteId ?? null,
+        subject_id: subjectId ?? null,
+        source_kind: sourceKind,
+        source_mime: sourceMime,
+        original_bytes: originalBytes,
+        segments_count: payloads.length,
+        segments: segmentsMeta,
+        candidate_questions_count: allQuestions.length,
+        merge_used: mergeUsed,
+        final_questions: finalWithSource,
+        total_duration_ms: Date.now() - t0,
+      });
+      log('info', 'debug.persisted', { segments: segmentsMeta.length, finals: finalWithSource.length });
+    } catch (e) {
+      log('warn', 'debug.persist.failed', { error: e instanceof Error ? e.message : String(e) });
     }
 
     log('info', 'request.success', { questions: finalQuiz.questions.length, segments: payloads.length });
     return new Response(JSON.stringify({ quiz: finalQuiz, noteId, subjectId, reqId }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
 
   } catch (error) {
     log('error', 'request.unhandled', {
