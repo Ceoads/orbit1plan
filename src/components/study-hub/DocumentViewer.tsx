@@ -203,55 +203,75 @@ export const DocumentViewer = ({
                 <X className="w-6 h-6" />
               </Button>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleZoomOut}
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl text-white hover:bg-white/20 hit-target"
-                  disabled={zoom <= 0.5}
+              {isPdf ? (
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-white text-sm font-medium px-3 py-2 rounded-xl hover:bg-white/20"
                 >
-                  <ZoomOut className="w-5 h-5" />
-                </Button>
-                <span className="text-white text-sm font-medium min-w-[3rem] text-center">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <Button
-                  onClick={handleZoomIn}
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl text-white hover:bg-white/20 hit-target"
-                  disabled={zoom >= 3}
-                >
-                  <ZoomIn className="w-5 h-5" />
-                </Button>
-                <Button
-                  onClick={handleRotate}
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl text-white hover:bg-white/20 hit-target"
-                >
-                  <RotateCw className="w-5 h-5" />
-                </Button>
-              </div>
+                  <ExternalLink className="w-4 h-4" />
+                  Onglet
+                </a>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleZoomOut}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-xl text-white hover:bg-white/20 hit-target"
+                    disabled={zoom <= 0.5}
+                  >
+                    <ZoomOut className="w-5 h-5" />
+                  </Button>
+                  <span className="text-white text-sm font-medium min-w-[3rem] text-center">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <Button
+                    onClick={handleZoomIn}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-xl text-white hover:bg-white/20 hit-target"
+                    disabled={zoom >= 3}
+                  >
+                    <ZoomIn className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    onClick={handleRotate}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-xl text-white hover:bg-white/20 hit-target"
+                  >
+                    <RotateCw className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {/* Image container with zoom and pan */}
-            <div className="absolute inset-0 flex items-center justify-center overflow-auto">
-              <motion.img
-                layoutId="document-viewer"
-                src={fileUrl}
-                alt={fileName}
-                className="max-w-none"
-                style={{
-                  transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                  transition: 'transform 0.2s ease-out',
-                }}
-                drag
-                dragConstraints={{ left: -500, right: 500, top: -500, bottom: 500 }}
-                dragElastic={0.1}
-              />
-            </div>
+            {/* Content */}
+            {isPdf ? (
+              <div className="absolute inset-0 pt-20 pb-6 px-3 overflow-auto overscroll-contain">
+                <div className="max-w-3xl mx-auto">
+                  <PdfPagesViewer fileUrl={fileUrl} />
+                </div>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center overflow-auto">
+                <motion.img
+                  layoutId="document-viewer"
+                  src={fileUrl}
+                  alt={fileName}
+                  className="max-w-none"
+                  style={{
+                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                    transition: 'transform 0.2s ease-out',
+                  }}
+                  drag
+                  dragConstraints={{ left: -500, right: 500, top: -500, bottom: 500 }}
+                  dragElastic={0.1}
+                />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
