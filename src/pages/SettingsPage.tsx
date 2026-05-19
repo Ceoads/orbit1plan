@@ -13,11 +13,12 @@ import { IOSBackButton } from "@/components/IOSBackButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
-  ArrowLeft, Calendar, RefreshCw, Check, 
+  ArrowLeft, Calendar, RefreshCw, Check,
   Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
   MapPin, Navigation, QrCode, Play, Sparkles, ChevronsUpDown, X,
-  ChevronRight, LogOut, Shield, RotateCcw, HelpCircle
+  ChevronRight, LogOut, Shield, RotateCcw, HelpCircle, Camera
 } from "lucide-react";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -291,17 +292,18 @@ const SettingsPage = () => {
   const [savingCampus, setSavingCampus] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null }>({ display_name: null, avatar_url: null });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => { fetchSettings(); }, [user]);
 
   const fetchSettings = async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const [{ data, error }, { data: prof }] = await Promise.all([
+        supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('display_name, avatar_url').eq('user_id', user.id).maybeSingle(),
+      ]);
       if (error) throw error;
       if (data) {
         setSettings(data as UserSettings);
@@ -309,12 +311,49 @@ const SettingsPage = () => {
         setFilterGroup(data.ical_filter_group || "");
         setCampusNameInput(data.campus_name || "");
       }
+      if (prof) setProfile({ display_name: (prof as any).display_name ?? null, avatar_url: (prof as any).avatar_url ?? null });
     } catch (error: any) {
       console.error('Error fetching settings:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error("Choisis une image");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image trop grande (max 5 Mo)");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
+        upsert: true, contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = pub.publicUrl;
+      const { error: updErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('user_id', user.id);
+      if (updErr) throw updErr;
+      setProfile(p => ({ ...p, avatar_url: url }));
+      toast.success("Photo mise à jour !");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Échec de l'upload");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const primaryGroupLabel = filterGroup
+    ? filterGroup.split(',').map(s => s.trim()).filter(Boolean).slice(0, 2).join(' · ')
+    : (user?.email || '');
 
   const scanForGroups = async () => {
     if (!icalUrl) return;
@@ -467,14 +506,51 @@ const SettingsPage = () => {
       <header className="fixed top-0 left-0 right-0 z-40 bg-secondary/70 backdrop-blur-2xl border-b border-border/30">
         <div className="max-w-lg mx-auto px-4 h-[52px] flex items-center gap-3">
           <IOSBackButton fallback="/" />
-          <h1 className="flex-1 text-center text-[17px] font-semibold text-foreground -mr-12">Paramètres</h1>
+          <h1 className="flex-1 text-center text-[17px] font-semibold text-foreground -mr-12">Profil</h1>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-[68px] pb-safe" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 2rem)' }}>
 
-        {/* ──── CALENDRIER ──── */}
-        <IOSSectionHeader label="Calendrier" />
+        {/* ──── HERO PROFIL ──── */}
+        <div className="mt-2 mb-2 bg-card rounded-3xl shadow-soft p-5 flex items-center gap-4">
+          <label className="relative cursor-pointer group" aria-label="Changer la photo de profil">
+            <ProfileAvatar
+              size={64}
+              avatarUrl={profile.avatar_url}
+              displayName={profile.display_name}
+              email={user?.email}
+            />
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity flex items-center justify-center">
+              {uploadingAvatar
+                ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                : <Camera className="w-5 h-5 text-white" />}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingAvatar}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleAvatarUpload(f);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <div className="min-w-0 flex-1">
+            <p className="text-[17px] font-semibold text-foreground truncate"
+               style={{ fontFamily: 'Outfit, system-ui, sans-serif' }}>
+              {profile.display_name || user?.email?.split('@')[0] || 'Étudiant'}
+            </p>
+            <p className="text-[13px] text-muted-foreground truncate mt-0.5">
+              {primaryGroupLabel || 'Pas de groupe configuré'}
+            </p>
+          </div>
+        </div>
+
+        {/* ──── EMPLOI DU TEMPS ──── */}
+        <IOSSectionHeader label="Emploi du temps" />
         <IOSCard>
           {/* URL iCal input area */}
           <div className="px-4 pt-3 pb-3 space-y-2.5">
@@ -559,30 +635,8 @@ const SettingsPage = () => {
           </div>
         </IOSCard>
 
-        {/* Sync status details */}
-        {(settings?.last_synced_at || filterGroup) && (
-          <>
-            <IOSSectionHeader label="Statut" />
-            <IOSCard>
-              {settings?.last_synced_at && (
-                <IOSDetailRow
-                  label="Dernière synchro"
-                  value={new Date(settings.last_synced_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                />
-              )}
-              {filterGroup && (
-                <IOSDetailRow
-                  label="Filtre actif"
-                  value={filterGroup}
-                  last={true}
-                />
-              )}
-            </IOSCard>
-          </>
-        )}
-
-        {/* Sync options */}
-        <IOSSectionHeader label="Synchronisation" />
+        {/* ──── BLOC 2 : Automatisation & Statut ──── */}
+        <IOSSectionHeader label="Automatisation & Statut" />
         <IOSCard>
           <IOSRow
             icon={RefreshCw}
@@ -597,32 +651,64 @@ const SettingsPage = () => {
             label="Resynchroniser maintenant"
             last
             onClick={syncing ? undefined : handleSync}
-            action={
-              syncing ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : undefined
-            }
+            action={syncing ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : undefined}
+          />
+        </IOSCard>
+        {settings?.last_synced_at && (
+          <p className="px-5 mt-1.5 text-[11px] text-muted-foreground/80"
+             style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}>
+            Dernière synchro : {new Date(settings.last_synced_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
+
+        {/* ──── BLOC 3 : Fonctionnalités intelligentes ──── */}
+        <IOSSectionHeader label="Fonctionnalités intelligentes" />
+        <IOSCard>
+          <IOSRow icon={Users} iconBg="bg-physics" label="Filtrage par groupe TP / TD" />
+          <IOSRow icon={BookOpen} iconBg="bg-warning" label="Détection auto des examens" />
+          <IOSRow icon={MapPin} iconBg="bg-success" label="Extraction des salles" />
+          <IOSRow
+            icon={RotateCcw}
+            iconBg="bg-muted-foreground/70"
+            label="Réinitialiser le Vault"
+            detail="Relancer la configuration des matières"
+            last
+            onClick={async () => {
+              if (!user) return;
+              if (!confirm("Réinitialiser le Vault ? Tu pourras reconfigurer tes matières.")) return;
+              try {
+                await supabase.from('vault_files').delete().eq('user_id', user.id);
+                await supabase.from('subjects').delete().eq('user_id', user.id).in('icon', ['COURS', 'SAE']);
+                const { data: prof } = await supabase.from('profiles').select('preferences').eq('user_id', user.id).single();
+                const prefs = (prof?.preferences as any) || {};
+                delete prefs.vault_initialized;
+                await supabase.from('profiles').update({ preferences: prefs }).eq('user_id', user.id);
+                toast.success("Vault réinitialisé. Retourne dans le Vault pour reconfigurer.");
+              } catch (e) {
+                console.error(e);
+                toast.error("Erreur lors de la réinitialisation");
+              }
+            }}
           />
         </IOSCard>
 
-        {/* ──── CAMPUS ──── */}
-        <IOSSectionHeader label="Localisation" />
+        {/* ──── BLOC 4 : Support & Tutoriels ──── */}
+        <IOSSectionHeader label="Support & Tutoriels" />
         <IOSCard>
           {hasCampusConfigured ? (
-            <>
-              <IOSRow
-                icon={MapPin}
-                iconBg="bg-success"
-                label={campusName || 'Campus configuré'}
-                detail={isOnCampus ? 'Sur le campus' : 'Hors campus'}
-                last
-                action={
-                  <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${isOnCampus ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>
-                    {isOnCampus ? '📍 Actif' : '🏠 Inactif'}
-                  </span>
-                }
-              />
-            </>
+            <IOSRow
+              icon={MapPin}
+              iconBg="bg-success"
+              label={campusName || 'Campus configuré'}
+              detail={isOnCampus ? 'Sur le campus' : 'Hors campus'}
+              action={
+                <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${isOnCampus ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>
+                  {isOnCampus ? '📍 Actif' : '🏠 Inactif'}
+                </span>
+              }
+            />
           ) : (
-            <div className="p-4 space-y-3">
+            <div className="px-4 py-3 space-y-2.5 border-b border-border/30">
               <p className="text-[13px] text-muted-foreground">Configure la position de ton campus pour le mode intelligent.</p>
               <Input
                 placeholder="Nom du campus"
@@ -647,11 +733,6 @@ const SettingsPage = () => {
               </Button>
             </div>
           )}
-        </IOSCard>
-
-        {/* ──── TUTORIEL ──── */}
-        <IOSSectionHeader label="Tutoriel" />
-        <IOSCard>
           <IOSRow
             icon={Play}
             iconBg="bg-primary"
@@ -686,59 +767,15 @@ const SettingsPage = () => {
           />
         </IOSCard>
 
-        {/* ──── AIDE ──── */}
-        <IOSSectionHeader label="À propos" />
-        <IOSCard>
-          <IOSRow icon={Calendar} iconBg="bg-primary/80" label="Import auto de l'emploi du temps" last={false} />
-          <IOSRow icon={Users} iconBg="bg-physics" label="Filtrage par groupe TP / TD" last={false} />
-          <IOSRow icon={BookOpen} iconBg="bg-warning" label="Détection auto des examens" last={false} />
-          <IOSRow icon={MapPin} iconBg="bg-success" label="Extraction des salles" last />
-        </IOSCard>
-
-        {/* ──── VAULT ──── */}
-        <IOSSectionHeader label="Vault" />
-        <IOSCard className="mb-3">
-          <IOSRow
-            icon={RotateCcw}
-            iconBg="bg-warning"
-            label="Réinitialiser le Vault"
-            detail="Relancer la configuration des matières"
-            last
-            onClick={async () => {
-              if (!user) return;
-              if (!confirm("Réinitialiser le Vault ? Tu pourras reconfigurer tes matières.")) return;
-              try {
-                await supabase.from('vault_files').delete().eq('user_id', user.id);
-                // Remove vault subjects (icon = COURS or SAE)
-                await supabase.from('subjects').delete().eq('user_id', user.id).in('icon', ['COURS', 'SAE']);
-                // Reset vault_initialized flag
-                const { data: profile } = await supabase.from('profiles').select('preferences').eq('user_id', user.id).single();
-                const prefs = (profile?.preferences as any) || {};
-                delete prefs.vault_initialized;
-                await supabase.from('profiles').update({ preferences: prefs }).eq('user_id', user.id);
-                toast.success("Vault réinitialisé. Retourne dans le Vault pour reconfigurer.");
-              } catch (e) {
-                console.error(e);
-                toast.error("Erreur lors de la réinitialisation");
-              }
-            }}
-          />
-        </IOSCard>
-
-        {/* ──── COMPTE ──── */}
-        <IOSSectionHeader label="Compte" />
+        {/* ──── BLOC 5 : Zone de danger ──── */}
+        <IOSSectionHeader label="Zone de danger" />
         <IOSCard className="mb-3">
           <IOSRow
             icon={LogOut}
             iconBg="bg-muted-foreground"
             label="Se déconnecter"
-            last
             onClick={signOut}
           />
-        </IOSCard>
-
-        {/* Danger zone — separate red-tinted card */}
-        <IOSCard className="mb-8 bg-destructive/[0.04]">
           <IOSRow
             icon={Trash2}
             iconBg="bg-destructive"
@@ -748,6 +785,17 @@ const SettingsPage = () => {
             onClick={handleClearData}
           />
         </IOSCard>
+
+        {/* ──── FOOTER ──── */}
+        <div className="mt-6 mb-2 text-center space-y-1 text-[11px] text-muted-foreground/70"
+             style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}>
+          <p>
+            <button className="hover:text-foreground transition-colors" onClick={() => toast.info("Aide bientôt disponible")}>Aide &amp; Support</button>
+            <span className="mx-2">·</span>
+            <button className="hover:text-foreground transition-colors" onClick={() => toast.info("Politique de confidentialité bientôt disponible")}>Politique de confidentialité</button>
+          </p>
+          <p>Orbit OS — v1.0.0 (Production)</p>
+        </div>
 
       </main>
 
