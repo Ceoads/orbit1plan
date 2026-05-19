@@ -865,6 +865,14 @@ const SettingsPage = () => {
           onClose={() => setShowQRScanner(false)}
         />
       )}
+
+      <AvatarCropDialog
+        open={cropOpen}
+        imageSrc={cropSrc}
+        saving={uploadingAvatar}
+        onClose={() => { setCropOpen(false); setCropSrc(null); }}
+        onConfirm={handleCroppedUpload}
+      />
     </div>
   );
 };
