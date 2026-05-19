@@ -397,6 +397,27 @@ const SettingsPage = () => {
     }
   };
 
+  const handleDeleteAvatar = async () => {
+    if (!user) return;
+    if (!confirm("Supprimer ta photo de profil ?")) return;
+    try {
+      if (profile.avatar_url) {
+        const path = profile.avatar_url.split('/avatars/').pop();
+        if (path) {
+          await supabase.storage.from('avatars').remove([path]);
+        }
+      }
+      const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('user_id', user.id);
+      if (error) throw error;
+      setProfile(p => ({ ...p, avatar_url: null }));
+      emitProfileUpdated({ avatar_url: null });
+      toast.success("Photo supprimée");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Échec de la suppression");
+    }
+  };
+
   const primaryGroupLabel = filterGroup
     ? filterGroup.split(',').map(s => s.trim()).filter(Boolean).slice(0, 2).join(' · ')
     : (user?.email || '');
@@ -560,30 +581,41 @@ const SettingsPage = () => {
 
         {/* ──── HERO PROFIL ──── */}
         <div className="mt-2 mb-2 bg-card rounded-3xl shadow-soft p-5 flex items-center gap-4">
-          <label className="relative cursor-pointer group" aria-label="Changer la photo de profil">
-            <ProfileAvatar
-              size={64}
-              avatarUrl={profile.avatar_url}
-              displayName={profile.display_name}
-              email={user?.email}
-            />
-            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity flex items-center justify-center">
-              {uploadingAvatar
-                ? <Loader2 className="w-5 h-5 text-white animate-spin" />
-                : <Camera className="w-5 h-5 text-white" />}
-            </div>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={uploadingAvatar}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleAvatarPick(f);
-                e.target.value = '';
-              }}
-            />
-          </label>
+          <div className="relative shrink-0">
+            <label className="block relative cursor-pointer group" aria-label="Changer la photo de profil">
+              <ProfileAvatar
+                size={64}
+                avatarUrl={profile.avatar_url}
+                displayName={profile.display_name}
+                email={user?.email}
+              />
+              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity flex items-center justify-center">
+                {uploadingAvatar
+                  ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  : <Camera className="w-5 h-5 text-white" />}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingAvatar}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleAvatarPick(f);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            {profile.avatar_url && (
+              <button
+                onClick={handleDeleteAvatar}
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center shadow-sm z-10"
+                aria-label="Supprimer la photo"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <input
