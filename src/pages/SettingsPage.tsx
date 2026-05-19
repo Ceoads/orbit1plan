@@ -13,11 +13,12 @@ import { IOSBackButton } from "@/components/IOSBackButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
-  ArrowLeft, Calendar, RefreshCw, Check, 
+  ArrowLeft, Calendar, RefreshCw, Check,
   Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye,
   MapPin, Navigation, QrCode, Play, Sparkles, ChevronsUpDown, X,
-  ChevronRight, LogOut, Shield, RotateCcw, HelpCircle
+  ChevronRight, LogOut, Shield, RotateCcw, HelpCircle, Camera
 } from "lucide-react";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
