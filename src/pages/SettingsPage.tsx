@@ -18,7 +18,7 @@ import {
   MapPin, Navigation, QrCode, Play, Sparkles, ChevronsUpDown, X,
   ChevronRight, LogOut, Shield, RotateCcw, HelpCircle, Camera
 } from "lucide-react";
-import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { ProfileAvatar, emitProfileUpdated } from "@/components/ProfileAvatar";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
