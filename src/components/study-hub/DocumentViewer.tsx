@@ -98,6 +98,8 @@ export const DocumentViewer = ({
     setRotation(prev => (prev + 90) % 360);
   };
 
+  const isPdf = isPdfUrl(fileUrl, fileName);
+
   return (
     <>
       {/* Compact viewer with scroll support */}
@@ -105,68 +107,76 @@ export const DocumentViewer = ({
         layoutId="document-viewer"
         className="relative rounded-2xl overflow-hidden bg-card border border-border shadow-soft"
       >
-        <div 
+        <div
           ref={containerRef}
-          className="aspect-[4/3] relative overflow-auto scroll-smooth"
+          className={cn(
+            "relative overflow-auto scroll-smooth overscroll-contain",
+            isPdf ? "max-h-[70vh] p-3" : "aspect-[4/3]"
+          )}
+          style={{
+            WebkitOverflowScrolling: "touch" as any,
+          }}
         >
-          <div className="relative min-h-full">
-            <img
-              ref={imageRef}
-              src={fileUrl}
-              alt={fileName}
-              className="w-full h-auto object-contain bg-muted/50"
-              loading="eager"
-            />
-            
-            {/* Smart scroll highlight overlay */}
-            <AnimatePresence>
-              {showHighlight && highlightPosition && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ type: "spring", damping: 20 }}
-                  className="absolute left-0 right-0 pointer-events-none"
-                  style={{
-                    top: highlightPosition.y,
-                    height: highlightPosition.height,
-                  }}
-                >
-                  {/* Coral highlight with pulse animation */}
+          {isPdf ? (
+            <PdfPagesViewer fileUrl={fileUrl} />
+          ) : (
+            <div className="relative min-h-full">
+              <img
+                ref={imageRef}
+                src={fileUrl}
+                alt={fileName}
+                className="w-full h-auto object-contain bg-muted/50"
+                loading="eager"
+              />
+
+              {/* Smart scroll highlight overlay */}
+              <AnimatePresence>
+                {showHighlight && highlightPosition && (
                   <motion.div
-                    className="absolute inset-0 bg-primary/20 border-2 border-primary/40 rounded-xl"
-                    animate={{
-                      boxShadow: [
-                        "0 0 0 0 rgba(var(--primary), 0.4)",
-                        "0 0 0 12px rgba(var(--primary), 0)",
-                      ],
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: "spring", damping: 20 }}
+                    className="absolute left-0 right-0 pointer-events-none"
+                    style={{
+                      top: highlightPosition.y,
+                      height: highlightPosition.height,
                     }}
-                    transition={{
-                      duration: 1,
-                      repeat: 2,
-                      ease: "easeOut",
-                    }}
-                  />
-                  
-                  {/* Eye indicator */}
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg"
                   >
-                    <Eye className="w-4 h-4 text-primary-foreground" />
+                    <motion.div
+                      className="absolute inset-0 bg-primary/20 border-2 border-primary/40 rounded-xl"
+                      animate={{
+                        boxShadow: [
+                          "0 0 0 0 rgba(var(--primary), 0.4)",
+                          "0 0 0 12px rgba(var(--primary), 0)",
+                        ],
+                      }}
+                      transition={{
+                        duration: 1,
+                        repeat: 2,
+                        ease: "easeOut",
+                      }}
+                    />
+
+                    <motion.div
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg"
+                    >
+                      <Eye className="w-4 h-4 text-primary-foreground" />
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
           {/* Fullscreen button overlay */}
           <Button
             onClick={handleFullscreen}
             size="icon"
             variant="secondary"
-            className="absolute bottom-3 right-3 rounded-xl bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg hit-target z-10"
+            className="sticky float-right bottom-3 right-3 mr-3 mb-3 rounded-xl bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg hit-target z-10"
           >
             <Maximize2 className="w-5 h-5" />
           </Button>
