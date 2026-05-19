@@ -1,35 +1,69 @@
 ## Objectif
 
-Mémoriser la préférence de vue du Vault (liste/grille) entre les sessions, et confirmer/affiner la recherche OCR temps réel sur toutes les notes.
+Permettre l'import de **plusieurs fichiers d'un coup** dans une matière du Vault (et depuis le bouton global), au lieu d'un seul fichier à la fois.
 
-## 1. Persistance du mode de vue (liste / grille)
+## Problème actuel
 
-Stocker la préférence dans `profiles.preferences` (colonne jsonb déjà existante, déjà lue par TheVaultPage pour `vault_initialized`).
+Les inputs `<input type="file">` du Vault n'ont pas l'attribut `multiple`. À chaque tap "Importer un fichier", on ne peut choisir qu'un seul PDF/doc/image, puis il faut recommencer toute la séquence (menu → upload → OCR → confirmation) pour le suivant. C'est bloquant quand on veut ajouter un cours complet (10 slides, 5 TD, etc.).
 
-Dans `src/pages/TheVaultPage.tsx` :
-- Au montage (dans le `useEffect` qui lit `profiles.preferences`), récupérer `prefs?.vault_view_mode` et l'utiliser comme valeur initiale de `viewMode` (fallback `"list"`).
-- Pour éviter le flash, initialiser `viewMode` à `null` puis n'afficher la liste/grille qu'une fois la préférence chargée (ou garder `"list"` par défaut — flash minime).
-- Lors du clic sur les boutons grille/liste, mettre à jour l'état local **et** persister via `supabase.from("profiles").update({ preferences: { ...prefs, vault_view_mode: mode } }).eq("user_id", user.id)`.
-- Encapsuler dans un petit helper `setAndPersistViewMode(mode)` pour éviter la duplication.
+Les emplacements concernés :
+- `src/components/vault/VaultAddContentMenu.tsx` — bouton "+" dans une matière (fichiers + photos).
+- `src/pages/TheVaultPage.tsx` — FAB global du Vault (fichiers + photos).
+- `src/components/vault/SmartVaultCapture.tsx` — capture intelligente (photos + PDF).
 
-Aucune migration n'est nécessaire : la colonne `preferences jsonb` existe déjà sur `profiles`.
+## Changements
 
-## 2. Recherche OCR temps réel
+### 1. Activer la sélection multiple
 
-La recherche existe déjà :
-- `useVaultData.searchFiles(query)` filtre sur `extracted_text`, `ai_summary` et `tags` (insensible à la casse).
-- L'input dans `TheVaultPage` met à jour `searchQuery` à chaque frappe → filtrage en temps réel, sur **tous** les fichiers de l'utilisateur (pas seulement la matière courante).
-- Le placeholder mentionne déjà l'OCR.
+Ajouter `multiple` à tous les `<input type="file">` d'import (hors capture caméra, qui reste 1 photo à la fois côté natif iOS).
 
-Améliorations légères pour répondre clairement à la demande :
-- S'assurer que cliquer sur la barre de recherche bascule en `isSearchMode` même depuis l'intérieur d'une matière (actuellement bloqué par `!inSubject`), afin que la recherche couvre toujours toutes les notes.
-- Ajouter une mise en évidence du terme recherché dans `VaultFileCard` (surligner les occurrences dans `ai_summary` / extrait OCR) — optionnel mais utile.
-- Afficher un petit compteur "Recherche dans X fichiers OCR" sous la barre quand `isSearchMode` est actif et vide.
+### 2. Traiter le batch en parallèle contrôlé
+
+Dans chaque handler `onChange` :
+- Lire `e.target.files` comme un `FileList` complet (au lieu de `files[0]`).
+- Afficher un toast de progression unique : « Import de X fichiers… » avec un compteur live.
+- Itérer avec une concurrence limitée (3 en parallèle) pour ne pas saturer le réseau / l'OCR.
+- Pour chaque fichier : upload Storage → signed URL → `createFile` → OCR si image.
+- À la fin : toast récap « X fichiers ajoutés • Y en erreur » + un seul `refetch()`.
+
+### 3. UX pendant l'import
+
+- Le bouton "+" reste en état `isProcessing` (loader) jusqu'à la fin du batch.
+- Si un fichier dépasse 20 Mo (limite Supabase Storage), il est sauté avec un toast d'avertissement nommant le fichier.
+- L'auto-filing AI (suggestion de matière) ne s'active que sur le FAB global ; dans une matière, tous les fichiers vont directement dedans avec `filing_status: "confirmed"` (comportement actuel conservé).
+
+### 4. Flashcards / OCR
+
+L'OCR par image et la génération de flashcards restent **par fichier** (non groupés). Pour éviter de spammer l'API quand on importe 20 photos, on garde l'OCR mais on ne déclenche **pas** automatiquement la génération de flashcards en mode batch — un toast invitera l'utilisateur à le faire depuis le fichier ou la matière.
 
 ## Détails techniques
 
-Fichiers modifiés :
-- `src/pages/TheVaultPage.tsx` — lecture/écriture de `preferences.vault_view_mode`, déblocage de `isSearchMode` depuis une matière, micro-UI search.
-- (Optionnel) `src/components/vault/VaultFileCard.tsx` — surlignage du terme recherché (prop `highlight?: string`).
+### Fichiers modifiés
 
-Aucun changement de base de données, aucune nouvelle dépendance.
+- `src/components/vault/VaultAddContentMenu.tsx`
+  - Input fichier : ajouter `multiple`.
+  - Renommer `uploadAndProcess(file)` → `uploadAndProcessBatch(files: File[])`.
+  - Helper `runWithConcurrency(files, 3, processOne)` interne, pas de nouvelle dépendance.
+  - Toast progression via `toast.loading(id)` + `toast.success(id)`.
+
+- `src/pages/TheVaultPage.tsx`
+  - Mêmes changements sur l'input fichier du FAB (ligne ~689).
+  - `uploadFile` → `uploadFiles(files, isPhoto)` avec la même logique de concurrence.
+
+- `src/components/vault/SmartVaultCapture.tsx`
+  - Input PDF/image (ligne ~283) : ajouter `multiple` et itérer.
+  - L'input caméra (ligne ~275) reste single (capture native).
+
+### Pas de changement DB
+
+Aucune migration, aucune nouvelle RLS — on réutilise `vault_files` + bucket `notes`.
+
+### Limite Storage
+
+Supabase Storage : 20 Mo / fichier par défaut sur le bucket `notes`. Pas de changement, juste un message clair quand un fichier dépasse.
+
+## Hors scope
+
+- Import d'un **dossier entier** avec arborescence (drag-and-drop d'un folder) — possible avec `webkitdirectory`, à proposer dans un second temps si besoin.
+- Partage de fichiers à d'autres utilisateurs (collaboration) — pas demandé ici.
+- Upload en arrière-plan persistant (Service Worker) — l'import reste lié à la session active.
