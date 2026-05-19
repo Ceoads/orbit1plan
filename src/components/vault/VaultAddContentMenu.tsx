@@ -243,7 +243,7 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.doc,.docx,.ppt,.pptx,image/*"
+        accept=".pdf,.doc,.docx,.ppt,.pptx"
         className="hidden"
         onChange={handleFileSelect}
       />
