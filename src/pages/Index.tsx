@@ -15,7 +15,7 @@ import { CollapsibleHeader } from "@/components/CollapsibleHeader";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { signOut, user } = useAuth();
+  const { user } = useAuth();
   const { subjects, loading, refetch } = useOrbitData();
   const [activeTab, setActiveTab] = useState<NavTab>('pulse');
   const [showSetup, setShowSetup] = useState(false);
