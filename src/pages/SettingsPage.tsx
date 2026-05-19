@@ -397,6 +397,27 @@ const SettingsPage = () => {
     }
   };
 
+  const handleDeleteAvatar = async () => {
+    if (!user) return;
+    if (!confirm("Supprimer ta photo de profil ?")) return;
+    try {
+      if (profile.avatar_url) {
+        const path = profile.avatar_url.split('/avatars/').pop();
+        if (path) {
+          await supabase.storage.from('avatars').remove([path]);
+        }
+      }
+      const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('user_id', user.id);
+      if (error) throw error;
+      setProfile(p => ({ ...p, avatar_url: null }));
+      emitProfileUpdated({ avatar_url: null });
+      toast.success("Photo supprimée");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Échec de la suppression");
+    }
+  };
+
   const primaryGroupLabel = filterGroup
     ? filterGroup.split(',').map(s => s.trim()).filter(Boolean).slice(0, 2).join(' · ')
     : (user?.email || '');
