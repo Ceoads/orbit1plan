@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm Peach/Cream Color Palette - mirrors web app src/index.css */
+    --primary: 16 85% 68%;
+    --primary-foreground: 0 0% 100%;
+
+    --success: 160 45% 55%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 35 90% 60%;
+    --warning-foreground: 0 0% 100%;
+
+    --background: 36 38% 96%;
+    --foreground: 20 15% 25%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 15% 25%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 15% 25%;
+
+    --secondary: 30 25% 94%;
+    --secondary-foreground: 20 15% 25%;
+
+    --muted: 30 20% 92%;
+    --muted-foreground: 20 12% 38%;
+
+    --accent: 16 70% 94%;
+    --accent-foreground: 16 85% 50%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 16 85% 68%;
+
+    --radius: 1.75rem;
+
+    /* Subject Colors - Soft Pastels */
+    --math: 200 60% 70%;
+    --history: 16 85% 68%;
+    --physics: 200 55% 65%;
+    --english: 280 45% 70%;
+    --chemistry: 45 80% 70%;
+    --geometry: 160 45% 65%;
+  }
+
+  .dark:root {
+    --primary: 16 75% 60%;
+    --background: 20 15% 10%;
+    --foreground: 30 20% 92%;
+
+    --card: 20 15% 14%;
+    --card-foreground: 30 20% 92%;
+
+    --popover: 20 15% 14%;
+    --popover-foreground: 30 20% 92%;
+
+    --secondary: 20 12% 18%;
+    --secondary-foreground: 30 20% 92%;
+
+    --muted: 20 12% 18%;
+    --muted-foreground: 20 15% 72%;
+
+    --accent: 16 60% 20%;
+    --accent-foreground: 16 75% 70%;
+
+    --border: 20 12% 20%;
+    --input: 20 12% 20%;
+    --ring: 16 75% 55%;
+  }
+}
