@@ -1,95 +1,48 @@
-## Objectif
+# Dossier technique backend Orbit (documentation + copie du code)
 
-Remplacer le duo `Settings + LogOut` dans le header par un **avatar circulaire unique** qui ouvre la page `/settings` (push iOS classique). Restructurer cette page en **Hero Profil + blocs cartes hiérarchisés**, avec la déconnexion logée dans une « Zone de danger » en bas.
+Objectif : un livrable téléchargeable, en français, qui explique tout le fonctionnement du backend d'Orbit à des développeurs, accompagné d'une copie du code réel.
 
----
+## Point important sur l'abonnement
 
-## 1. Header — avatar unique avec possibilité d'ajouter une photo bien crop
+Après vérification du code : **aucun système d'abonnement/paiement n'existe aujourd'hui** dans le backend (pas de Stripe, pas de Paddle, pas de table d'abonnement, pas de notion de plan payant). Le seul "abonnement" présent est la gestion des désabonnements e-mail (`email_unsubscribe_tokens`, `suppressed_emails`).
 
-Fichier : `src/components/CollapsibleHeader.tsx`
+Le document décrira donc l'existant honnêtement, plus une section séparée et clairement identifiée « Abonnement — à construire » avec l'architecture cible recommandée (table `subscribers`, webhook de paiement, contrôle d'accès aux fonctions IA).
 
-- Supprimer les deux boutons icônes (`Settings`, `LogOut`) et la prop `onSignOut`.
-- Remplacer par un **bouton avatar 36×36 rond** à droite :
-  - Image de profil si disponible, sinon **initiales** sur fond dégradé Peach/Coral (cohérent avec la palette Orbit).
-  - Anneau subtil `ring-1 ring-border/40`, `active:scale-95`, haptique `selection` au tap.
-  - Tap → `navigate('/settings')`.
-- `showSettings` reste la condition d'affichage de l'avatar (caché pendant setup/onboarding).
-- Mettre à jour `src/pages/Index.tsx` pour retirer `onSignOut` du header (la déconnexion vit désormais dans `/settings`).
+## Livrable 1 — Document explicatif (Markdown + PDF)
 
-## 2. Page Profil — restructuration
+Sections prévues :
 
-Fichier : `src/pages/SettingsPage.tsx` (titre mis à jour, contenu réorganisé)
+1. Vue d'ensemble de l'architecture (client React → backend Lovable Cloud/Postgres → fonctions serveur → services IA et e-mail)
+2. Authentification et sessions (inscription e-mail, session persistante vs session unique, profils)
+3. Schéma de base de données : chaque table (`profiles`, `user_settings`, `subjects`, `calendar_events`, `tasks`, `timeline_tasks`, `notes_vault`, `vault_files`, `vault_filing_history`, `flashcards`, `academic_years`, `semesters`, `quiz_debug_runs`, tables e-mail) avec colonnes, relations et rôle métier
+4. Sécurité : RLS par utilisateur, droits accordés, règles à respecter pour toute nouvelle table
+5. Pipeline iCal (`sync-calendar`) : récupération de l'URL, parsing, normalisation Europe/Paris, sélection des groupes TP/TD/CM, déduplication, nettoyage des matières par IA (`clean-subjects`), synchronisation quotidienne planifiée et bouton « Synchroniser maintenant »
+6. Vault et fichiers : upload, stockage, OCR, classement automatique (`smart-file`), traitement des notes (`process-note`)
+7. Moteur IA d'étude : `generate-flashcards`, `generate-quiz` (compression d'image, découpage PDF en segments, fusion des questions, journalisation de debug)
+8. Infrastructure e-mail : hook d'authentification, file d'attente, dispatcher, journal d'envoi, désabonnements, domaine d'envoi
+9. Déclencheurs et automatisations en base (génération de tâches de révision à partir des examens, etc.)
+10. Variables d'environnement et secrets utilisés (noms seulement, jamais de valeurs)
+11. Abonnement — architecture cible à construire
+12. Guide « par où commencer » pour un nouveau développeur
 
-### Header de page (épuré)
+Chaque section contient un schéma texte du flux et les chemins de fichiers correspondants dans la copie du code.
 
-- Gauche : `IOSBackButton` (← Retour).
-- Centre : titre **« Profil »** (Outfit, semibold).
-- Droite : vide (équilibre visuel).
-- Transition push native déjà gérée par React Router + `SwipeablePages` ; pas de changement de routing.
+## Livrable 2 — Archive du code backend
 
-### Hero Block (haut de page)
+Une archive ZIP contenant :
 
-Carte blanche `rounded-3xl` :
+- `supabase/migrations/` (toutes les migrations SQL, ordre chronologique = historique du schéma)
+- `supabase/functions/` (toutes les fonctions serveur, y compris les modèles d'e-mail partagés)
+- `supabase/config.toml`
+- les fichiers client qui font le pont avec le backend, en lecture seule pour référence (`src/hooks/useOrbitData.tsx`, `useVaultData.tsx`, `useTimelineTasks.tsx`, `useAuth.tsx`, types générés)
+- le document explicatif à la racine de l'archive
 
-- Avatar **64×64** (image ou initiales avec dégradé Peach).
-- Nom (`display_name` depuis `profiles`, fallback = local-part de l'email).
-- Sous-texte gris discret : groupe TP/TD principal détecté depuis `user_settings.ical_filter_group` (ex. *TC2 G1*), ou e-mail si non configuré.
-
-### Bloc 1 — Emploi du temps
-
-Réutilise les contrôles existants :
-
-- Lien ADE/Hyperplanning + bouton QR Code.
-- Groupes TP / TD (combobox actuelle).
-- Bouton primaire « Enregistrer et synchroniser » (saumon, pleine largeur).
-
-### Bloc 2 — Automatisation & Statut
-
-- Switch *Sync automatique*.
-- Ligne cliquable *Resynchroniser maintenant*.
-- Metadata gris clair `text-[11px]` : *Dernière synchro : 17 mai à 23h44* (depuis `user_settings.last_synced_at`).
-
-### Bloc 3 — Fonctionnalités intelligentes
-
-- Filtrage par groupe.
-- Détection auto des examens.
-- Extraction des salles.
-- Séparateur fin puis ligne discrète *Réinitialiser le Vault* (gris).
-
-### Bloc 4 — Support & Tutoriels
-
-- Position du campus (Localisation).
-- Relancer le tutoriel.
-
-### Bloc 5 — Zone de danger
-
-Carte isolée, légèrement détachée :
-
-- *Se déconnecter* (icône `LogOut` discrète, texte neutre).
-- *Supprimer toutes mes données* (rouge soft, conservé).
-
-### Footer
-
-Hors cartes, centré, `text-[11px] text-muted-foreground` :
-
-- Aide & Support · Politique de confidentialité
-- *Orbit OS — v1.0.0 (Production)*
-
----
+Aucun secret ni clé privée n'est inclus ; le fichier `.env` est exclu.
 
 ## Détails techniques
 
-- **Avatar component** : nouveau petit composant `src/components/ProfileAvatar.tsx` (taille variable `sm`/`lg`) — initiales calculées depuis `display_name || email`, dégradé `from-[hsl(var(--peach))] to-[hsl(var(--coral))]`. Réutilisé dans le header et le Hero.
-- **Données profil** : récupérer `profiles.display_name` + `user_settings.ical_filter_group` dans `SettingsPage` (une seule requête combinée au mount).
-- **Déconnexion** : importer `useAuth().signOut` directement dans `SettingsPage` pour la ligne Bloc 5.
-- **Aucune migration DB** nécessaire (champs existants suffisent ; pas d'avatar_url demandé).
-- **Routing inchangé** : `/settings` continue de monter `SettingsPage`, le push iOS est déjà fourni par la navigation existante.
-- **Tokens design** : strictement `hsl(var(--*))` Peach/Coral/Cream, `rounded-3xl`, `shadow-[0_8px_30px_rgb(0,0,0,0.03)]`, fonts Outfit/Quicksand — aucune couleur en dur.
-- **Hit targets** : avatar header et toutes les lignes ≥ 44×44 pt.
-
----
-
-## Hors scope (à confirmer si souhaité plus tard)
-
-- Upload d'une vraie photo de profil (ajout colonne `avatar_url` + bucket storage).
-- Slide-up sheet alternatif (l'utilisateur a explicitement choisi le push classique).
+- Le document est rédigé à partir d'une lecture exhaustive des migrations et des fonctions serveur, pas d'un résumé approximatif.
+- Génération PDF via reportlab avec une police Unicode (accents français) et contrôle visuel page par page avant livraison.
+- Fichiers déposés dans les Fichiers : `orbit-backend-documentation.md`, `orbit-backend-documentation.pdf`, `orbit-backend.zip`.
+- L'archive est assemblée puis inspectée dans un dossier temporaire avant copie, pour vérifier qu'aucun fichier généré ni secret ne s'y glisse.
+- Aucune modification du code de l'application.
