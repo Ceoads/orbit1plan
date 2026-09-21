@@ -9,6 +9,7 @@
 - [x] Copier les 23 fichiers storage (scripts/copy-storage.mjs) — 22 notes + 1 avatar, accès public/signé testé OK
 - [x] Mettre à jour les URL stockées en base (fait via remplacement du ref dans le SQL 03 avant import ; vérifié 0 ancienne URL)
 - [ ] Déployer les 9 Edge Functions sur le nouveau projet — besoin d'un jeton d'accès personnel (NEW_SUPABASE_ACCESS_TOKEN), attente utilisateur
+- [ ] Migrer tous les automatismes (demande utilisateur) : synchro iCal quotidienne (cron déjà migré, à câbler sur la fonction déployée), rangement intelligent (smart-file), OCR (process-note), génération quiz/flashcards, e-mails — dépend du déploiement des fonctions + secrets (IA, Resend, email_queue_service_role_key dans le vault)
 - [ ] Guide : clé IA propre (le gateway Lovable n'existe pas hors Lovable Cloud), secrets e-mail (RESEND, SEND_EMAIL_HOOK_SECRET, vault email_queue_service_role_key), domaine notify.orbit-plan.com
 - [ ] Livrer le dossier de migration mis à jour
 
