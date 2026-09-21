@@ -11,6 +11,6 @@
 - [ ] Livrer le dossier de migration mis à jour
 
 ## En attente / non bloquant
-- Abonnement : pas de système existant, architecture cible documentée (à confirmer)
+- Abonnement : reporté par l'utilisateur (pas de système pour l'instant) ; Stripe choisi comme prestataire futur ; table `subscribers` déjà créée en base comme fondation
 - Vérification DNS notify.orbit-plan.com en attente
 - Cours manquants le dimanche : conversion timezone non confirmée corrigée
