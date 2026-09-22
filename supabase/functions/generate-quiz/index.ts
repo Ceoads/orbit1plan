@@ -1,3 +1,4 @@
+import { aiEndpoint, aiModel } from '../_shared/ai.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "npm:pdf-lib@1.17.1";
@@ -93,11 +94,11 @@ async function splitPdf(buf: Uint8Array, pagesPerSegment = PAGES_PER_SEGMENT): P
 }
 
 async function callAI(LOVABLE_API_KEY: string, messages: any[], log: any) {
-  const model = 'google/gemini-2.5-flash';
+  const model = aiModel('google/gemini-2.5-flash', aiEndpoint().provider);
   const t0 = Date.now();
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch(aiEndpoint().url, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${aiEndpoint().key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, messages }),
   });
   log('info', 'ai.response', { status: response.status, ok: response.ok, duration_ms: Date.now() - t0 });
@@ -167,7 +168,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Image or extracted text is required', reqId }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const LOVABLE_API_KEY = (Deno.env.get('GEMINI_API_KEY') || Deno.env.get('LOVABLE_API_KEY'));
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: 'AI service not configured', reqId }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
