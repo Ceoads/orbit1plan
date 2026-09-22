@@ -19,10 +19,10 @@ export function aiEndpoint(): { url: string; key: string; provider: 'gemini' | '
 // Normalizes a model id for the active provider.
 export function aiModel(model: string, provider: 'gemini' | 'lovable'): string {
   if (provider !== 'gemini') return model;
-  let m = model.replace(/^google\//, '');
-  // Preview models that only exist on the Lovable gateway.
-  if (m.startsWith('gemini-3-')) m = 'gemini-2.5-flash';
-  return m;
+  const m = model.replace(/^google\//, '');
+  // Map gateway model ids to models available on the Gemini API.
+  if (m.includes('image')) return 'gemini-3.1-flash-image';
+  return 'gemini-3.6-flash';
 }
 
 // Drop-in replacement for a chat-completions fetch call.
