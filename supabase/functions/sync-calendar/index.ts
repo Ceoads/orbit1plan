@@ -548,11 +548,25 @@ function formatDayFr(date: Date): string {
  * Handles webcal:// protocol, forces UTF-8 decoding, and provides
  * clear error messages for expired links (401/403).
  */
+function normalizeIcalUrl(url: string): string {
+  let normalized = url.trim().replace(/^webcal:\/\//i, 'https://');
+
+  // Some links are copied/OCR'd with a lowercase "L" instead of a digit "1"
+  // in ADE query params (projectld, displayConfigld, resourceld) -> server 500.
+  normalized = normalized
+    .replace(/([?&])projectld=/gi, '$1projectId=')
+    .replace(/([?&])displayConfigld=/gi, '$1displayConfigId=')
+    .replace(/([?&])resourceld=/gi, '$1resourceId=')
+    .replace(/([?&])calTypeld=/gi, '$1calTypeId=');
+
+  return normalized;
+}
+
 async function fetchICalData(url: string): Promise<string> {
-  // Normalize webcal:// to https://
-  const normalizedUrl = url.replace(/^webcal:\/\//i, 'https://');
-  
+  const normalizedUrl = normalizeIcalUrl(url);
+
   const response = await fetch(normalizedUrl, {
+    redirect: 'follow',
     headers: { 
       'User-Agent': 'OrbitPlan-Calendar-Sync/2.0',
       'Accept': 'text/calendar, text/plain, */*',
