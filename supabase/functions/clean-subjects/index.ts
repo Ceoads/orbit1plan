@@ -1,3 +1,4 @@
+import { aiEndpoint, aiModel } from '../_shared/ai.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -21,7 +22,7 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const LOVABLE_API_KEY = (Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY"));
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
@@ -46,14 +47,14 @@ Return ONLY a JSON array of objects with this structure:
 
     const userPrompt = `Clean these raw iCal subject names into human-readable French subject names:\n\n${JSON.stringify(rawSubjects, null, 2)}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(aiEndpoint().url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${aiEndpoint().key}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: aiModel("google/gemini-3-flash-preview", aiEndpoint().provider),
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
