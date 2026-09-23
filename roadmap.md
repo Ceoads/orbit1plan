@@ -10,8 +10,11 @@
 - [x] Mettre à jour les URL stockées en base (fait via remplacement du ref dans le SQL 03 avant import ; vérifié 0 ancienne URL)
 - [x] Déployer les 8 Edge Functions sur le nouveau projet (jeton d'accès reçu, déploiement CLI réussi : auth-email-hook, clean-subjects, generate-flashcards, generate-quiz, process-email-queue, process-note, smart-file, sync-calendar)
 - [x] Migrer tous les automatismes : cron daily-sync-calendar vérifié (URL = nouveau projet, clé remplacée), secret vault email_queue_service_role_key créé, 8 fonctions déployées
-- [ ] Secrets à fournir par l'utilisateur sur le nouveau projet : clé IA propre (le gateway Lovable n'existe pas hors Lovable Cloud), RESEND_API_KEY, SEND_EMAIL_HOOK_SECRET + activer le hook « Send Email » dans Auth → Hooks, DNS notify.orbit-plan.com
-- [ ] Guide : clé IA propre (le gateway Lovable n'existe pas hors Lovable Cloud), secrets e-mail (RESEND, SEND_EMAIL_HOOK_SECRET, vault email_queue_service_role_key), domaine notify.orbit-plan.com
+- [x] IA rebranchée sur Gemini (_shared/ai.ts : GEMINI_API_KEY prioritaire, modèles gemini-3.6-flash / gemini-3.1-flash-image) ; secret posé et 5 fonctions redéployées sur orbit ; test clean-subjects OK
+- [ ] E-mails : RESEND_API_KEY + SEND_EMAIL_HOOK_SECRET à recevoir, puis adapter auth-email-hook (signature standard-webhooks + envoi Resend) et activer le hook « Send Email » dans Auth → Hooks
+- [ ] DNS notify.orbit-plan.com
+- [x] Guide de branchement de l'app : ORBIT-SUPABASE.md (3 variables VITE_*)
+- [ ] Export GitHub à lancer par l'utilisateur (menu + → GitHub)
 - [ ] Livrer le dossier de migration mis à jour
 
 ## En attente / non bloquant
