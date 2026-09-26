@@ -12,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { SetupWizard } from "@/components/SetupWizard";
 import { OrbitOnboarding, useTutorial } from "@/components/onboarding";
 import { CollapsibleHeader } from "@/components/CollapsibleHeader";
+import DesktopApp from "./DesktopApp";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,6 +24,7 @@ const Index = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
   const tutorial = useTutorial();
+  const isDesktop = useIsDesktop();
 
   // Check if user needs onboarding
   const needsSetup = !loading && subjects.length === 0;
@@ -128,6 +131,10 @@ const Index = () => {
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (isDesktop && !needsSetup && !showSetup && !showOnboarding) {
+    return <DesktopApp />;
   }
 
   return (

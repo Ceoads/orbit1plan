@@ -18,7 +18,8 @@
 - [ ] Livrer le dossier de migration mis à jour
 
 ## Nouveau : version ordinateur (PRD desktop)
-- [ ] Espace complet dédié ordinateur (voir PRD : Drive, quiz IA, fiches IA)
+- [x] Espace ordinateur (bibliothèque, quiz, fiches)
+- [ ] Import Google Drive — attend la configuration Google (accès par étudiant)
 
 ## En attente / non bloquant
 - Abonnement : reporté par l'utilisateur (pas de système pour l'instant) ; Stripe choisi comme prestataire futur ; table `subscribers` déjà créée en base comme fondation
