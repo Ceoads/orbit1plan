@@ -17,6 +17,9 @@
 - [ ] Export GitHub à lancer par l'utilisateur (menu + → GitHub)
 - [ ] Livrer le dossier de migration mis à jour
 
+## Nouveau : version ordinateur (PRD desktop)
+- [ ] Espace complet dédié ordinateur (voir PRD : Drive, quiz IA, fiches IA)
+
 ## En attente / non bloquant
 - Abonnement : reporté par l'utilisateur (pas de système pour l'instant) ; Stripe choisi comme prestataire futur ; table `subscribers` déjà créée en base comme fondation
 - Vérification DNS notify.orbit-plan.com en attente
