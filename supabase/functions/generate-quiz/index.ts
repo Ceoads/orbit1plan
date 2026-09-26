@@ -155,7 +155,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { imageBase64, extractedText, noteId, subjectId } = await req.json();
+    const { imageBase64, extractedText, noteId, subjectId, questionCount, difficulty } = await req.json();
+    const N = [5, 10, 15, 20].includes(Number(questionCount)) ? Number(questionCount) : 5;
+    const LEVEL = ['basic', 'intermediate', 'advanced'].includes(difficulty) ? difficulty : 'intermediate';
+    const LEVEL_TXT: Record<string, string> = {
+      basic: 'Niveau BASIQUE : questions de compréhension et de mémorisation des notions essentielles.',
+      intermediate: "Niveau INTERMÉDIAIRE : questions d'application des notions à des situations concrètes.",
+      advanced: 'Niveau AVANCÉ : questions de synthèse, analyse et raisonnement croisant plusieurs notions.',
+    };
     log('info', 'request.parsed', {
       noteId, subjectId,
       hasExtractedText: !!extractedText,
@@ -173,7 +180,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'AI service not configured', reqId }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de 5 questions à choix multiples.
+    const systemPrompt = `Tu es un professeur expert en création de QCM pédagogiques. À partir du contenu fourni, tu dois créer un quiz de ${N} questions à choix multiples.
+${LEVEL_TXT[LEVEL]}
 
 RÈGLE DE LANGUE CRITIQUE :
 Détecte automatiquement la langue du document/contenu source.
@@ -190,7 +198,9 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 }
 
 Règles:
-- Exactement 5 questions
+- Exactement ${N} questions
+- Une seule bonne réponse par question, pas de question piège
+- Une explication claire pour chaque question
 - Chaque question a exactement 4 options
 - Options plausibles
 - "correctIndex" est l'index (0-3)
@@ -318,9 +328,9 @@ Règles:
       const p = payloads[i];
       const userContent: any =
         p.kind === 'text'
-          ? `Génère un QCM de 5 questions basé sur ce contenu de cours:\n\n${p.text}`
+          ? `Génère un QCM de ${N} questions basé sur ce contenu de cours:\n\n${p.text}`
           : [
-              { type: 'text', text: `Analyse ce document de cours${p.label ? ' (' + p.label + ')' : ''} et génère un QCM de 5 questions.` },
+              { type: 'text', text: `Analyse ce document de cours${p.label ? ' (' + p.label + ')' : ''} et génère un QCM de ${N} questions.` },
               { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.b64}` } },
             ];
 
@@ -377,8 +387,8 @@ Règles:
     let mergeUsed = false;
     const finalWithSource: any[] = [];
 
-    if (payloads.length === 1 || allQuestions.length <= 5) {
-      const picked = allQuestions.slice(0, 5);
+    if (payloads.length === 1 || allQuestions.length <= N) {
+      const picked = allQuestions.slice(0, N);
       finalQuiz = {
         title: titleHint || 'Quiz',
         questions: picked.map((q, idx) => {
@@ -394,7 +404,7 @@ Règles:
       mergeUsed = true;
       // Include _src so model can echo it back
       const candidatesForMerge = allQuestions.map((q, idx) => ({ _cid: idx, _src: q._src, ...q }));
-      const mergePrompt = `Voici plusieurs QCM générés à partir de segments d'un même document. Sélectionne et reformule les 5 MEILLEURES questions couvrant les thèmes clés (variées, non redondantes). Garde la langue d'origine. Pour chaque question retenue, conserve son champ "_src" indiquant le segment source.
+      const mergePrompt = `Voici plusieurs QCM générés à partir de segments d'un même document. Sélectionne et reformule les ${N} MEILLEURES questions couvrant les thèmes clés (variées, non redondantes). Garde la langue d'origine. Pour chaque question retenue, conserve son champ "_src" indiquant le segment source.
 
 Questions candidates (JSON):
 ${JSON.stringify(candidatesForMerge).slice(0, 12000)}
@@ -410,7 +420,7 @@ Retourne UNIQUEMENT le JSON final:
 
       const mergedQuiz = merged.ok ? parseQuiz(merged.content) : null;
       if (mergedQuiz?.questions?.length) {
-        const picked = mergedQuiz.questions.slice(0, 5);
+        const picked = mergedQuiz.questions.slice(0, N);
         finalQuiz = {
           title: mergedQuiz.title || titleHint || 'Quiz',
           questions: picked.map((q: any, idx: number) => {
@@ -429,7 +439,7 @@ Retourne UNIQUEMENT le JSON final:
         });
       } else {
         log('warn', 'merge.failed.fallback');
-        const picked = allQuestions.slice(0, 5);
+        const picked = allQuestions.slice(0, N);
         finalQuiz = {
           title: titleHint || 'Quiz',
           questions: picked.map((q, idx) => {
