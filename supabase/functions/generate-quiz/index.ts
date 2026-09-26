@@ -407,7 +407,7 @@ Règles:
       const mergePrompt = `Voici plusieurs QCM générés à partir de segments d'un même document. Sélectionne et reformule les ${N} MEILLEURES questions couvrant les thèmes clés (variées, non redondantes). Garde la langue d'origine. Pour chaque question retenue, conserve son champ "_src" indiquant le segment source.
 
 Questions candidates (JSON):
-${JSON.stringify(candidatesForMerge).slice(0, 12000)}
+${JSON.stringify(candidatesForMerge).slice(0, 30000)}
 
 Retourne UNIQUEMENT le JSON final:
 {"quiz":{"title":"...","questions":[{"id":1,"_src":0,"question":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."}]}}`;

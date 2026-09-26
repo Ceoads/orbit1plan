@@ -193,6 +193,8 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [count, setCount] = useState(10);
+  const [difficulty, setDifficulty] = useState<"basic" | "intermediate" | "advanced">("intermediate");
 
   const generate = async () => {
     const extractedText = source ? source.extracted_text : text.trim();
@@ -201,7 +203,7 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-quiz", {
-        body: { extractedText, imageBase64: fileUrl, noteId: source?.id, subjectId: source?.subject_id },
+        body: { extractedText, imageBase64: fileUrl, noteId: source?.id, subjectId: source?.subject_id, questionCount: count, difficulty },
       });
       if (error) throw error;
       if (!data?.quiz?.questions?.length) throw new Error("empty");
@@ -219,12 +221,26 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
   if (!questions) {
     return (
       <>
-        <Header title="Créer un quiz" subtitle="Un QCM de 5 questions avec correction détaillée, généré à partir de ton cours." />
+        <Header title="Créer un quiz" subtitle="Un QCM de 5 à 20 questions avec correction détaillée, généré à partir de ton cours." />
         <div className="grid grid-cols-[1fr_320px] gap-8">
           <SourcePicker files={files} source={source} setSource={setSource} text={text} setText={setText} />
           <div className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
             <Sparkles className="w-6 h-6 text-primary" />
-            <p className="text-sm text-muted-foreground">Environ 20 à 40 secondes selon la taille du document.</p>
+            <div>
+              <p className="text-sm font-medium mb-2">Nombre de questions</p>
+              <div className="flex gap-2">{[5, 10, 15, 20].map((n) => <Pill key={n} active={count === n} onClick={() => setCount(n)}>{n}</Pill>)}</div>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">Difficulté</p>
+              <div className="flex flex-col gap-2">
+                {([["basic", "Basique", "Compréhension"], ["intermediate", "Intermédiaire", "Application"], ["advanced", "Avancé", "Synthèse"]] as const).map(([v, l, d]) => (
+                  <button key={v} onClick={() => setDifficulty(v)} className={cn("h-11 px-4 rounded-xl text-sm flex justify-between items-center", difficulty === v ? "bg-foreground text-background" : "bg-muted")}>
+                    <span className="font-medium">{l}</span><span className="opacity-70 text-xs">{d}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">Environ {Math.round(15 + count * 3)} secondes selon la taille du document.</p>
             <button onClick={generate} disabled={loading} className="mt-auto h-12 rounded-2xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-60">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération…</> : "Générer le quiz"}
             </button>
