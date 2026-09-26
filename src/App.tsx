@@ -12,6 +12,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { CourseHubPage } from "./pages/CourseHubPage";
 import { StudyHubPage } from "./pages/StudyHubPage";
 import NotFound from "./pages/NotFound";
+import GoogleDriveReturn from "./pages/GoogleDriveReturn";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const AppRoutes = () => {
         </PublicRoute>
       } />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/oauth/google-drive/return" element={<GoogleDriveReturn />} />
       <Route path="/settings" element={
         <ProtectedRoute>
           <SettingsPage />
