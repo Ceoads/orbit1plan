@@ -459,19 +459,147 @@ function FlashcardStudio({ files, subjects, source, setSource }: {
 }
 
 /* ---------- Drive ---------- */
+interface DriveFile { id: string; name: string; mimeType: string; size?: string; modifiedTime: string }
+
+const callDrive = async (body: Record<string, unknown>) => {
+  const { data, error } = await supabase.functions.invoke("google-drive", { body });
+  if (error) {
+    let msg = "Google Drive ne répond pas.";
+    try { msg = JSON.parse(await (error as any).context.text()).error || msg; } catch { /* ignore */ }
+    throw new Error(typeof msg === "string" ? msg : "Requête invalide");
+  }
+  return data;
+};
+
+function waitForPopup(popup: Window) {
+  return new Promise<void>((resolve, reject) => {
+    const cleanup = () => { window.removeEventListener("message", onMsg); clearInterval(poll); };
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.source !== popup || e.data?.connectorId !== "google_drive") return;
+      if (e.data.type === "appUserConnectorOAuthComplete") { cleanup(); resolve(); }
+      else if (e.data.type === "appUserConnectorOAuthFailed") { cleanup(); popup.close(); reject(new Error(e.data.reason ?? "Connexion refusée.")); }
+    };
+    const poll = window.setInterval(() => { if (popup.closed) { cleanup(); reject(new Error("Fenêtre fermée avant la fin.")); } }, 500);
+    window.addEventListener("message", onMsg);
+  });
+}
+
+const typeLabel = (m: string) => m.includes("google-apps") ? "Google Doc" : m.includes("pdf") ? "PDF" : "Word";
+const fmtSize = (s?: string) => !s ? "—" : Number(s) > 1e6 ? `${(Number(s) / 1e6).toFixed(1)} Mo` : `${Math.max(1, Math.round(Number(s) / 1e3))} Ko`;
+
 function DrivePanel() {
+  const [status, setStatus] = useState<{ connected: boolean; reconnectRequired?: boolean; email?: string } | null>(null);
+  const [files, setFiles] = useState<DriveFile[]>([]);
+  const [next, setNext] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [type, setType] = useState<"all" | "pdf" | "gdoc" | "docx">("all");
+  const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState<Record<string, "loading" | "done">>({});
+
+  const loadStatus = useCallback(async () => {
+    try { setStatus(await callDrive({ action: "status" })); } catch (e: any) { toast.error(e.message); setStatus({ connected: false }); }
+  }, []);
+  useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  const list = useCallback(async (append = false, token?: string | null) => {
+    setBusy(true);
+    try {
+      const d = await callDrive({ action: "list", search: search || undefined, type, pageToken: token || undefined });
+      if (!d.connected) { setStatus(d); return; }
+      setFiles((f) => append ? [...f, ...d.files] : d.files); setNext(d.nextPageToken);
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  }, [search, type]);
+
+  useEffect(() => {
+    if (!status?.connected) return;
+    const t = setTimeout(() => list(false), 300);
+    return () => clearTimeout(t);
+  }, [status?.connected, list]);
+
+  const connect = async () => {
+    const popup = window.open("", "orbit-drive", "width=600,height=720");
+    if (!popup) return toast.error("Autorise les fenêtres pop-up puis réessaie.");
+    try {
+      const { authorizationUrl } = await callDrive({ action: "start", origin: window.location.origin });
+      const done = waitForPopup(popup);
+      popup.location.href = authorizationUrl;
+      await done;
+      toast.success(status?.reconnectRequired ? "Google Drive reconnecté" : "Google Drive connecté");
+      await loadStatus();
+    } catch (e: any) { popup.close(); toast.error(e.message); }
+  };
+
+  const disconnect = async () => {
+    await callDrive({ action: "disconnect" }).catch(() => null);
+    setFiles([]); setStatus({ connected: false }); toast.success("Google Drive déconnecté");
+  };
+
+  const importFile = async (f: DriveFile) => {
+    setImporting((s) => ({ ...s, [f.id]: "loading" }));
+    try {
+      const d = await callDrive({ action: "import", fileId: f.id });
+      if (d.reconnectRequired) { setStatus(d); throw new Error("Ton accès Google Drive doit être renouvelé."); }
+      setImporting((s) => ({ ...s, [f.id]: "done" }));
+      toast.success(`« ${d.name} » ajouté à ta bibliothèque`);
+    } catch (e: any) {
+      setImporting((s) => { const n = { ...s }; delete n[f.id]; return n; });
+      toast.error(e.message);
+    }
+  };
+
+  if (!status) return <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
+  if (!status.connected) {
+    return (
+      <>
+        <Header title="Google Drive" subtitle="Importe tes cours directement depuis ton Drive." />
+        <div className="bg-card rounded-3xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-2xl space-y-5">
+          <HardDrive className="w-8 h-8 text-primary" />
+          <p className="font-semibold text-lg">{status.reconnectRequired ? "Ton accès Google Drive doit être renouvelé" : "Connecte ton Google Drive"}</p>
+          <p className="text-sm text-muted-foreground">
+            Orbit accède à ton Drive en lecture seule : il peut lister et copier les documents que tu choisis (PDF, Google Docs, Word), jamais les modifier ni les supprimer. Tu peux te déconnecter à tout moment.
+          </p>
+          <button onClick={connect} className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">
+            {status.reconnectRequired ? "Reconnecter Google Drive" : "Connecter Google Drive"}
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <Header title="Google Drive" subtitle="Importe tes cours directement depuis ton Drive." />
-      <div className="bg-card rounded-3xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-2xl space-y-4">
-        <HardDrive className="w-8 h-8 text-primary" />
-        <p className="font-semibold text-lg">Bientôt disponible</p>
-        <p className="text-sm text-muted-foreground">
-          La connexion à Google Drive sera activée dès que l'accès Google d'Orbit sera configuré.
-          En attendant, importe tes fichiers depuis le Vault sur ton téléphone ou ton ordinateur.
-        </p>
-        <button disabled className="h-12 px-6 rounded-2xl bg-muted text-muted-foreground font-medium">Connecter Google Drive</button>
+      <Header title="Google Drive" subtitle={`Connecté${status.email ? ` en tant que ${status.email}` : ""}. Choisis les documents à importer.`} />
+      <div className="flex items-center gap-4 mb-8">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher par nom…"
+            className="w-full h-12 pl-11 pr-4 rounded-2xl bg-card shadow-[0_8px_30px_rgb(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-primary/30 text-sm" />
+        </div>
+        {([["all", "Tout"], ["pdf", "PDF"], ["gdoc", "Google Docs"], ["docx", "Word"]] as const).map(([v, l]) => (
+          <Pill key={v} active={type === v} onClick={() => setType(v)}>{l}</Pill>
+        ))}
+        <button onClick={disconnect} className="ml-auto text-sm text-muted-foreground hover:text-foreground">Se déconnecter</button>
       </div>
+      <div className="bg-card rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+        {files.length === 0 && !busy && <p className="p-10 text-center text-muted-foreground">Aucun document trouvé.</p>}
+        {files.map((f) => (
+          <div key={f.id} className="flex items-center gap-4 px-8 py-5 border-b border-border/40 last:border-0">
+            <FileText className="w-5 h-5 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium truncate">{f.name}</p>
+              <p className="text-xs text-muted-foreground mt-1">{typeLabel(f.mimeType)} · {fmtSize(f.size)} · modifié le {new Date(f.modifiedTime).toLocaleDateString("fr-FR")}</p>
+            </div>
+            <button disabled={!!importing[f.id]} onClick={() => importFile(f)}
+              className={cn("h-10 px-5 rounded-xl text-sm font-medium flex items-center gap-2 min-w-[120px] justify-center",
+                importing[f.id] === "done" ? "bg-green-500/10 text-green-700" : "bg-foreground text-background disabled:opacity-60")}>
+              {importing[f.id] === "loading" ? <><Loader2 className="w-4 h-4 animate-spin" /> Import…</> : importing[f.id] === "done" ? <><Check className="w-4 h-4" /> Importé</> : "Importer"}
+            </button>
+          </div>
+        ))}
+        {busy && <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>}
+      </div>
+      {next && !busy && <button onClick={() => list(true, next)} className="mt-6 h-11 px-6 rounded-2xl bg-muted text-sm font-medium">Charger plus</button>}
     </>
   );
 }
