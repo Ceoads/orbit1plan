@@ -154,6 +154,29 @@ Deno.serve(async (req) => {
       console.log(JSON.stringify({ event: "drive.syncAll", count: results.length }));
       return json({ results });
     }
+    const raw = await req.json().catch(() => ({}));
+    if (raw?.action === "syncAll") {
+      // Only service-role callers (daily job) can read app_user_connections
+      const probe = createClient(Deno.env.get("SUPABASE_URL")!, auth.replace("Bearer ", ""));
+      const { error: pErr } = await probe.from("app_user_connections").select("user_id").limit(1);
+      if (pErr) return json({ error: "Non autorisé" }, 401);
+      const admin = adminClient();
+      const { data: rows } = await admin.from("drive_sync_folders").select("user_id");
+      const results: unknown[] = [];
+      for (const r of rows ?? []) {
+        try {
+          const key = await getConnectionKeyForUser(r.user_id, CONNECTOR);
+          if (!key) { await admin.from("drive_sync_folders").update({ last_error: "Drive déconnecté" }).eq("user_id", r.user_id); continue; }
+          results.push({ user: r.user_id, ...(await syncFolder(makeDrive(key), r.user_id)) });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          await admin.from("drive_sync_folders").update({ last_error: msg, last_synced_at: new Date().toISOString() }).eq("user_id", r.user_id);
+          results.push({ user: r.user_id, error: msg });
+        }
+      }
+      console.log(JSON.stringify({ event: "drive.syncAll", count: results.length }));
+      return json({ results });
+    }
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: auth } },
     });
@@ -193,6 +216,7 @@ Deno.serve(async (req) => {
     if (body.action === "disconnect") {
       await disconnectAppUser({ gatewayBaseUrl: GATEWAY, connectionAPIKey: key, connectorId: CONNECTOR }).catch((e) => console.error(e));
       await deleteConnectionForUser(user.id, CONNECTOR);
+      await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
       await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
       return json({ connected: false });
     }
@@ -306,6 +330,7 @@ Deno.serve(async (req) => {
       await disconnectAppUser({ gatewayBaseUrl: GATEWAY, connectionAPIKey: key, connectorId: CONNECTOR }).catch((e) => console.error(e));
       await deleteConnectionForUser(user.id, CONNECTOR);
       await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
+      await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
       return json({ connected: false });
     }
 
@@ -365,46 +390,12 @@ Deno.serve(async (req) => {
       return json({ connected: true, files: data.files ?? [], nextPageToken: data.nextPageToken ?? null });
     }
 
-    // import
-    const metaRes = await drive(`/drive/v3/files/${body.fileId}?fields=id,name,mimeType,size,webViewLink`);
-    if (await appUserReconnectRequired(metaRes)) return json({ connected: false, reconnectRequired: true });
-    if (!metaRes.ok) return json({ error: "Fichier introuvable" }, 404);
-    const meta = await metaRes.json();
-    if (!Object.values(MIME).includes(meta.mimeType)) return json({ error: "Type de fichier non pris en charge" }, 415);
-    if (meta.size && Number(meta.size) > MAX_BYTES) return json({ error: "Fichier trop lourd (plus de 50 Mo)" }, 413);
-
-    let bytes: Uint8Array; let ext: string; let contentType: string; let extractedText: string | null = null;
-    if (meta.mimeType === MIME.gdoc) {
-      const [pdfRes, txtRes] = await Promise.all([
-        drive(`/drive/v3/files/${body.fileId}/export?mimeType=${encodeURIComponent(MIME.pdf)}`),
-        drive(`/drive/v3/files/${body.fileId}/export?mimeType=text%2Fplain`),
-      ]);
-      if (!pdfRes.ok) return json({ error: "Export du document impossible" }, 502);
-      bytes = new Uint8Array(await pdfRes.arrayBuffer()); ext = "pdf"; contentType = MIME.pdf;
-      if (txtRes.ok) extractedText = (await txtRes.text()).slice(0, 200000);
-    } else {
-      const res = await drive(`/drive/v3/files/${body.fileId}?alt=media`);
-      if (!res.ok) return json({ error: "Téléchargement impossible" }, 502);
-      bytes = new Uint8Array(await res.arrayBuffer());
-      ext = meta.mimeType === MIME.pdf ? "pdf" : "docx"; contentType = meta.mimeType;
+    if (body.action === "import") {
+      return json({ ok: true, ...(await importDriveFile(drive, user.id, body.fileId)) });
     }
-    if (bytes.byteLength > MAX_BYTES) return json({ error: "Fichier trop lourd (plus de 50 Mo)" }, 413);
-
-    const admin = adminClient();
-    const path = `${user.id}/drive-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
-    const up = await admin.storage.from("notes").upload(path, bytes, { contentType });
-    if (up.error) throw up.error;
-    const { data: signed } = await admin.storage.from("notes").createSignedUrl(path, 60 * 60 * 24 * 365);
-    const name = meta.name.endsWith(`.${ext}`) ? meta.name : `${meta.name}.${ext}`;
-    const { data: row, error } = await admin.from("vault_files").insert({
-      user_id: user.id, file_url: signed?.signedUrl ?? path, original_filename: name,
-      file_type: ext === "pdf" ? "pdf" : "document", extracted_text: extractedText,
-      filing_status: "confirmed", tags: ["drive", ext],
-    }).select("id").single();
-    if (error) throw error;
-    console.log(JSON.stringify({ event: "drive.import", user: user.id, file: body.fileId, source: meta.webViewLink, at: new Date().toISOString() }));
-    return json({ ok: true, id: row.id, name });
+    return json({ error: "Action inconnue" }, 400);
   } catch (e) {
+    if (e instanceof DriveError) return json(e.reconnect ? { connected: false, reconnectRequired: true } : { error: e.message }, e.reconnect ? 200 : e.status);
     if (e instanceof DriveError) return json(e.reconnect ? { connected: false, reconnectRequired: true } : { error: e.message }, e.reconnect ? 200 : e.status);
     console.error("google-drive error", e);
     return json({ error: e instanceof Error ? e.message : "Erreur inconnue" }, 500);
