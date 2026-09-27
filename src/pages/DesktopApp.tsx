@@ -489,8 +489,67 @@ function waitForPopup(popup: Window) {
 const typeLabel = (m: string) => m.includes("google-apps") ? "Google Doc" : m.includes("pdf") ? "PDF" : "Word";
 const fmtSize = (s?: string) => !s ? "—" : Number(s) > 1e6 ? `${(Number(s) / 1e6).toFixed(1)} Mo` : `${Math.max(1, Math.round(Number(s) / 1e3))} Ko`;
 
+interface SyncFolder { folder_id: string; folder_name: string; last_synced_at: string | null; last_imported_count: number; last_error: string | null }
+
+function FolderSync({ folder, onChange }: { folder?: SyncFolder | null; onChange: () => void }) {
+  const [picking, setPicking] = useState(false);
+  const [path, setPath] = useState<{ id: string; name: string }[]>([]);
+  const [folders, setFolders] = useState<{ id: string; name: string }[] | null>(null);
+  const [working, setWorking] = useState(false);
+  const current = path[path.length - 1];
+
+  useEffect(() => {
+    if (!picking) return;
+    setFolders(null);
+    callDrive({ action: "folders", parentId: current?.id }).then((d) => setFolders(d.folders ?? [])).catch((e) => { toast.error(e.message); setFolders([]); });
+  }, [picking, current?.id]);
+
+  const run = async (body: Record<string, unknown>, ok: (d: any) => string) => {
+    setWorking(true);
+    try { const d = await callDrive(body); toast.success(ok(d)); setPicking(false); onChange(); }
+    catch (e: any) { toast.error(e.message); } finally { setWorking(false); }
+  };
+  const summary = (d: any) => d.imported ? `${d.imported} document${d.imported > 1 ? "s" : ""} ajouté${d.imported > 1 ? "s" : ""} à ta bibliothèque` : "Tout est déjà à jour";
+
+  return (
+    <div className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
+      <div className="flex items-start gap-6">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-lg">Dossier synchronisé</p>
+          {folder ? (
+            <p className="text-sm text-muted-foreground mt-1">
+              « {folder.folder_name} » · les nouveaux documents arrivent chaque matin dans ta bibliothèque.
+              {folder.last_synced_at && ` Dernière synchro le ${new Date(folder.last_synced_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}.`}
+              {folder.last_error && <span className="block text-destructive mt-1">{folder.last_error}</span>}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-1">Choisis un dossier Drive : tout ce que tu y ranges sera importé automatiquement chaque jour.</p>
+          )}
+        </div>
+        {folder && <button disabled={working} onClick={() => run({ action: "syncNow" }, summary)} className="h-11 px-5 rounded-xl bg-foreground text-background text-sm font-medium flex items-center gap-2 disabled:opacity-60">{working && <Loader2 className="w-4 h-4 animate-spin" />}Synchroniser maintenant</button>}
+        <button onClick={() => { setPicking((v) => !v); setPath([]); }} className="h-11 px-5 rounded-xl bg-muted text-sm font-medium">{folder ? "Changer" : "Choisir un dossier"}</button>
+        {folder && <button onClick={() => run({ action: "clearFolder" }, () => "Synchronisation arrêtée")} className="h-11 px-3 text-sm text-muted-foreground hover:text-foreground">Arrêter</button>}
+      </div>
+      {picking && (
+        <div className="mt-6 rounded-2xl bg-muted/50 p-4">
+          <div className="flex items-center gap-2 text-sm mb-3 flex-wrap">
+            <button onClick={() => setPath([])} className="font-medium hover:underline">Mon Drive</button>
+            {path.map((p, i) => <span key={p.id} className="flex items-center gap-2"><span className="text-muted-foreground">/</span><button onClick={() => setPath(path.slice(0, i + 1))} className="font-medium hover:underline">{p.name}</button></span>)}
+            {current && <button disabled={working} onClick={() => run({ action: "setFolder", folderId: current.id, folderName: current.name }, summary)} className="ml-auto h-10 px-5 rounded-xl bg-primary text-primary-foreground font-medium flex items-center gap-2 disabled:opacity-60">{working && <Loader2 className="w-4 h-4 animate-spin" />}Synchroniser ce dossier</button>}
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {folders === null ? <div className="flex justify-center p-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+              : folders.length === 0 ? <p className="p-4 text-sm text-muted-foreground">Aucun sous-dossier.</p>
+              : folders.map((f) => <button key={f.id} onClick={() => setPath([...path, f])} className="w-full text-left px-4 py-3 rounded-xl hover:bg-card text-sm flex items-center gap-3"><HardDrive className="w-4 h-4 text-primary" />{f.name}</button>)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DrivePanel() {
-  const [status, setStatus] = useState<{ connected: boolean; reconnectRequired?: boolean; email?: string } | null>(null);
+  const [status, setStatus] = useState<{ connected: boolean; reconnectRequired?: boolean; email?: string; folder?: SyncFolder | null } | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [next, setNext] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -572,6 +631,7 @@ function DrivePanel() {
   return (
     <>
       <Header title="Google Drive" subtitle={`Connecté${status.email ? ` en tant que ${status.email}` : ""}. Choisis les documents à importer.`} />
+      <FolderSync folder={status.folder} onChange={loadStatus} />
       <div className="flex items-center gap-4 mb-8">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />

@@ -136,6 +136,60 @@ export type Database = {
           },
         ]
       }
+      drive_imported_files: {
+        Row: {
+          drive_file_id: string
+          id: string
+          imported_at: string
+          user_id: string
+          vault_file_id: string | null
+        }
+        Insert: {
+          drive_file_id: string
+          id?: string
+          imported_at?: string
+          user_id: string
+          vault_file_id?: string | null
+        }
+        Update: {
+          drive_file_id?: string
+          id?: string
+          imported_at?: string
+          user_id?: string
+          vault_file_id?: string | null
+        }
+        Relationships: []
+      }
+      drive_sync_folders: {
+        Row: {
+          created_at: string
+          folder_id: string
+          folder_name: string
+          last_error: string | null
+          last_imported_count: number
+          last_synced_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          folder_name: string
+          last_error?: string | null
+          last_imported_count?: number
+          last_synced_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          folder_name?: string
+          last_error?: string | null
+          last_imported_count?: number
+          last_synced_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
