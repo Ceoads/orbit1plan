@@ -154,29 +154,6 @@ Deno.serve(async (req) => {
       console.log(JSON.stringify({ event: "drive.syncAll", count: results.length }));
       return json({ results });
     }
-    const raw = await req.json().catch(() => ({}));
-    if (raw?.action === "syncAll") {
-      // Only service-role callers (daily job) can read app_user_connections
-      const probe = createClient(Deno.env.get("SUPABASE_URL")!, auth.replace("Bearer ", ""));
-      const { error: pErr } = await probe.from("app_user_connections").select("user_id").limit(1);
-      if (pErr) return json({ error: "Non autorisé" }, 401);
-      const admin = adminClient();
-      const { data: rows } = await admin.from("drive_sync_folders").select("user_id");
-      const results: unknown[] = [];
-      for (const r of rows ?? []) {
-        try {
-          const key = await getConnectionKeyForUser(r.user_id, CONNECTOR);
-          if (!key) { await admin.from("drive_sync_folders").update({ last_error: "Drive déconnecté" }).eq("user_id", r.user_id); continue; }
-          results.push({ user: r.user_id, ...(await syncFolder(makeDrive(key), r.user_id)) });
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          await admin.from("drive_sync_folders").update({ last_error: msg, last_synced_at: new Date().toISOString() }).eq("user_id", r.user_id);
-          results.push({ user: r.user_id, error: msg });
-        }
-      }
-      console.log(JSON.stringify({ event: "drive.syncAll", count: results.length }));
-      return json({ results });
-    }
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: auth } },
     });
@@ -216,7 +193,6 @@ Deno.serve(async (req) => {
     if (body.action === "disconnect") {
       await disconnectAppUser({ gatewayBaseUrl: GATEWAY, connectionAPIKey: key, connectorId: CONNECTOR }).catch((e) => console.error(e));
       await deleteConnectionForUser(user.id, CONNECTOR);
-      await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
       await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
       return json({ connected: false });
     }
@@ -282,120 +258,6 @@ Deno.serve(async (req) => {
     }
     return json({ error: "Action inconnue" }, 400);
   } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          await admin.from("drive_sync_folders").update({ last_error: msg, last_synced_at: new Date().toISOString() }).eq("user_id", r.user_id);
-          results.push({ user: r.user_id, error: msg });
-        }
-      }
-      console.log(JSON.stringify({ event: "drive.syncAll", count: results.length }));
-      return json({ results });
-    }
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: auth } },
-    });
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Connexion requise" }, 401);
-
-    const parsed = Body.safeParse(raw);
-    if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const body = parsed.data;
-
-    if (body.action === "start") {
-      const clientAPIKey = Deno.env.get("GOOGLE_DRIVE_APP_USER_CONNECTOR_CLIENT_API_KEY");
-      if (!clientAPIKey) return json({ error: "Google Drive n'est pas configuré" }, 500);
-      const existing = await getConnectionKeyForUser(user.id, CONNECTOR);
-      const { authorizationUrl } = await authorizeAppUserOAuth({
-        gatewayBaseUrl: GATEWAY, connectorId: CONNECTOR, appUserId: user.id, clientAPIKey,
-        returnUrl: new URL("/oauth/google-drive/return", body.origin).toString(),
-        connectionAPIKey: existing ?? undefined,
-        credentialsConfiguration: { scopes: GOOGLE_DRIVE_SCOPES },
-      });
-      return json({ authorizationUrl });
-    }
-
-    if (body.action === "complete") {
-      const { connectionAPIKey, connectorId } = await exchangeAppUserOAuthCode(GATEWAY, body.code);
-      if (connectorId !== CONNECTOR) return json({ error: "Mauvais service" }, 400);
-      await saveConnectionKeyForUser(user.id, CONNECTOR, connectionAPIKey);
-      return json({ ok: true });
-    }
-
-    const key = await getConnectionKeyForUser(user.id, CONNECTOR);
-    if (!key) return json({ connected: false });
-
-    const drive = makeDrive(key);
-    const admin = adminClient();
-
-    if (body.action === "disconnect") {
-      await disconnectAppUser({ gatewayBaseUrl: GATEWAY, connectionAPIKey: key, connectorId: CONNECTOR }).catch((e) => console.error(e));
-      await deleteConnectionForUser(user.id, CONNECTOR);
-      await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
-      await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
-      return json({ connected: false });
-    }
-
-    if (body.action === "status") {
-      const res = await drive("/drive/v3/about?fields=user(emailAddress,displayName)");
-      if (await appUserReconnectRequired(res)) return json({ connected: false, reconnectRequired: true });
-      if (!res.ok) { console.error("about", res.status, await res.text()); return json({ error: "Google Drive ne répond pas" }, 502); }
-      const about = await res.json();
-      const { data: folder } = await admin.from("drive_sync_folders").select("*").eq("user_id", user.id).maybeSingle();
-      return json({ connected: true, email: about.user?.emailAddress ?? null, name: about.user?.displayName ?? null, folder });
-    }
-
-    if (body.action === "folders") {
-      const parent = body.parentId ?? "root";
-      const params = new URLSearchParams({
-        q: `'${parent}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
-        pageSize: "200", orderBy: "name", fields: "files(id,name)",
-      });
-      const res = await drive(`/drive/v3/files?${params}`);
-      if (await appUserReconnectRequired(res)) return json({ connected: false, reconnectRequired: true });
-      if (!res.ok) { console.error("folders", res.status, await res.text()); return json({ error: "Impossible de lister tes dossiers" }, 502); }
-      return json({ connected: true, folders: (await res.json()).files ?? [] });
-    }
-
-    if (body.action === "setFolder") {
-      const { error } = await admin.from("drive_sync_folders").upsert(
-        { user_id: user.id, folder_id: body.folderId, folder_name: body.folderName, last_error: null },
-        { onConflict: "user_id" },
-      );
-      if (error) throw error;
-      const result = await syncFolder(drive, user.id);
-      return json({ connected: true, ...result });
-    }
-
-    if (body.action === "clearFolder") {
-      await admin.from("drive_sync_folders").delete().eq("user_id", user.id);
-      return json({ connected: true });
-    }
-
-    if (body.action === "syncNow") {
-      return json({ connected: true, ...(await syncFolder(drive, user.id)) });
-    }
-
-    if (body.action === "list") {
-      const types = body.type && body.type !== "all" ? [MIME[body.type]] : Object.values(MIME);
-      let q = `trashed = false and (${types.map((m) => `mimeType = '${m}'`).join(" or ")})`;
-      if (body.search?.trim()) q += ` and name contains '${body.search.trim().replace(/['\\]/g, "\\$&")}'`;
-      const params = new URLSearchParams({
-        q, pageSize: "50", orderBy: "modifiedTime desc",
-        fields: "nextPageToken,files(id,name,mimeType,size,modifiedTime)",
-      });
-      if (body.pageToken) params.set("pageToken", body.pageToken);
-      const res = await drive(`/drive/v3/files?${params}`);
-      if (await appUserReconnectRequired(res)) return json({ connected: false, reconnectRequired: true });
-      if (!res.ok) { console.error("list", res.status, await res.text()); return json({ error: "Impossible de lister tes fichiers" }, 502); }
-      const data = await res.json();
-      return json({ connected: true, files: data.files ?? [], nextPageToken: data.nextPageToken ?? null });
-    }
-
-    if (body.action === "import") {
-      return json({ ok: true, ...(await importDriveFile(drive, user.id, body.fileId)) });
-    }
-    return json({ error: "Action inconnue" }, 400);
-  } catch (e) {
-    if (e instanceof DriveError) return json(e.reconnect ? { connected: false, reconnectRequired: true } : { error: e.message }, e.reconnect ? 200 : e.status);
     if (e instanceof DriveError) return json(e.reconnect ? { connected: false, reconnectRequired: true } : { error: e.message }, e.reconnect ? 200 : e.status);
     console.error("google-drive error", e);
     return json({ error: e instanceof Error ? e.message : "Erreur inconnue" }, 500);
