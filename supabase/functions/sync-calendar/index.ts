@@ -921,6 +921,17 @@ serve(async (req) => {
       }
     }
 
+    // Daily run also syncs each student's chosen Google Drive folder
+    if (syncAll && isServiceRole) {
+      try {
+        const r = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-drive`, {
+          method: 'POST', headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'syncAll' }),
+        });
+        console.log('drive syncAll', r.status, (await r.text()).slice(0, 500));
+      } catch (e) { console.error('drive syncAll failed', e); }
+    }
+
     return new Response(JSON.stringify({ results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
