@@ -19,7 +19,8 @@
 
 ## Nouveau : version ordinateur (PRD desktop)
 - [x] Espace ordinateur (bibliothèque, quiz, fiches)
-- [ ] Import Google Drive — attend la configuration Google (accès par étudiant)
+- [x] Import Google Drive par étudiant (à tester en vrai une fois connecté)
+- [x] Quiz 5–20 questions + difficulté
 
 ## En attente / non bloquant
 - Abonnement : reporté par l'utilisateur (pas de système pour l'instant) ; Stripe choisi comme prestataire futur ; table `subscribers` déjà créée en base comme fondation
