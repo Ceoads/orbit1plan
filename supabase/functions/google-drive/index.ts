@@ -134,9 +134,14 @@ Deno.serve(async (req) => {
     const raw = await req.json().catch(() => ({}));
     if (raw?.action === "syncAll") {
       // Only service-role callers (daily job) can read app_user_connections
-      const probe = createClient(Deno.env.get("SUPABASE_URL")!, auth.replace("Bearer ", ""));
-      const { error: pErr } = await probe.from("app_user_connections").select("user_id").limit(1);
-      if (pErr) return json({ error: "Non autorisé" }, 401);
+      const token = auth.replace("Bearer ", "");
+      let ok = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (!ok) {
+        const probe = createClient(Deno.env.get("SUPABASE_URL")!, token, { auth: { persistSession: false } });
+        const { error: pErr } = await probe.auth.admin.listUsers({ page: 1, perPage: 1 });
+        ok = !pErr;
+      }
+      if (!ok) return json({ error: "Non autorisé" }, 401);
       const admin = adminClient();
       const { data: rows } = await admin.from("drive_sync_folders").select("user_id");
       const results: unknown[] = [];
