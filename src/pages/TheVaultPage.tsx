@@ -556,6 +556,50 @@ export const TheVaultPage = () => {
         </div>
       )}
 
+      {/* Home: liste déroulante multi-matières */}
+      {inHome && subjects.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={cn(
+                "w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-sm font-medium transition-all",
+                multiSubjectIds.length > 0
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-transparent text-foreground border-border hover:border-foreground/40"
+              )}
+            >
+              <span>
+                {multiSubjectIds.length === 0
+                  ? "Filtrer par matières"
+                  : `${multiSubjectIds.length} matière${multiSubjectIds.length > 1 ? "s" : ""} sélectionnée${multiSubjectIds.length > 1 ? "s" : ""}`}
+              </span>
+              <ChevronDown className="w-4 h-4 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64 rounded-2xl p-2">
+            {subjects.map((s) => (
+              <DropdownMenuCheckboxItem
+                key={s.id}
+                checked={multiSubjectIds.includes(s.id)}
+                onCheckedChange={() => toggleMultiSubject(s.id)}
+                onSelect={(e) => e.preventDefault()}
+                className="rounded-xl py-2.5"
+              >
+                {s.name}
+              </DropdownMenuCheckboxItem>
+            ))}
+            {multiSubjectIds.length > 0 && (
+              <DropdownMenuItem
+                onClick={() => setMultiSubjectIds([])}
+                className="rounded-xl py-2.5 text-muted-foreground"
+              >
+                Tout désélectionner
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       {/* Search results */}
       {inSearch && searchQuery === "" && (
         <div className="space-y-4">
@@ -644,8 +688,39 @@ export const TheVaultPage = () => {
         </div>
       )}
 
+      {/* Home: fichiers combinés des matières cochées */}
+      {inHome && multiSubjectIds.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground px-1">
+            {multiFiles.length} fichier{multiFiles.length > 1 ? "s" : ""}
+          </p>
+          {multiFiles.length === 0 ? (
+            <div className="text-center py-12 px-6">
+              <p className="text-sm text-muted-foreground">
+                Aucun fichier dans ces matières pour ce filtre.
+              </p>
+            </div>
+          ) : (
+            multiFiles.map((file) => (
+              <SwipeableItem
+                key={file.id}
+                onDelete={() =>
+                  setDeleteTarget({
+                    type: "file",
+                    id: file.id,
+                    name: file.ai_summary?.substring(0, 30) || "Fichier",
+                  })
+                }
+              >
+                <VaultFileCard file={file} />
+              </SwipeableItem>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Home: folders */}
-      {inHome && (
+      {inHome && multiSubjectIds.length === 0 && (
         <>
           {subjectStats.length === 0 ? (
             <div className="flex flex-col items-center text-center py-16 px-6">
