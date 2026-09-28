@@ -303,6 +303,8 @@ export const CourseHubPage = () => {
           imageBase64: capturedImageBase64,
           extractedText: capturedNote.extracted_text,
           subjectId: subject?.id,
+          questionCount: 10,
+          difficulty: 'intermediate',
         },
       });
 
