@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
-  Loader2, ChevronLeft, ChevronRight, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles,
+  Loader2, ChevronLeft, ChevronRight, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,13 +11,14 @@ import { useVaultData, VaultFile } from "@/hooks/useVaultData";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { cn } from "@/lib/utils";
 
-type Section = "library" | "quiz" | "flashcards" | "drive";
+type Section = "library" | "subjects" | "quiz" | "flashcards" | "drive";
 
 interface QuizQuestion { question: string; options: string[]; correctIndex: number; explanation: string }
 interface Card { id: string; question: string; answer: string; subject_id: string | null; mastered: boolean }
 
 const NAV: { id: Section; label: string; icon: typeof BookOpen }[] = [
   { id: "library", label: "Bibliothèque", icon: BookOpen },
+  { id: "subjects", label: "Par matière", icon: FolderOpen },
   { id: "quiz", label: "Quiz", icon: Brain },
   { id: "flashcards", label: "Fiches", icon: Layers },
   { id: "drive", label: "Google Drive", icon: HardDrive },
@@ -67,6 +68,7 @@ export default function DesktopApp() {
       <main className="flex-1 min-w-0 px-12 py-10">
         <div className="max-w-6xl mx-auto">
           {section === "library" && <Library vault={vault} onUse={useAs} />}
+          {section === "subjects" && <SubjectLibrary vault={vault} />}
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
           {section === "drive" && <DrivePanel />}
@@ -153,6 +155,84 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
           })}
         </div>
       )}
+    </>
+  );
+}
+
+/* ---------- Library by subject ---------- */
+function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<"docs" | "quiz" | "flashcards">("docs");
+  const [source, setSource] = useState<VaultFile | null>(null);
+  const subj = vault.subjects.find((s) => s.id === open);
+  const files = useMemo(() => vault.files.filter((f) => f.subject_id === open), [vault.files, open]);
+  const unfiled = vault.files.filter((f) => !f.subject_id).length;
+
+  if (!subj) {
+    return (
+      <>
+        <Header title="Par matière" subtitle={`Tes documents rangés par discipline${unfiled ? ` · ${unfiled} sans matière` : ""}.`} />
+        {vault.subjects.length === 0 ? (
+          <p className="text-muted-foreground py-24 text-center">Aucune matière pour l'instant.</p>
+        ) : (
+          <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
+            {vault.subjects.map((s) => {
+              const n = vault.files.filter((f) => f.subject_id === s.id).length;
+              return (
+                <button key={s.id} onClick={() => { setOpen(s.id); setTab("docs"); setSource(null); }}
+                  className="text-left bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)] transition-shadow flex flex-col gap-6">
+                  <div className="text-4xl">{s.icon}</div>
+                  <div>
+                    <h3 className="text-lg font-semibold truncate">{s.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{n} document{n > 1 ? "s" : ""}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const useAs = (f: VaultFile, t: "quiz" | "flashcards") => { setSource(f); setTab(t); };
+  return (
+    <>
+      <button onClick={() => setOpen(null)} className="flex items-center gap-1 h-11 -ml-2 px-2 mb-4 text-sm text-muted-foreground hover:text-foreground">
+        <ChevronLeft className="w-4 h-4" /> Toutes les matières
+      </button>
+      <Header title={`${subj.icon} ${subj.name}`} subtitle={`${files.length} document${files.length > 1 ? "s" : ""}${subj.teacher_name ? ` · ${subj.teacher_name}` : ""}`} />
+      <div className="flex gap-2 mb-8">
+        <Pill active={tab === "docs"} onClick={() => setTab("docs")}>Documents</Pill>
+        <Pill active={tab === "quiz"} onClick={() => setTab("quiz")}>Quiz</Pill>
+        <Pill active={tab === "flashcards"} onClick={() => setTab("flashcards")}>Fiches</Pill>
+      </div>
+      {tab === "docs" && (files.length === 0 ? (
+        <p className="text-muted-foreground py-24 text-center">Aucun document dans cette matière.</p>
+      ) : (
+        <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
+          {files.map((f) => (
+            <article key={f.id} className="bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  {f.file_type === "photo" ? <ImageIcon className="w-5 h-5 text-primary" /> : <FileText className="w-5 h-5 text-primary" />}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold truncate">{fileName(f)}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(f.created_at).toLocaleDateString("fr-FR")}</p>
+                </div>
+              </div>
+              {f.ai_summary && <p className="text-sm text-muted-foreground line-clamp-3">{f.ai_summary}</p>}
+              <div className="flex gap-2 mt-auto">
+                <button onClick={() => useAs(f, "quiz")} className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium">Quiz</button>
+                <button onClick={() => useAs(f, "flashcards")} className="flex-1 h-10 rounded-xl bg-muted text-foreground text-sm font-medium">Fiches</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ))}
+      {tab === "quiz" && <QuizStudio key={subj.id} files={files} source={source} setSource={setSource} />}
+      {tab === "flashcards" && <FlashcardStudio key={subj.id} files={files} subjects={vault.subjects} source={source} setSource={setSource} subjectId={subj.id} />}
     </>
   );
 }
@@ -319,8 +399,8 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
 /* ---------- Flashcards ---------- */
 type Mark = "known" | "learning" | "unknown";
 
-function FlashcardStudio({ files, subjects, source, setSource }: {
-  files: VaultFile[]; subjects: ReturnType<typeof useVaultData>["subjects"]; source: VaultFile | null; setSource: (f: VaultFile | null) => void;
+function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
+  files: VaultFile[]; subjects: ReturnType<typeof useVaultData>["subjects"]; source: VaultFile | null; setSource: (f: VaultFile | null) => void; subjectId?: string;
 }) {
   const { user } = useAuth();
   const [cards, setCards] = useState<Card[]>([]);
@@ -334,8 +414,9 @@ function FlashcardStudio({ files, subjects, source, setSource }: {
   const load = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from("flashcards").select("id,question,answer,subject_id,mastered").eq("user_id", user.id).order("created_at", { ascending: false });
-    setCards((data as Card[]) ?? []);
-  }, [user]);
+    const all = (data as Card[]) ?? [];
+    setCards(subjectId ? all.filter((c) => c.subject_id === subjectId) : all);
+  }, [user, subjectId]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { localStorage.setItem("orbit_card_marks", JSON.stringify(marks)); }, [marks]);
 
