@@ -145,6 +145,7 @@ function parseQuiz(content: string): { questions?: any[]; title?: string } | nul
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  REQUEST_START.t = Date.now();
 
   const reqId = (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8);
   const t0 = Date.now();
