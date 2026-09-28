@@ -53,7 +53,7 @@ export async function aiFetch(url: string, init: RequestInit): Promise<Response>
       reqInit = { ...init, body: JSON.stringify({ ...body, model: FALLBACK_MODELS[(attempt - 1) % FALLBACK_MODELS.length] }) };
     }
     res = await fetch(url, reqInit);
-    if (res.ok || !(res.status === 429 || res.status >= 500)) return res;
+    if (res.ok || !(res.status === 429 || res.status >= 500) || attempt === 3) return res;
     await res.text().catch(() => null);
     await new Promise((r) => setTimeout(r, 800 * 2 ** attempt + Math.random() * 400));
   }
