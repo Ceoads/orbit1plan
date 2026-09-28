@@ -22,7 +22,7 @@ export function aiModel(model: string, provider: 'gemini' | 'lovable'): string {
   const m = model.replace(/^google\//, '');
   // Map gateway model ids to models available on the Gemini API.
   if (m.includes('image')) return 'gemini-3.1-flash-image';
-  return 'gemini-3.6-flash';
+  return 'gemini-3.8-flash';
 }
 
 // Drop-in replacement for a chat-completions fetch call.
@@ -42,7 +42,7 @@ export async function aiChat(body: Record<string, unknown>): Promise<Response> {
 // Gemini is the default AI for every present and future feature.
 // Resilient fetch: retries transient Gemini errors (429/5xx) with backoff and
 // falls back to the stable "gemini-flash-latest" alias on retries.
-const FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-3.6-flash'];
+const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.8-flash'];
 export async function aiFetch(url: string, init: RequestInit): Promise<Response> {
   let body: any = null;
   try { body = init.body ? JSON.parse(String(init.body)) : null; } catch { /* keep raw */ }
