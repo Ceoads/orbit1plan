@@ -1,0 +1,1 @@
+- All AI calls (present and future) go through supabase/functions/_shared/ai.ts (aiEndpoint/aiModel/aiFetch) using GEMINI_API_KEY by default — the user requires Gemini as the default AI; aiFetch retries Gemini overloads with fallback models.

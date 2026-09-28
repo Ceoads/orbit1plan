@@ -1,4 +1,4 @@
-import { aiEndpoint, aiModel } from '../_shared/ai.ts';
+import { aiEndpoint, aiModel, aiFetch } from '../_shared/ai.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -184,7 +184,7 @@ Règles:
       ];
     }
 
-    const response = await fetch(aiEndpoint().url, {
+    const response = await aiFetch(aiEndpoint().url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${aiEndpoint().key}`,
@@ -258,7 +258,7 @@ Règles:
           try {
             const imagePrompt = generateImagePrompt(card.question, card.answer);
             
-            const imageResponse = await fetch(aiEndpoint().url, {
+            const imageResponse = await aiFetch(aiEndpoint().url, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${aiEndpoint().key}`,

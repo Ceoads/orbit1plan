@@ -1,4 +1,4 @@
-import { aiEndpoint, aiModel } from '../_shared/ai.ts';
+import { aiEndpoint, aiModel, aiFetch } from '../_shared/ai.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -118,7 +118,7 @@ Rends les tâches spécifiques, réalisables et progressives. Génère tout en f
 
     console.log('Calling Lovable AI Gateway with action:', action);
 
-    const response = await fetch(aiEndpoint().url, {
+    const response = await aiFetch(aiEndpoint().url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${aiEndpoint().key}`,

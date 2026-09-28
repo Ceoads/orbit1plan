@@ -22,14 +22,14 @@ export function aiModel(model: string, provider: 'gemini' | 'lovable'): string {
   const m = model.replace(/^google\//, '');
   // Map gateway model ids to models available on the Gemini API.
   if (m.includes('image')) return 'gemini-3.1-flash-image';
-  return 'gemini-3.6-flash';
+  return 'gemini-3.8-flash';
 }
 
 // Drop-in replacement for a chat-completions fetch call.
 export async function aiChat(body: Record<string, unknown>): Promise<Response> {
   const { url, key, provider } = aiEndpoint();
   const model = aiModel(String(body.model ?? 'google/gemini-2.5-flash'), provider);
-  return await fetch(url, {
+  return await aiFetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${key}`,
@@ -37,4 +37,25 @@ export async function aiChat(body: Record<string, unknown>): Promise<Response> {
     },
     body: JSON.stringify({ ...body, model }),
   });
+}
+
+// Gemini is the default AI for every present and future feature.
+// Resilient fetch: retries transient Gemini errors (429/5xx) with backoff and
+// falls back to the stable "gemini-flash-latest" alias on retries.
+const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.8-flash'];
+export async function aiFetch(url: string, init: RequestInit): Promise<Response> {
+  let body: any = null;
+  try { body = init.body ? JSON.parse(String(init.body)) : null; } catch { /* keep raw */ }
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let reqInit = init;
+    if (attempt > 0 && body && url.includes('generativelanguage') && !String(body.model).includes('image')) {
+      reqInit = { ...init, body: JSON.stringify({ ...body, model: FALLBACK_MODELS[(attempt - 1) % FALLBACK_MODELS.length] }) };
+    }
+    res = await fetch(url, reqInit);
+    if (res.ok || !(res.status === 429 || res.status >= 500) || attempt === 3) return res;
+    await res.text().catch(() => null);
+    await new Promise((r) => setTimeout(r, 800 * 2 ** attempt + Math.random() * 400));
+  }
+  return res!;
 }
