@@ -13,6 +13,8 @@ import { CourseHubPage } from "./pages/CourseHubPage";
 import { StudyHubPage } from "./pages/StudyHubPage";
 import NotFound from "./pages/NotFound";
 import GoogleDriveReturn from "./pages/GoogleDriveReturn";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 
 const queryClient = new QueryClient();
 
