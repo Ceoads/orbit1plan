@@ -879,7 +879,9 @@ const SettingsPage = () => {
           <p>
             <button className="hover:text-foreground transition-colors" onClick={() => toast.info("Aide bientôt disponible")}>Aide &amp; Support</button>
             <span className="mx-2">·</span>
-            <button className="hover:text-foreground transition-colors" onClick={() => toast.info("Politique de confidentialité bientôt disponible")}>Politique de confidentialité</button>
+            <a href="/privacy" className="hover:text-foreground transition-colors">Politique de confidentialité</a>
+            <span className="mx-2">·</span>
+            <a href="/terms" className="hover:text-foreground transition-colors">Conditions d'utilisation</a>
           </p>
           <p>Orbit OS — v1.0.0 (Production)</p>
         </div>
