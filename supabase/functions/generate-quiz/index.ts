@@ -93,14 +93,32 @@ async function splitPdf(buf: Uint8Array, pagesPerSegment = PAGES_PER_SEGMENT): P
   return segments;
 }
 
-async function callAI(LOVABLE_API_KEY: string, messages: any[], log: any) {
+// Platform kills requests at 150s idle; keep all AI work well under that.
+const REQUEST_START = { t: Date.now() };
+const TOTAL_BUDGET_MS = 125_000;
+function remainingMs() { return TOTAL_BUDGET_MS - (Date.now() - REQUEST_START.t); }
+
+async function callAI(LOVABLE_API_KEY: string, messages: any[], log: any, maxMs = 90_000) {
   const model = aiModel('google/gemini-2.5-flash', aiEndpoint().provider);
   const t0 = Date.now();
-  const response = await aiFetch(aiEndpoint().url, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${aiEndpoint().key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages }),
-  });
+  const budget = Math.min(maxMs, remainingMs());
+  if (budget < 5_000) return { ok: false, status: 504, error: 'time_budget_exhausted' };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), budget);
+  let response: Response;
+  try {
+    response = await aiFetch(aiEndpoint().url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${aiEndpoint().key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    log('warn', 'ai.timeout', { duration_ms: Date.now() - t0, error: e instanceof Error ? e.message : String(e) });
+    return { ok: false, status: 504, error: 'ai_timeout' };
+  } finally {
+    clearTimeout(timer);
+  }
   log('info', 'ai.response', { status: response.status, ok: response.ok, duration_ms: Date.now() - t0 });
   if (!response.ok) {
     const errorText = await response.text();
@@ -324,8 +342,8 @@ Règles:
     const allQuestions: any[] = [];
     let titleHint = '';
 
-    for (let i = 0; i < payloads.length; i++) {
-      const p = payloads[i];
+    // Run all segments in parallel so total time ≈ slowest segment, not the sum.
+    const results = await Promise.all(payloads.map(async (p, i) => {
       const userContent: any =
         p.kind === 'text'
           ? `Génère un QCM de ${N} questions basé sur ce contenu de cours:\n\n${p.text}`
@@ -333,30 +351,29 @@ Règles:
               { type: 'text', text: `Analyse ce document de cours${p.label ? ' (' + p.label + ')' : ''} et génère un QCM de ${N} questions.` },
               { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.b64}` } },
             ];
-
       const messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
       ];
-
       log('info', 'ai.request', { segment: i + 1, of: payloads.length, kind: p.kind });
       const aiT0 = Date.now();
-      const res = await callAI(LOVABLE_API_KEY, messages, log);
+      const res = await callAI(LOVABLE_API_KEY, messages, log, payloads.length > 1 ? 85_000 : 110_000);
+      return { i, p, res, dur: Date.now() - aiT0 };
+    }));
+
+    for (const { i, p, res, dur } of results) {
       const segMetaEntry = segmentsMeta.find((s) => s.idx === i) || segmentsMeta[i];
       if (segMetaEntry) {
-        segMetaEntry.ai_duration_ms = Date.now() - aiT0;
+        segMetaEntry.ai_duration_ms = dur;
         segMetaEntry.ai_ok = res.ok;
       }
       if (!res.ok) {
         if (segMetaEntry) segMetaEntry.ai_status = res.status;
-        if (res.status === 429) return new Response(JSON.stringify({ error: 'Rate limit exceeded.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        if (res.status === 402) return new Response(JSON.stringify({ error: 'AI credits exhausted.', reqId }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         continue;
       }
       const quiz = parseQuiz(res.content);
       if (quiz?.questions?.length) {
         if (!titleHint && quiz.title) titleHint = quiz.title;
-        // Tag each candidate with its source segment idx
         for (const q of quiz.questions) {
           allQuestions.push({ ...q, _src: i, _srcLabel: p.kind === 'text' ? 'text' : (p.label || `segment ${i + 1}`) });
         }
@@ -366,6 +383,12 @@ Règles:
         if (segMetaEntry) segMetaEntry.questions_returned = 0;
         log('warn', 'segment.empty', { segment: i + 1 });
       }
+    }
+
+    if (allQuestions.length === 0) {
+      const statuses = results.map((r) => r.res.ok ? 200 : r.res.status);
+      if (statuses.includes(429)) return new Response(JSON.stringify({ error: 'Rate limit exceeded.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (statuses.includes(402)) return new Response(JSON.stringify({ error: 'AI credits exhausted.', reqId }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (allQuestions.length === 0) {
@@ -387,7 +410,7 @@ Règles:
     let mergeUsed = false;
     const finalWithSource: any[] = [];
 
-    if (payloads.length === 1 || allQuestions.length <= N) {
+    if (payloads.length === 1 || allQuestions.length <= N || remainingMs() < 20_000) {
       const picked = allQuestions.slice(0, N);
       finalQuiz = {
         title: titleHint || 'Quiz',
