@@ -21,6 +21,7 @@ import {
   Upload,
   Clock,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddSubjectModal } from "@/components/modals";
@@ -32,6 +33,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -82,6 +84,11 @@ export const TheVaultPage = () => {
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [fileFilter, setFileFilter] = useState<SemesterFilter>("all");
+  const [multiSubjectIds, setMultiSubjectIds] = useState<string[]>([]);
+  const toggleMultiSubject = (id: string) =>
+    setMultiSubjectIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
   const [showAddSemester, setShowAddSemester] = useState(false);
   const [newSemesterName, setNewSemesterName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -412,6 +419,11 @@ export const TheVaultPage = () => {
   // Subject folder counts respect the current file filter
   const filteredCountForSubject = (subjectId: string) =>
     files.filter((f) => f.subject_id === subjectId && matchesSemester(f, fileFilter)).length;
+
+  // Fichiers combinés des matières cochées dans la liste déroulante
+  const multiFiles = files.filter(
+    (f) => f.subject_id && multiSubjectIds.includes(f.subject_id) && matchesSemester(f, fileFilter)
+  );
 
   const inSubject = selectedSubject && !isSearchMode;
   const inSearch = isSearchMode;
