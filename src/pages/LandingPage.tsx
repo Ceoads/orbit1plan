@@ -494,6 +494,14 @@ const LandingPage = () => {
             <span className="text-xl">✨</span>
             <span className="font-display font-bold text-foreground">Orbit</span>
           </div>
+          <div className="flex items-center gap-6">
+            <a href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Confidentialité
+            </a>
+            <a href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Conditions d'utilisation
+            </a>
+          </div>
           <p className="text-sm text-muted-foreground">
             © 2025 Orbit. Fait avec ❤️ pour les étudiants.
           </p>
