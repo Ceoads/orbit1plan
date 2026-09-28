@@ -624,6 +624,20 @@ function DrivePanel() {
             {status.reconnectRequired ? "Reconnecter Google Drive" : "Connecter Google Drive"}
           </button>
         </div>
+        <div className="max-w-2xl mt-10 space-y-6">
+          <p className="font-semibold text-lg">Comment ça marche</p>
+          {[
+            ["Connecte ton compte", "Clique sur « Connecter Google Drive », choisis ton compte Google et accepte l'accès en lecture seule."],
+            ["Choisis un dossier", "Sélectionne le dossier où tu ranges tes cours. Orbit y importera chaque nouveau document automatiquement, chaque matin."],
+            ["Ou importe à la main", "Clique sur n'importe quel fichier de la liste pour l'ajouter tout de suite à ta Bibliothèque."],
+            ["Révise", "Tes documents apparaissent dans Bibliothèque : lance un quiz ou crée des fiches en un clic."],
+          ].map(([t, d], i) => (
+            <div key={t} className="flex gap-5 bg-card rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
+              <span className="w-9 h-9 shrink-0 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center">{i + 1}</span>
+              <div><p className="font-medium">{t}</p><p className="text-sm text-muted-foreground mt-1">{d}</p></div>
+            </div>
+          ))}
+        </div>
       </>
     );
   }
