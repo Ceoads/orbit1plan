@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
-  Loader2, ChevronLeft, ChevronRight, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen,
+  Loader2, ChevronLeft, ChevronRight, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,13 +10,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVaultData, VaultFile } from "@/hooks/useVaultData";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { cn } from "@/lib/utils";
+import { DesktopHome } from "@/components/desktop/DesktopHome";
 
-type Section = "library" | "subjects" | "quiz" | "flashcards" | "drive";
+type Section = "home" | "library" | "subjects" | "quiz" | "flashcards" | "drive";
 
 interface QuizQuestion { question: string; options: string[]; correctIndex: number; explanation: string }
 interface Card { id: string; question: string; answer: string; subject_id: string | null; mastered: boolean }
 
 const NAV: { id: Section; label: string; icon: typeof BookOpen }[] = [
+  { id: "home", label: "Accueil", icon: Home },
   { id: "library", label: "Bibliothèque", icon: BookOpen },
   { id: "subjects", label: "Par matière", icon: FolderOpen },
   { id: "quiz", label: "Quiz", icon: Brain },
@@ -31,14 +33,14 @@ const greeting = () => {
 };
 
 export default function DesktopApp() {
-  const [section, setSection] = useState<Section>("library");
+  const [section, setSection] = useState<Section>("home");
   const [source, setSource] = useState<VaultFile | null>(null);
   const vault = useVaultData();
   const navigate = useNavigate();
 
   const useAs = (f: VaultFile, target: Section) => { setSource(f); setSection(target); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (section !== "drive") vault.refetch(); }, [section]);
+  useEffect(() => { if (section !== "drive" && section !== "home") vault.refetch(); }, [section]);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -67,6 +69,7 @@ export default function DesktopApp() {
 
       <main className="flex-1 min-w-0 px-12 py-10">
         <div className="max-w-6xl mx-auto">
+          {section === "home" && <DesktopHome greeting={greeting()} />}
           {section === "library" && <Library vault={vault} onUse={useAs} />}
           {section === "subjects" && <SubjectLibrary vault={vault} />}
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
