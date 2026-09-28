@@ -1,4 +1,4 @@
-import { aiEndpoint, aiModel } from '../_shared/ai.ts';
+import { aiEndpoint, aiModel, aiFetch } from '../_shared/ai.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -47,7 +47,7 @@ Return ONLY a JSON array of objects with this structure:
 
     const userPrompt = `Clean these raw iCal subject names into human-readable French subject names:\n\n${JSON.stringify(rawSubjects, null, 2)}`;
 
-    const response = await fetch(aiEndpoint().url, {
+    const response = await aiFetch(aiEndpoint().url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${aiEndpoint().key}`,

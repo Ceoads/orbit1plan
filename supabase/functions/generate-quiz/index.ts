@@ -1,4 +1,4 @@
-import { aiEndpoint, aiModel } from '../_shared/ai.ts';
+import { aiEndpoint, aiModel, aiFetch } from '../_shared/ai.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "npm:pdf-lib@1.17.1";
@@ -96,7 +96,7 @@ async function splitPdf(buf: Uint8Array, pagesPerSegment = PAGES_PER_SEGMENT): P
 async function callAI(LOVABLE_API_KEY: string, messages: any[], log: any) {
   const model = aiModel('google/gemini-2.5-flash', aiEndpoint().provider);
   const t0 = Date.now();
-  const response = await fetch(aiEndpoint().url, {
+  const response = await aiFetch(aiEndpoint().url, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${aiEndpoint().key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, messages }),
