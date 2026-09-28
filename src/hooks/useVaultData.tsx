@@ -252,6 +252,8 @@ export const useVaultData = () => {
     
     const lowerQuery = query.toLowerCase();
     return files.filter(f => 
+      f.original_filename?.toLowerCase().includes(lowerQuery) ||
+      f.ai_detected_subject?.toLowerCase().includes(lowerQuery) ||
       f.extracted_text?.toLowerCase().includes(lowerQuery) ||
       f.ai_summary?.toLowerCase().includes(lowerQuery) ||
       f.tags?.some(t => t.toLowerCase().includes(lowerQuery))

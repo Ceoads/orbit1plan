@@ -61,6 +61,8 @@ export const PracticeZone = ({
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<boolean[]>([]);
   const [quizComplete, setQuizComplete] = useState(false);
+  const [questionCount, setQuestionCount] = useState(5);
+  const [difficulty, setDifficulty] = useState<'basic' | 'intermediate' | 'advanced'>('intermediate');
   
   // Flashcards state
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -109,6 +111,8 @@ export const PracticeZone = ({
           imageBase64: fileUrl,
           noteId: fileId,
           subjectId,
+          questionCount,
+          difficulty,
         },
       });
 
@@ -301,6 +305,47 @@ export const PracticeZone = ({
               <p className="text-sm text-muted-foreground mb-4">
                 {t("studyHub.generateQuizDesc")}
               </p>
+
+              {/* Question count */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                {[5, 10, 15, 20].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => { haptics.selection(); setQuestionCount(n); }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                      questionCount === n
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+
+              {/* Difficulty */}
+              <div className="flex items-center justify-center gap-2 mb-5">
+                {([
+                  { value: 'basic', label: 'Basique' },
+                  { value: 'intermediate', label: 'Intermédiaire' },
+                  { value: 'advanced', label: 'Avancé' },
+                ] as const).map((d) => (
+                  <button
+                    key={d.value}
+                    onClick={() => { haptics.selection(); setDifficulty(d.value); }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                      difficulty === d.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+
               <Button
                 onClick={handleGenerateQuiz}
                 disabled={loadingQuiz}
