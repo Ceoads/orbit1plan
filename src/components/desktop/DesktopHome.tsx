@@ -25,7 +25,7 @@ const WEEK = ["L", "M", "M", "J", "V", "S", "D"];
 
 export const DesktopHome = ({ greeting }: { greeting: string }) => {
   const { user } = useAuth();
-  const { events, subjects, tasks, createTask, getTodayEvents, getSubjectById } = useOrbitData();
+  const { events, subjects, tasks, createTask, toggleTask, getTodayEvents, getSubjectById } = useOrbitData();
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [openDate, setOpenDate] = useState<Date | null>(null);
 
@@ -77,6 +77,14 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
   }, [events]);
   const todayStr = toLocalDateStr(new Date());
   const today = getTodayEvents?.() ?? [];
+
+  // ---- Tâches du jour (due today or overdue, not subtasks) ----
+  const todayTasks = useMemo(() => {
+    return tasks
+      .filter((t) => !t.is_subtask && t.due_date && toLocalDateStr(new Date(t.due_date)) <= todayStr)
+      .sort((a, b) => (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0) || (b.priority_score ?? 0) - (a.priority_score ?? 0));
+  }, [tasks, todayStr]);
+  const remainingCount = todayTasks.filter((t) => t.status !== "done").length;
 
   return (
     <div className="space-y-10">
