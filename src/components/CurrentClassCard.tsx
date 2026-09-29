@@ -2,6 +2,7 @@ import { GlassCard } from "./GlassCard";
 import { SubjectBadge, SubjectDot } from "./SubjectBadge";
 import { getCurrentClass, getNextClass, getSubjectById } from "@/lib/mockData";
 import { Clock, BookOpen } from "lucide-react";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 export const CurrentClassCard = () => {
   const currentClass = getCurrentClass();
@@ -57,7 +58,7 @@ export const CurrentClassCard = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <div className="text-3xl">{subject.icon}</div>
+          <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="lg" />
           <div>
             <h2 className="font-display text-xl font-bold text-foreground">
               {subject.name}

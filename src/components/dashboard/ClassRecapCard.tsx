@@ -1,5 +1,6 @@
 import { Clock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface ClassRecapCardProps {
   subjectName: string;
@@ -31,7 +32,7 @@ export const ClassRecapCard = ({
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              {subjectIcon && <span className="text-2xl">{subjectIcon}</span>}
+              <SubjectIcon name={subjectName} legacyIcon={subjectIcon} size="md" className="bg-primary-foreground/15 text-primary-foreground ring-primary-foreground/20" />
               <h2 className="font-display text-2xl font-bold tracking-tight">
                 {subjectName}
               </h2>

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ChevronRight, Sparkles, BookOpen, Calendar, Loader2, Link2, ArrowLeft, QrCode } from "lucide-react";
 import { GroupSelector } from "./GroupSelector";
 import { QRCodeScanner } from "./QRCodeScanner";
+import { SubjectIcon } from "./SubjectIcon";
 
 const SUBJECT_PRESETS = [
   { name: "Mathématiques", icon: "📐", colorKey: "math" },
@@ -426,7 +427,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
                       }
                     `}
                   >
-                    <span className="text-2xl">{subject.icon}</span>
+                    <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="md" />
                     <p className="font-medium mt-1 text-sm">{subject.name}</p>
                   </button>
                 );
