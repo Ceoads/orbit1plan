@@ -216,7 +216,14 @@ Deno.serve(async (req) => {
     if (body.action === "status") {
       const res = await drive("/drive/v3/about?fields=user(emailAddress,displayName)");
       if (await appUserReconnectRequired(res)) return json({ connected: false, reconnectRequired: true });
-      if (!res.ok) { console.error("about", res.status, await res.text()); return json({ error: "Google Drive ne répond pas" }, 502); }
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("about", res.status, text);
+        if (res.status === 403 && /SERVICE_DISABLED|accessNotConfigured/.test(text)) {
+          return json({ connected: false, error: "L'API Google Drive n'est pas activée dans le projet Google Cloud. Active-la, patiente quelques minutes, puis réessaie." });
+        }
+        return json({ connected: false, error: `Google Drive a répondu ${res.status}` });
+      }
       const about = await res.json();
       const { data: folder } = await admin.from("drive_sync_folders").select("*").eq("user_id", user.id).maybeSingle();
       return json({ connected: true, email: about.user?.emailAddress ?? null, name: about.user?.displayName ?? null, folder });
