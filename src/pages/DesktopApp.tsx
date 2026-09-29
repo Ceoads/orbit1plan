@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
-  Loader2, ChevronLeft, ChevronRight, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home,
+  Loader2, ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,14 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { cn } from "@/lib/utils";
 import { DesktopHome } from "@/components/desktop/DesktopHome";
 import { SubjectIcon } from "@/components/SubjectIcon";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Section = "home" | "library" | "subjects" | "quiz" | "flashcards" | "drive";
 
@@ -94,15 +102,21 @@ const Header = ({ title, subtitle }: { title: string; subtitle: string }) => (
 function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onUse: (f: VaultFile, s: Section) => void }) {
   const { user } = useAuth();
   const [q, setQ] = useState("");
-  const [subject, setSubject] = useState<string | null>(null);
+  const [subjectIds, setSubjectIds] = useState<string[]>([]);
   const [type, setType] = useState<string | null>(null);
 
   const list = useMemo(() => {
     let l = q.trim() ? vault.searchFiles(q) : vault.files;
-    if (subject) l = l.filter((f) => f.subject_id === subject);
+    if (subjectIds.length > 0) l = l.filter((f) => f.subject_id && subjectIds.includes(f.subject_id));
     if (type) l = l.filter((f) => (f.file_type || "document") === type);
     return l;
-  }, [vault, q, subject, type]);
+  }, [vault, q, subjectIds, type]);
+
+  const toggleSubject = (subjectId: string) => {
+    setSubjectIds((current) => current.includes(subjectId)
+      ? current.filter((id) => id !== subjectId)
+      : [...current, subjectId]);
+  };
 
   const name = user?.email?.split("@")[0] ?? "";
 
@@ -121,11 +135,46 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
           </Pill>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2 mb-8">
-        <Pill active={!subject} onClick={() => setSubject(null)}>Toutes les matières</Pill>
-        {vault.subjects.map((s) => (
-          <Pill key={s.id} active={subject === s.id} onClick={() => setSubject(s.id)}><span className="flex items-center gap-2"><SubjectIcon name={s.name} legacyIcon={s.icon} size="sm" bare />{s.name}</span></Pill>
-        ))}
+      <div className="mb-8">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={subjectIds.length > 0 ? "default" : "outline"}
+              className="h-11 min-w-56 justify-between rounded-xl px-4 shadow-none"
+            >
+              <span>
+                {subjectIds.length === 0
+                  ? "Toutes les matières"
+                  : `${subjectIds.length} matière${subjectIds.length > 1 ? "s" : ""}`}
+              </span>
+              <ChevronDown className="h-4 w-4 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-80 max-h-96 overflow-y-auto rounded-2xl p-2">
+            {vault.subjects.map((s) => (
+              <DropdownMenuCheckboxItem
+                key={s.id}
+                checked={subjectIds.includes(s.id)}
+                onCheckedChange={() => toggleSubject(s.id)}
+                onSelect={(event) => event.preventDefault()}
+                className="rounded-xl py-3 pl-9"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <SubjectIcon name={s.name} legacyIcon={s.icon} size="sm" />
+                  <span className="truncate">{s.name}</span>
+                </span>
+              </DropdownMenuCheckboxItem>
+            ))}
+            {subjectIds.length > 0 && (
+              <DropdownMenuItem
+                onSelect={() => setSubjectIds([])}
+                className="mt-1 rounded-xl py-3 text-muted-foreground"
+              >
+                Tout désélectionner
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {vault.loading ? (
