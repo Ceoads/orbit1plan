@@ -695,7 +695,11 @@ function DrivePanel() {
   const [importing, setImporting] = useState<Record<string, "loading" | "done">>({});
 
   const loadStatus = useCallback(async () => {
-    try { setStatus(await callDrive({ action: "status" })); } catch (e: any) { toast.error(e.message); setStatus({ connected: false }); }
+    try {
+      const s = await callDrive({ action: "status" });
+      if (s?.error) toast.error(s.error);
+      setStatus(s);
+    } catch (e: any) { toast.error(e.message); setStatus({ connected: false }); }
   }, []);
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
