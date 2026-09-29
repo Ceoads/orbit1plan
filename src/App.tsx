@@ -15,6 +15,8 @@ import NotFound from "./pages/NotFound";
 import GoogleDriveReturn from "./pages/GoogleDriveReturn";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
+import OAuthConsent from "./pages/OAuthConsent";
+import { safeNext } from "./lib/safeNext";
 
 const queryClient = new QueryClient();
 
@@ -52,7 +54,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   // Don't redirect authenticated users from auth page
   // Let them proceed if they intentionally visit /auth
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={safeNext(new URLSearchParams(window.location.search).get("next"))} replace />;
   }
   
   return <>{children}</>;
@@ -64,6 +66,7 @@ const AppRoutes = () => {
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
+      <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/auth" element={
         <PublicRoute>
           <AuthPage />
