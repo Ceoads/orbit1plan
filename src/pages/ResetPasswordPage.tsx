@@ -45,7 +45,7 @@ const ResetPasswordPage = () => {
     } catch (err) {
       if (err instanceof z.ZodError) {
         const fieldErrors: { password?: string; confirmPassword?: string } = {};
-        err.errors.forEach((e) => {
+        err.issues.forEach((e) => {
           if (e.path[0] === "password") fieldErrors.password = e.message;
           if (e.path[0] === "confirmPassword") fieldErrors.confirmPassword = e.message;
         });

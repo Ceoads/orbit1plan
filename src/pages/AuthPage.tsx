@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { safeNext } from "@/lib/safeNext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import { useTranslation } from "react-i18next";
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = safeNext(searchParams.get("next"));
   const { user, loading: authLoading } = useAuth();
   const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
@@ -34,7 +37,7 @@ const AuthPage = () => {
   // Auto-redirect if already logged in (returning user)
   useEffect(() => {
     if (user && !authLoading) {
-      navigate("/", { replace: true });
+      navigate(nextPath, { replace: true });
     }
   }, [user, authLoading, navigate]);
 
@@ -65,7 +68,7 @@ const AuthPage = () => {
     } catch (err) {
       if (err instanceof z.ZodError) {
         const fieldErrors: { email?: string; password?: string } = {};
-        err.errors.forEach((e) => {
+        err.issues.forEach((e) => {
           if (e.path[0] === "email" || e.path.length === 0) fieldErrors.email = e.message;
           if (e.path[0] === "password") fieldErrors.password = e.message;
         });
@@ -123,13 +126,13 @@ const AuthPage = () => {
         });
         if (error) throw error;
         toast.success(t("auth.welcomeBackToast"));
-        navigate("/");
+        navigate(nextPath);
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}${nextPath}`,
           },
         });
         if (error) {
@@ -141,7 +144,7 @@ const AuthPage = () => {
           return;
         }
         toast.success(t("auth.accountCreated"));
-        navigate("/");
+        navigate(nextPath);
       }
     } catch (error: any) {
       console.error("Auth error:", error);
