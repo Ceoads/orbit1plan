@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "sdk_version": "3.0.4",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://qaansoasbfzjsxsqpcsb.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "orbit-plan",
+      "version": "0.1.0",
+      "title": "Orbit plan"
+    },
+    "tools": [
+      {
+        "name": "list_schedule",
+        "title": "Emploi du temps",
+        "description": "List the signed-in student's upcoming classes and exams between two dates.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Start date YYYY-MM-DD (default today).",
+              "type": "string"
+            },
+            "to": {
+              "description": "End date YYYY-MM-DD (default +7 days).",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_tasks",
+        "title": "Lister les tâches",
+        "description": "List the signed-in student's Orbit tasks, optionally filtered by status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "status": {
+              "default": "todo",
+              "description": "Filter by status.",
+              "type": "string",
+              "enum": [
+                "todo",
+                "done",
+                "all"
+              ]
+            },
+            "limit": {
+              "default": 30,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_task",
+        "title": "Créer une tâche",
+        "description": "Create a new task in the signed-in student's Orbit task list.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "Task title."
+            },
+            "due_date": {
+              "description": "Optional due date (ISO 8601).",
+              "type": "string"
+            },
+            "energy_level": {
+              "default": "medium",
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          },
+          "required": [
+            "title"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "complete_task",
+        "title": "Terminer une tâche",
+        "description": "Mark one of the signed-in student's tasks as done (or back to todo).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "done": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
