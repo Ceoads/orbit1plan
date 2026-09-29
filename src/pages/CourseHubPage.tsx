@@ -15,6 +15,7 @@ import { IOSBackButton } from "@/components/IOSBackButton";
 import { Button } from "@/components/ui/button";
 import { PostCaptureActionMenu, CapturedNote } from "@/components/vault/PostCaptureActionMenu";
 import { buildCourseVaultPath } from "@/lib/courseNavigation";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 export const CourseHubPage = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -474,7 +475,7 @@ export const CourseHubPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <span className="text-lg">{subject.icon}</span>
+                <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="sm" bare />
                 <span className="text-sm font-semibold text-foreground">{subject.name}</span>
               </motion.div>
             )}
@@ -561,7 +562,7 @@ export const CourseHubPage = () => {
                 <div>
                   <h2 className="font-display font-semibold text-foreground">Auto-Vault</h2>
                   <p className="text-xs text-muted-foreground">
-                    Capture → Classement automatique dans {subject?.icon} {subject?.name || 'Vault'}
+                    Capture → Classement automatique dans {subject?.name || 'Vault'}
                   </p>
                 </div>
               </div>
@@ -590,7 +591,7 @@ export const CourseHubPage = () => {
                         onClick={() => navigate('/?tab=vault')}
                         className="text-xs text-success/70 hover:text-success underline"
                       >
-                        Voir le dossier: {subject?.icon} {subject?.name}
+                        Voir le dossier : {subject?.name}
                       </button>
                     </div>
                   </motion.div>

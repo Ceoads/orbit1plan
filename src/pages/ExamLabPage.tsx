@@ -9,6 +9,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { FlashcardReview } from "@/components/FlashcardReview";
 import { cn } from "@/lib/utils";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface Flashcard {
   id: string;
@@ -267,7 +268,7 @@ export const ExamLabPage = () => {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                {subject.icon} {subject.name} ({count})
+                <span className="flex items-center gap-2"><SubjectIcon name={subject.name} legacyIcon={subject.icon} size="sm" bare />{subject.name} ({count})</span>
               </button>
             );
           })}

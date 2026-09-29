@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Subject, useOrbitData } from "@/hooks/useOrbitData";
 import { useTranslation } from "react-i18next";
 import { sanitizeText, INPUT_LIMITS } from "@/lib/sanitize";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface AddClassModalProps {
   open: boolean;
@@ -97,7 +98,7 @@ export const AddClassModal = ({
                 <SelectItem value="__none__">{t('common.none')}</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
-                    {subject.icon} {subject.name}
+                    <span className="flex items-center gap-2"><SubjectIcon name={subject.name} legacyIcon={subject.icon} size="sm" bare />{subject.name}</span>
                   </SelectItem>
                 ))}
               </SelectContent>

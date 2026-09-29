@@ -205,7 +205,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
       <button onClick={() => setOpen(null)} className="flex items-center gap-1 h-11 -ml-2 px-2 mb-4 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="w-4 h-4" /> Toutes les matières
       </button>
-      <div className="mb-10 flex items-center gap-4">
+      <div className="mb-10 flex items-center gap-4 [&>header]:mb-0">
         <SubjectIcon name={subj.name} legacyIcon={subj.icon} size="xl" />
         <Header title={subj.name} subtitle={`${files.length} document${files.length > 1 ? "s" : ""}${subj.teacher_name ? ` · ${subj.teacher_name}` : ""}`} />
       </div>
@@ -432,7 +432,7 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
     cards.forEach((c) => { const k = c.subject_id ?? "__none__"; m.set(k, [...(m.get(k) ?? []), c]); });
     return [...m.entries()].map(([k, list]) => {
       const s = subjects.find((x) => x.id === k);
-      return { key: k, name: s ? `${s.icon} ${s.name}` : "Sans matière", list };
+      return { key: k, name: s?.name ?? "Sans matière", list };
     });
   }, [cards, subjects]);
 

@@ -2,6 +2,7 @@ import { GlassCard } from "./GlassCard";
 import { Calendar, FileText } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { cn } from "@/lib/utils";
+import { SubjectIcon } from "./SubjectIcon";
 
 interface ExamCardProps {
   exam: {
@@ -39,7 +40,7 @@ export const ExamCard = ({ exam }: ExamCardProps) => {
             colorClasses[exam.subjectColorKey] || colorClasses.math
           )}
         >
-          <span>{exam.subjectIcon}</span>
+          <SubjectIcon name={exam.subjectName} legacyIcon={exam.subjectIcon} size="sm" bare />
           {exam.subjectName}
         </span>
         <div className={cn(

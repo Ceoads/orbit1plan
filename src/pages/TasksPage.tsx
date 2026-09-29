@@ -7,6 +7,7 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { AddTaskModal } from "@/components/modals/AddTaskModal";
 import { cn } from "@/lib/utils";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 const SPRING = { type: "spring" as const, stiffness: 320, damping: 28 };
 const SNAP = { type: "spring" as const, stiffness: 360, damping: 34 };
@@ -376,7 +377,7 @@ export const TasksPage = () => {
           ) : (
             dayTasks.map((task, i) => {
               const subject = subjects.find((s) => s.id === task.subject_id);
-              const hasIcon = !!subject?.icon && task.status === "todo";
+              const hasIcon = !!subject && task.status === "todo";
               return (
                 <motion.div
                   key={task.id}
@@ -406,7 +407,7 @@ export const TasksPage = () => {
                     )}
                   >
                     {hasIcon ? (
-                      <span>{subject!.icon}</span>
+                      subject ? <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="sm" bare /> : null
                     ) : (
                       <AnimatePresence>
                         {task.status === "done" && (
