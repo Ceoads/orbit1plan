@@ -11,6 +11,13 @@ import { GOOGLE_DRIVE_SCOPES } from "../_shared/appUserScopes.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 const CONNECTOR = "google_drive";
+const ALLOWED_APP_ORIGINS = new Set([
+  "https://orbit-plan.com",
+  "https://www.orbit-plan.com",
+  "https://orbitp1an.lovable.app",
+  "https://id-preview--dc23bc90-363b-4525-b605-b15310eb5d99.lovable.app",
+  "http://localhost:8080",
+]);
 const MAX_BYTES = 50 * 1024 * 1024;
 const MIME = {
   pdf: "application/pdf",
@@ -172,10 +179,14 @@ Deno.serve(async (req) => {
     if (body.action === "start") {
       const clientAPIKey = Deno.env.get("GOOGLE_DRIVE_APP_USER_CONNECTOR_CLIENT_API_KEY");
       if (!clientAPIKey) return json({ error: "Google Drive n'est pas configuré" }, 500);
+      const requestedOrigin = new URL(body.origin).origin;
+      if (!ALLOWED_APP_ORIGINS.has(requestedOrigin)) {
+        return json({ error: "Cette adresse Orbit n'est pas autorisée pour Google Drive." }, 400);
+      }
       const existing = await getConnectionKeyForUser(user.id, CONNECTOR);
       const { authorizationUrl } = await authorizeAppUserOAuth({
         gatewayBaseUrl: GATEWAY, connectorId: CONNECTOR, appUserId: user.id, clientAPIKey,
-        returnUrl: new URL("/oauth/google-drive/return", body.origin).toString(),
+        returnUrl: new URL("/oauth/google-drive/return", requestedOrigin).toString(),
         connectionAPIKey: existing ?? undefined,
         credentialsConfiguration: { scopes: GOOGLE_DRIVE_SCOPES },
       });

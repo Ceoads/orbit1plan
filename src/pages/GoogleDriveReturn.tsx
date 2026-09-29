@@ -10,9 +10,16 @@ export default function GoogleDriveReturn() {
       window.opener?.postMessage({ type, connectorId: "google_drive", reason }, window.location.origin);
     };
     if (params.get("success") !== "true") {
-      setMessage(params.get("error") ?? "La connexion n'a pas abouti.");
-      notify("appUserConnectorOAuthFailed");
-      window.close();
+      const code = params.get("error") ?? "rejected_request";
+      const description = params.get("error_description");
+      const reason = description
+        ? decodeURIComponent(description.replace(/\+/g, " "))
+        : code === "rejected_request"
+          ? "Google a refusé la demande. Vérifie que ton compte est autorisé comme utilisateur test, puis réessaie."
+          : "La connexion Google Drive n'a pas abouti.";
+      console.error("Google Drive OAuth rejected", { code, description });
+      setMessage(reason);
+      notify("appUserConnectorOAuthFailed", reason);
       return;
     }
     const code = params.get("code");
@@ -26,12 +33,14 @@ export default function GoogleDriveReturn() {
     }
     supabase.functions.invoke("google-drive", { body: { action: "complete", code } }).then(({ error }) => {
       if (error) {
-        setMessage("Impossible de finaliser la connexion.");
-        notify("appUserConnectorOAuthFailed");
+        const reason = "Impossible de finaliser la connexion Google Drive. Réessaie depuis Orbit.";
+        console.error("Google Drive OAuth exchange failed", error);
+        setMessage(reason);
+        notify("appUserConnectorOAuthFailed", reason);
       } else {
         notify("appUserConnectorOAuthComplete");
+        window.close();
       }
-      window.close();
     });
   }, []);
 
