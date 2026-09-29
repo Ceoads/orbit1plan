@@ -207,7 +207,7 @@ export const CourseHubPage = () => {
       // Update stats
       setNoteStats(prev => ({ ...prev, notes: prev.notes + 1 }));
       
-      toast.success(`📁 Note classée dans ${subject?.icon || '📚'} ${subject?.name || 'Vault'}`, {
+      toast.success(`Note classée dans ${subject?.name || 'Vault'}`, {
         description: "Classement automatique effectué",
         action: {
           label: "Voir le dossier",

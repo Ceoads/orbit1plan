@@ -4,6 +4,7 @@ import { Calendar, Clock, MapPin, BookOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface ExamDetailModalProps {
   exam: CalendarEvent | null;
@@ -115,10 +116,10 @@ export const ExamDetailModal = ({
 
                 <div className="flex items-start gap-4">
                   <motion.div 
-                    className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-2xl"
+                    className="w-14 h-14 rounded-2xl bg-primary-foreground/20 flex items-center justify-center"
                     whileTap={{ scale: 0.95 }}
                   >
-                    {subject?.icon || '📝'}
+                    <SubjectIcon name={subject?.name || exam.title} legacyIcon={subject?.icon} size="lg" bare className="text-primary-foreground" />
                   </motion.div>
                   <div className="flex-1">
                     <p className="text-white/80 text-sm font-medium">Examen à venir</p>
