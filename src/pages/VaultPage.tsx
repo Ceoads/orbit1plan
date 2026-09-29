@@ -7,6 +7,7 @@ import { ArrowLeft, FolderOpen, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AddSubjectModal, AddNoteModal, EditSubjectModal, EditNoteModal } from "@/components/modals";
+import { SubjectIcon } from "@/components/SubjectIcon";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -145,7 +146,7 @@ export const VaultPage = () => {
                       styles.border
                     )}
                   >
-                    <div className="text-3xl">{subject.icon}</div>
+                    <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="lg" />
                     <div className="flex-1 text-left">
                       <h3 className="font-display font-semibold text-foreground">{subject.name}</h3>
                       <p className="text-sm text-muted-foreground">

@@ -8,6 +8,7 @@ import { Subject, CalendarEvent, useOrbitData } from "@/hooks/useOrbitData";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { sanitizeText, INPUT_LIMITS } from "@/lib/sanitize";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface EditExamModalProps {
   open: boolean;
@@ -95,7 +96,7 @@ export const EditExamModal = ({
                 <SelectItem value="__none__">{t('common.none')}</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
-                    {subject.icon} {subject.name}
+                    <span className="flex items-center gap-2"><SubjectIcon name={subject.name} legacyIcon={subject.icon} size="sm" bare />{subject.name}</span>
                   </SelectItem>
                 ))}
               </SelectContent>

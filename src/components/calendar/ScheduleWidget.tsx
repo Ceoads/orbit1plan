@@ -5,6 +5,7 @@ import { CalendarEvent, Subject } from "@/hooks/useOrbitData";
 import { CalendarPocketSpace } from "./CalendarPocketSpace";
 import { Calendar, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SubjectIcon } from "@/components/SubjectIcon";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useTranslation } from "react-i18next";
@@ -137,7 +138,7 @@ export const ScheduleWidget = ({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <span className="text-lg">{subject?.icon || '📚'}</span>
+                  <SubjectIcon name={subject?.name || event.title} legacyIcon={subject?.icon} size="sm" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
                       {subject?.name || event.title}

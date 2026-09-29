@@ -11,6 +11,7 @@ import { useVaultData, VaultFile } from "@/hooks/useVaultData";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { cn } from "@/lib/utils";
 import { DesktopHome } from "@/components/desktop/DesktopHome";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 type Section = "home" | "library" | "subjects" | "quiz" | "flashcards" | "drive";
 
@@ -123,7 +124,7 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
       <div className="flex flex-wrap gap-2 mb-8">
         <Pill active={!subject} onClick={() => setSubject(null)}>Toutes les matières</Pill>
         {vault.subjects.map((s) => (
-          <Pill key={s.id} active={subject === s.id} onClick={() => setSubject(s.id)}>{s.icon} {s.name}</Pill>
+          <Pill key={s.id} active={subject === s.id} onClick={() => setSubject(s.id)}><span className="flex items-center gap-2"><SubjectIcon name={s.name} legacyIcon={s.icon} size="sm" bare />{s.name}</span></Pill>
         ))}
       </div>
 
@@ -144,7 +145,7 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
                   <div className="min-w-0">
                     <h3 className="font-semibold truncate">{fileName(f)}</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {subj ? `${subj.icon} ${subj.name} · ` : ""}{new Date(f.created_at).toLocaleDateString("fr-FR")}
+                      {subj ? `${subj.name} · ` : ""}{new Date(f.created_at).toLocaleDateString("fr-FR")}
                     </p>
                   </div>
                 </div>
@@ -184,7 +185,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
               return (
                 <button key={s.id} onClick={() => { setOpen(s.id); setTab("docs"); setSource(null); }}
                   className="text-left bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)] transition-shadow flex flex-col gap-6">
-                  <div className="text-4xl">{s.icon}</div>
+                  <SubjectIcon name={s.name} legacyIcon={s.icon} size="xl" />
                   <div>
                     <h3 className="text-lg font-semibold truncate">{s.name}</h3>
                     <p className="text-sm text-muted-foreground mt-1">{n} document{n > 1 ? "s" : ""}</p>
@@ -204,7 +205,10 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
       <button onClick={() => setOpen(null)} className="flex items-center gap-1 h-11 -ml-2 px-2 mb-4 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="w-4 h-4" /> Toutes les matières
       </button>
-      <Header title={`${subj.icon} ${subj.name}`} subtitle={`${files.length} document${files.length > 1 ? "s" : ""}${subj.teacher_name ? ` · ${subj.teacher_name}` : ""}`} />
+      <div className="mb-10 flex items-center gap-4 [&>header]:mb-0">
+        <SubjectIcon name={subj.name} legacyIcon={subj.icon} size="xl" />
+        <Header title={subj.name} subtitle={`${files.length} document${files.length > 1 ? "s" : ""}${subj.teacher_name ? ` · ${subj.teacher_name}` : ""}`} />
+      </div>
       <div className="flex gap-2 mb-8">
         <Pill active={tab === "docs"} onClick={() => setTab("docs")}>Documents</Pill>
         <Pill active={tab === "quiz"} onClick={() => setTab("quiz")}>Quiz</Pill>
@@ -428,7 +432,7 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
     cards.forEach((c) => { const k = c.subject_id ?? "__none__"; m.set(k, [...(m.get(k) ?? []), c]); });
     return [...m.entries()].map(([k, list]) => {
       const s = subjects.find((x) => x.id === k);
-      return { key: k, name: s ? `${s.icon} ${s.name}` : "Sans matière", list };
+      return { key: k, name: s?.name ?? "Sans matière", list };
     });
   }, [cards, subjects]);
 

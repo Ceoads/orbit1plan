@@ -13,6 +13,7 @@ import { PracticeZone } from "@/components/study-hub/PracticeZone";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { SectionAnchor } from "@/components/study-hub/SmartScrollContext";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface VaultFileWithSubject {
   id: string;
@@ -223,7 +224,7 @@ export const StudyHubPage = () => {
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-lg">{file.subjects?.icon || '📄'}</span>
+                <SubjectIcon name={file.subjects?.name || "Document"} legacyIcon={file.subjects?.icon} size="sm" />
                 <h1 className="font-display font-bold text-foreground text-dynamic-body line-clamp-1">
                   {file.subjects?.name || 'Document'}
                 </h1>

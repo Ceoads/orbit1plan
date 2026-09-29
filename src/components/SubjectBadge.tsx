@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface SubjectData {
   id: string;
@@ -45,7 +46,7 @@ export const SubjectBadge = ({ subject, size = 'md', showIcon = true }: SubjectB
         sizeClasses[size]
       )}
     >
-      {showIcon && <span>{subject.icon}</span>}
+      {showIcon && <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="sm" bare />}
       {subject.name}
     </span>
   );

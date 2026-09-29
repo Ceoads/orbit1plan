@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Subject } from "@/hooks/useOrbitData";
 import { sanitizeText, INPUT_LIMITS } from "@/lib/sanitize";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface AddTaskModalProps {
   open: boolean;
@@ -80,7 +81,7 @@ export const AddTaskModal = ({ open, onClose, onAdd, subjects }: AddTaskModalPro
                 {subjects.map(s => (
                   <SelectItem key={s.id} value={s.id}>
                     <span className="flex items-center gap-2">
-                      <span>{s.icon}</span> {s.name}
+                      <SubjectIcon name={s.name} legacyIcon={s.icon} size="sm" bare /> {s.name}
                     </span>
                   </SelectItem>
                 ))}

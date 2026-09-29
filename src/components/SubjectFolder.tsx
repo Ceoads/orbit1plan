@@ -1,6 +1,7 @@
 import { Subject, getNotesBySubject } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface SubjectFolderProps {
   subject: Subject;
@@ -30,7 +31,7 @@ export const SubjectFolder = ({ subject, onClick }: SubjectFolderProps) => {
         styles.border
       )}
     >
-      <div className="text-3xl">{subject.icon}</div>
+      <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="lg" />
       <div className="flex-1 text-left">
         <h3 className="font-display font-semibold text-foreground">{subject.name}</h3>
         <p className="text-sm text-muted-foreground">

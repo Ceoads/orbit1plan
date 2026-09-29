@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useTranslation } from "react-i18next";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface CalendarDayViewProps {
   date: Date;
@@ -269,9 +270,7 @@ export const CalendarDayView = ({
                         {day.toLocaleDateString('en-US', { weekday: 'long' })}
                       </p>
                       <div className="flex items-center gap-2">
-                        {firstSubject && (
-                          <span className="text-lg">{firstSubject.icon}</span>
-                        )}
+                        {firstSubject && <SubjectIcon name={firstSubject.name} legacyIcon={firstSubject.icon} size="sm" />}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">
                             {firstSubject?.name || firstEvent.title}
@@ -362,9 +361,7 @@ export const CalendarDayView = ({
                               )}
                             >
                               <div className="flex items-center gap-3">
-                                {subject && (
-                                  <span className="text-xl">{subject.icon}</span>
-                                )}
+                                {subject && <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="md" />}
                                 <div className="flex-1 min-w-0">
                                   <h3 className="font-medium text-foreground">
                                     {subject?.name || event.title}

@@ -4,6 +4,7 @@ import { Check, X, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { VaultFile, Subject } from "@/hooks/useVaultData";
+import { SubjectIcon } from "@/components/SubjectIcon";
 
 interface FilingConfirmationBannerProps {
   file: VaultFile;
@@ -123,7 +124,13 @@ export const FilingConfirmationBanner = ({
               !hasSelection && "border-dashed border-primary/40"
             )}
           >
-            <span className="text-2xl">{hasSelection ? (subjects.find(s => s.id === selectedSubjectId)?.icon || suggestedSubjectIcon || '📁') : '📁'}</span>
+            {hasSelection ? (
+              <SubjectIcon
+                name={subjects.find(s => s.id === selectedSubjectId)?.name || suggestedSubjectName || "Matière"}
+                legacyIcon={subjects.find(s => s.id === selectedSubjectId)?.icon || suggestedSubjectIcon}
+                size="md"
+              />
+            ) : <SubjectIcon name="Matière" size="md" />}
             <span className={cn("flex-1 text-left font-medium", hasSelection ? "text-foreground" : "text-muted-foreground")}>
               {hasSelection 
                 ? (subjects.find(s => s.id === selectedSubjectId)?.name || suggestedSubjectName || 'Matière sélectionnée')
@@ -156,7 +163,7 @@ export const FilingConfirmationBanner = ({
                         selectedSubjectId === subject.id && "bg-background/60"
                       )}
                     >
-                      <span className="text-xl">{subject.icon}</span>
+                      <SubjectIcon name={subject.name} legacyIcon={subject.icon} size="sm" />
                       <span className="text-sm text-foreground">{subject.name}</span>
                     </button>
                   ))

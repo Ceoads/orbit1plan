@@ -1,1 +1,2 @@
 - All AI calls (present and future) go through supabase/functions/_shared/ai.ts (aiEndpoint/aiModel/aiFetch) using GEMINI_API_KEY by default — the user requires Gemini as the default AI; aiFetch retries Gemini overloads with fallback models.
+- Render course and subject identities through `SubjectIcon` instead of stored emoji text so every view uses one professional icon system.
