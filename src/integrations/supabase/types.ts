@@ -136,6 +136,33 @@ export type Database = {
           },
         ]
       }
+      daily_notepads: {
+        Row: {
+          created_at: string
+          cycle_date: string
+          id: string
+          items: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_date: string
+          id?: string
+          items?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cycle_date?: string
+          id?: string
+          items?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       drive_imported_files: {
         Row: {
           drive_file_id: string
