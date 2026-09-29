@@ -25,7 +25,7 @@ const WEEK = ["L", "M", "M", "J", "V", "S", "D"];
 
 export const DesktopHome = ({ greeting }: { greeting: string }) => {
   const { user } = useAuth();
-  const { events, subjects, tasks, createTask, getTodayEvents, getSubjectById } = useOrbitData();
+  const { events, subjects, tasks, createTask, toggleTask, getTodayEvents, getSubjectById } = useOrbitData();
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [openDate, setOpenDate] = useState<Date | null>(null);
 
@@ -78,6 +78,14 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
   const todayStr = toLocalDateStr(new Date());
   const today = getTodayEvents?.() ?? [];
 
+  // ---- Tâches du jour (due today or overdue, not subtasks) ----
+  const todayTasks = useMemo(() => {
+    return tasks
+      .filter((t) => !t.is_subtask && t.due_date && toLocalDateStr(new Date(t.due_date)) <= todayStr)
+      .sort((a, b) => (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0) || (b.priority_score ?? 0) - (a.priority_score ?? 0));
+  }, [tasks, todayStr]);
+  const remainingCount = todayTasks.filter((t) => t.status !== "done").length;
+
   return (
     <div className="space-y-10">
       <header>
@@ -91,17 +99,17 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
       </header>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-        {/* Mini calendar */}
-        <section className="xl:col-span-2 bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold capitalize">{month.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</h2>
+        {/* Mini calendar (compact) */}
+        <section className="xl:col-span-2 bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold capitalize">{month.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</h2>
             <div className="flex gap-1">
-              <button aria-label="Mois précédent" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
-              <button aria-label="Mois suivant" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center"><ChevronRight className="w-4 h-4" /></button>
+              <button aria-label="Mois précédent" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
+              <button aria-label="Mois suivant" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"><ChevronRight className="w-4 h-4" /></button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {WEEK.map((w, i) => <div key={i} className="text-xs font-medium text-muted-foreground pb-2">{w}</div>)}
+          <div className="grid grid-cols-7 gap-0.5 text-center">
+            {WEEK.map((w, i) => <div key={i} className="text-[11px] font-medium text-muted-foreground pb-1.5">{w}</div>)}
             {days.map((d) => {
               const k = toLocalDateStr(d);
               const inMonth = d.getMonth() === month.getMonth();
@@ -111,14 +119,14 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
                   key={k}
                   onClick={() => setOpenDate(d)}
                   className={cn(
-                    "relative h-11 rounded-xl text-sm transition-colors hover:bg-muted",
+                    "relative h-8 rounded-lg text-xs transition-colors hover:bg-muted",
                     !inMonth && "text-muted-foreground/40",
                     k === todayStr && "bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                   )}
                 >
                   {d.getDate()}
                   {mk && (
-                    <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                       {mk.cls && <span className={cn("w-1 h-1 rounded-full", k === todayStr ? "bg-primary-foreground" : "bg-primary")} />}
                       {mk.exam && <span className="w-1 h-1 rounded-full bg-warning" />}
                     </span>
@@ -127,15 +135,15 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground mt-6">Clique sur un jour pour ouvrir ton emploi du temps.</p>
+          <p className="text-xs text-muted-foreground mt-4">Clique sur un jour pour ouvrir ton emploi du temps.</p>
 
           {today.length > 0 && (
-            <div className="mt-8 space-y-3">
-              <h3 className="text-sm font-semibold">Aujourd'hui</h3>
+            <div className="mt-5 space-y-2">
+              <h3 className="text-sm font-semibold">Cours du jour</h3>
               {today.slice(0, 4).map((e) => {
                 const s = getSubjectById(e.subject_id);
                 return (
-                  <button key={e.id} onClick={() => setOpenDate(new Date())} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted text-left">
+                  <button key={e.id} onClick={() => setOpenDate(new Date())} className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-muted/40 hover:bg-muted text-left">
                     <span className="text-lg">{s?.icon || "📘"}</span>
                     <span className="flex-1 min-w-0 truncate text-sm font-medium">{s?.name || e.title}</span>
                     <span className="text-xs text-muted-foreground">{e.start_time.slice(0, 5)}</span>
@@ -146,8 +154,60 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
           )}
         </section>
 
+        {/* Tâches du jour */}
+        <section className="xl:col-span-3 bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-semibold">Tâches du jour</h2>
+              <p className="text-sm text-muted-foreground">
+                {remainingCount > 0 ? `${remainingCount} à faire aujourd'hui` : "Tout est terminé 🎉"}
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground">{todayTasks.filter((t) => t.status === "done").length}/{todayTasks.length}</span>
+          </div>
+          {todayTasks.length === 0 ? (
+            <div className="rounded-2xl bg-muted/30 p-8 text-center">
+              <p className="text-sm text-muted-foreground">Aucune tâche prévue aujourd'hui.</p>
+              <p className="text-xs text-muted-foreground mt-1">Ajoute-en une dans le bloc-notes ci-dessous.</p>
+            </div>
+          ) : (
+            <ul className="space-y-1 max-h-[420px] overflow-y-auto pr-1">
+              {todayTasks.map((t) => {
+                const done = t.status === "done";
+                const overdue = !done && t.due_date && toLocalDateStr(new Date(t.due_date)) < todayStr;
+                return (
+                  <li key={t.id}>
+                    <button
+                      onClick={() => toggleTask(t.id)}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-muted/50 text-left transition-colors"
+                    >
+                      <span className={cn(
+                        "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                        done ? "bg-success border-success" : "border-muted-foreground/40"
+                      )}>
+                        {done && <CheckCircle2 className="w-3.5 h-3.5 text-success-foreground" />}
+                      </span>
+                      <span className={cn("flex-1 min-w-0 truncate text-sm font-medium", done && "line-through text-muted-foreground")}>
+                        {t.title}
+                      </span>
+                      {overdue && <span className="text-xs text-warning font-medium shrink-0">En retard</span>}
+                      {t.energy_level && !done && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {t.energy_level === "high" ? "🔥" : t.energy_level === "low" ? "🌱" : "⚡"}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8">
         {/* Notepad */}
-        <section className="xl:col-span-3 bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        <section className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
           <div className="mb-6">
             <h2 className="text-lg font-semibold">Bloc-notes du jour</h2>
             <p className="text-sm text-muted-foreground capitalize">{cycleLabel} · se vide chaque matin à 7h30</p>
