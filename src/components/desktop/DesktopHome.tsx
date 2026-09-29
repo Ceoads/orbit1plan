@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CalendarPocketSpace } from "@/components/calendar";
 import { toLocalDateStr } from "@/lib/dateFormat";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 type Kind = "task" | "exam";
 interface PadItem { id: string; kind: Kind; text: string; taskId?: string | null }
@@ -25,21 +26,44 @@ const WEEK = ["L", "M", "M", "J", "V", "S", "D"];
 
 export const DesktopHome = ({ greeting }: { greeting: string }) => {
   const { user } = useAuth();
-  const { events, subjects, tasks, createTask, toggleTask, getTodayEvents, getSubjectById } = useOrbitData();
+  const { events, subjects, tasks, createTask, toggleTask, getTodayEvents, getSubjectById, refetch } = useOrbitData();
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [openDate, setOpenDate] = useState<Date | null>(null);
 
   // ---- Notepad (resets daily at 07:30 Paris) ----
   const [cycle, setCycle] = useState(parisCycleKey());
   useEffect(() => { const i = setInterval(() => setCycle(parisCycleKey()), 30000); return () => clearInterval(i); }, []);
-  const storeKey = `orbit_notepad_${user?.id}_${cycle}`;
   const [items, setItems] = useState<PadItem[]>([]);
   useEffect(() => {
-    setItems(JSON.parse(localStorage.getItem(storeKey) || "[]"));
-    // clean older cycles
-    Object.keys(localStorage).forEach((k) => { if (k.startsWith(`orbit_notepad_${user?.id}_`) && k !== storeKey) localStorage.removeItem(k); });
-  }, [storeKey, user?.id]);
-  const save = (next: PadItem[]) => { setItems(next); localStorage.setItem(storeKey, JSON.stringify(next)); };
+    if (!user?.id) return;
+    let alive = true;
+    // migrate old device-local notes once
+    const legacyKey = `orbit_notepad_${user.id}_${cycle}`;
+    const legacy: PadItem[] = JSON.parse(localStorage.getItem(legacyKey) || "[]");
+    Object.keys(localStorage).forEach((k) => { if (k.startsWith(`orbit_notepad_${user.id}_`)) localStorage.removeItem(k); });
+    (async () => {
+      const { data } = await supabase.from("daily_notepads").select("items").eq("user_id", user.id).eq("cycle_date", cycle).maybeSingle();
+      let remote = ((data?.items as unknown) as PadItem[]) || [];
+      if (legacy.length) {
+        const ids = new Set(remote.map((i) => i.id));
+        remote = [...remote, ...legacy.filter((i) => !ids.has(i.id))];
+        await supabase.from("daily_notepads").upsert({ user_id: user.id, cycle_date: cycle, items: remote as never }, { onConflict: "user_id,cycle_date" });
+      }
+      if (alive) setItems(remote);
+    })();
+    const ch = supabase.channel(`notepad-${user.id}-${cycle}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "daily_notepads", filter: `user_id=eq.${user.id}` }, (p) => {
+        const row = p.new as { cycle_date?: string; items?: PadItem[] };
+        if (row?.cycle_date === cycle) setItems(row.items || []);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events", filter: `user_id=eq.${user.id}` }, () => refetch?.())
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(ch); };
+  }, [cycle, user?.id]);
+  const save = (next: PadItem[]) => {
+    setItems(next);
+    if (user?.id) supabase.from("daily_notepads").upsert({ user_id: user.id, cycle_date: cycle, items: next as never }, { onConflict: "user_id,cycle_date" }).then(({ error }) => { if (error) console.error(error); });
+  };
 
   const add = async (kind: Kind, text: string) => {
     const t = text.trim();
