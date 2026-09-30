@@ -98,36 +98,49 @@ const REQUEST_START = { t: Date.now() };
 const TOTAL_BUDGET_MS = 125_000;
 function remainingMs() { return TOTAL_BUDGET_MS - (Date.now() - REQUEST_START.t); }
 
-async function callAI(LOVABLE_API_KEY: string, messages: any[], log: any, maxMs = 90_000) {
-  const model = aiModel('google/gemini-2.5-flash', aiEndpoint().provider);
+// Models tried in order when the primary one is busy (429/503).
+const AI_FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest'];
+
+async function callAI(LOVABLE_API_KEY: string, messages: any[], log: any, maxMs = 75_000) {
+  const primaryModel = aiModel('google/gemini-2.5-flash', aiEndpoint().provider);
   const t0 = Date.now();
-  const budget = Math.min(maxMs, remainingMs());
-  if (budget < 5_000) return { ok: false, status: 504, error: 'time_budget_exhausted' };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), budget);
-  let response: Response;
-  try {
-    response = await aiFetch(aiEndpoint().url, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${aiEndpoint().key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages }),
-      signal: ctrl.signal,
-    });
-  } catch (e) {
-    log('warn', 'ai.timeout', { duration_ms: Date.now() - t0, error: e instanceof Error ? e.message : String(e) });
-    return { ok: false, status: 504, error: 'ai_timeout' };
-  } finally {
-    clearTimeout(timer);
+
+  for (let attempt = 0; attempt <= AI_FALLBACK_MODELS.length; attempt++) {
+    const model = attempt === 0 ? primaryModel : AI_FALLBACK_MODELS[attempt - 1];
+    const budget = Math.min(maxMs, remainingMs());
+    if (budget < 8_000) return { ok: false, status: 504, error: 'time_budget_exhausted' };
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), budget);
+    let response: Response;
+    try {
+      response = await aiFetch(aiEndpoint().url, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${aiEndpoint().key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages }),
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      log('warn', 'ai.timeout', { attempt, model, duration_ms: Date.now() - t0, error: e instanceof Error ? e.message : String(e) });
+      return { ok: false, status: 504, error: 'ai_timeout' };
+    } finally {
+      clearTimeout(timer);
+    }
+    log('info', 'ai.response', { attempt, model, status: response.status, ok: response.ok, duration_ms: Date.now() - t0 });
+    if (!response.ok) {
+      const errorText = await response.text();
+      log('error', 'ai.error', { attempt, model, status: response.status, body: errorText.slice(0, 500) });
+      // Busy/overloaded: retry with the next model after a short pause, if budget allows.
+      if ((response.status === 429 || response.status === 503) && attempt < AI_FALLBACK_MODELS.length && remainingMs() > 25_000) {
+        await new Promise((r) => setTimeout(r, 1_500 + Math.random() * 1_000));
+        continue;
+      }
+      return { ok: false, status: response.status, error: errorText };
+    }
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    return { ok: true, content, usage: data.usage };
   }
-  log('info', 'ai.response', { status: response.status, ok: response.ok, duration_ms: Date.now() - t0 });
-  if (!response.ok) {
-    const errorText = await response.text();
-    log('error', 'ai.error', { status: response.status, body: errorText.slice(0, 500) });
-    return { ok: false, status: response.status, error: errorText };
-  }
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
-  return { ok: true, content, usage: data.usage };
+  return { ok: false, status: 503, error: 'ai_unavailable' };
 }
 
 function parseQuiz(content: string): { questions?: any[]; title?: string } | null {
@@ -388,8 +401,9 @@ Règles:
 
     if (allQuestions.length === 0) {
       const statuses = results.map((r) => r.res.ok ? 200 : r.res.status);
-      if (statuses.includes(429)) return new Response(JSON.stringify({ error: 'Rate limit exceeded.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (statuses.includes(429)) return new Response(JSON.stringify({ error: "L'IA est momentanément saturée. Réessayez dans une minute.", reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       if (statuses.includes(402)) return new Response(JSON.stringify({ error: 'AI credits exhausted.', reqId }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (statuses.includes(503) || statuses.includes(504)) return new Response(JSON.stringify({ error: "Le service IA est très demandé. Réessayez dans un instant.", reqId }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (allQuestions.length === 0) {
