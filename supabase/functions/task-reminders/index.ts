@@ -8,7 +8,13 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   const url = Deno.env.get('SUPABASE_URL')!
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  if (req.headers.get('Authorization') !== `Bearer ${key}`) return json({ error: 'unauthorized' }, 401)
+  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
+  if (!bearer) return json({ error: 'unauthorized' }, 401)
+  // Only callers holding a service-role key may trigger reminders.
+  if (bearer !== key) {
+    const probe = await createClient(url, bearer).auth.admin.listUsers({ perPage: 1 })
+    if (probe.error) return json({ error: 'unauthorized' }, 401)
+  }
   const admin = createClient(url, key)
 
   const now = new Date()
