@@ -35,7 +35,7 @@ const Body = z.discriminatedUnion("action", [
     type: z.enum(["all", "pdf", "gdoc", "docx"]).optional(),
     pageToken: z.string().max(2048).optional(),
   }),
-  z.object({ action: z.literal("import"), fileId: z.string().regex(/^[\w-]{5,200}$/) }),
+  z.object({ action: z.literal("import"), fileId: z.string().regex(/^[\w-]{5,200}$/), subjectId: z.string().uuid().optional() }),
   z.object({ action: z.literal("disconnect") }),
   z.object({ action: z.literal("folders"), parentId: z.string().regex(/^[\w-]{1,200}$/).optional() }),
   z.object({ action: z.literal("setFolder"), folderId: z.string().regex(/^[\w-]{1,200}$/), folderName: z.string().min(1).max(300) }),
@@ -49,8 +49,12 @@ const MAX_PER_SYNC = 25;
 
 class DriveError extends Error { constructor(msg: string, public status: number, public reconnect = false) { super(msg); } }
 
-async function importDriveFile(drive: DriveFn, userId: string, fileId: string) {
+async function importDriveFile(drive: DriveFn, userId: string, fileId: string, subjectId?: string) {
   const admin = adminClient();
+  if (subjectId) {
+    const { data: owned } = await admin.from("subjects").select("id").eq("id", subjectId).eq("user_id", userId).maybeSingle();
+    if (!owned) throw new DriveError("Matière introuvable", 404);
+  }
   const metaRes = await drive(`/drive/v3/files/${fileId}?fields=id,name,mimeType,size,webViewLink`);
   if (await appUserReconnectRequired(metaRes)) throw new DriveError("Accès Drive à renouveler", 401, true);
   if (!metaRes.ok) throw new DriveError("Fichier introuvable", 404);
@@ -81,7 +85,7 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string) {
   const { data: signed } = await admin.storage.from("notes").createSignedUrl(path, 60 * 60 * 24 * 365);
   const name = meta.name.endsWith(`.${ext}`) ? meta.name : `${meta.name}.${ext}`;
   const { data: row, error } = await admin.from("vault_files").insert({
-    user_id: userId, file_url: signed?.signedUrl ?? path, original_filename: name,
+    user_id: userId, subject_id: subjectId ?? null, file_url: signed?.signedUrl ?? path, original_filename: name,
     file_type: ext === "pdf" ? "pdf" : "document", extracted_text: extractedText,
     filing_status: "confirmed", tags: ["drive", ext],
   }).select("id").single();
@@ -277,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     if (body.action === "import") {
-      return json({ ok: true, ...(await importDriveFile(drive, user.id, body.fileId)) });
+      return json({ ok: true, ...(await importDriveFile(drive, user.id, body.fileId, body.subjectId)) });
     }
     return json({ error: "Action inconnue" }, 400);
   } catch (e) {
