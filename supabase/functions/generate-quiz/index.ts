@@ -401,8 +401,9 @@ Règles:
 
     if (allQuestions.length === 0) {
       const statuses = results.map((r) => r.res.ok ? 200 : r.res.status);
-      if (statuses.includes(429)) return new Response(JSON.stringify({ error: 'Rate limit exceeded.', reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (statuses.includes(429)) return new Response(JSON.stringify({ error: "L'IA est momentanément saturée. Réessayez dans une minute.", reqId }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       if (statuses.includes(402)) return new Response(JSON.stringify({ error: 'AI credits exhausted.', reqId }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (statuses.includes(503) || statuses.includes(504)) return new Response(JSON.stringify({ error: "Le service IA est très demandé. Réessayez dans un instant.", reqId }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (allQuestions.length === 0) {
