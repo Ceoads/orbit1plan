@@ -13,8 +13,9 @@ import { cn } from "@/lib/utils";
 import { DesktopHome } from "@/components/desktop/DesktopHome";
 import { SubjectIcon } from "@/components/SubjectIcon";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { PdfPagesViewer } from "@/components/study-hub/PdfPagesViewer";
+import { DocReader, SubjectDriveDialog } from "@/components/subject/SubjectDrive";
+import { CourseSheet } from "@/components/subject/CourseSheet";
+import { SemesterTasks } from "@/components/tasks/SemesterTasks";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -275,7 +276,7 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
 /* ---------- Library by subject ---------- */
 function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
   const [open, setOpen] = useState<string | null>(null);
-  const [tab, setTab] = useState<"docs" | "quiz" | "flashcards">("docs");
+  const [tab, setTab] = useState<"docs" | "sheet" | "quiz" | "flashcards">("docs");
   const [source, setSource] = useState<VaultFile | null>(null);
   const [driveOpen, setDriveOpen] = useState(false);
   const [reading, setReading] = useState<VaultFile | null>(null);
@@ -322,13 +323,15 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
       </div>
       <div className="flex gap-2 mb-8 items-center">
         <Pill active={tab === "docs"} onClick={() => setTab("docs")}>Documents</Pill>
+        <Pill active={tab === "sheet"} onClick={() => setTab("sheet")}>Fiche de cours</Pill>
         <Pill active={tab === "quiz"} onClick={() => setTab("quiz")}>Quiz</Pill>
         <Pill active={tab === "flashcards"} onClick={() => setTab("flashcards")}>Fiches</Pill>
         <button onClick={() => setDriveOpen(true)} className="ml-auto h-10 px-4 rounded-full bg-card text-sm font-medium flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:text-primary">
           <HardDrive className="w-4 h-4" /> Ajouter depuis Drive
         </button>
       </div>
-      <SubjectDriveDialog open={driveOpen} onOpenChange={setDriveOpen} subjectId={subj.id} subjectName={subj.name} vault={vault} />
+      <SubjectDriveDialog open={driveOpen} onOpenChange={setDriveOpen} subjectId={subj.id} subjectName={subj.name} unfiled={vault.files}
+        onFile={(id) => vault.updateFile(id, { subject_id: subj.id, filing_status: "confirmed" })} onImported={vault.refetch} />
       <DocReader file={reading} onClose={() => setReading(null)} />
       {tab === "docs" && (files.length === 0 ? (
         <p className="text-muted-foreground py-24 text-center">Aucun document dans cette matière.</p>
@@ -355,6 +358,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
           ))}
         </div>
       ))}
+      {tab === "sheet" && <CourseSheet key={subj.id} subjectId={subj.id} subjectName={subj.name} />}
       {tab === "quiz" && <QuizStudio key={subj.id} files={files} source={source} setSource={setSource} />}
       {tab === "flashcards" && <FlashcardStudio key={subj.id} files={files} subjects={vault.subjects} source={source} setSource={setSource} subjectId={subj.id} />}
     </>
