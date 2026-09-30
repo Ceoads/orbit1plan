@@ -136,6 +136,47 @@ export type Database = {
           },
         ]
       }
+      course_chapters: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          position: number
+          subject_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          position?: number
+          subject_id: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          position?: number
+          subject_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_notepads: {
         Row: {
           created_at: string
@@ -658,6 +699,8 @@ export type Database = {
           linked_note_id: string | null
           parent_task_id: string | null
           priority_score: number
+          reminder_enabled: boolean
+          reminder_sent_at: string | null
           status: Database["public"]["Enums"]["task_status"]
           subject_id: string | null
           title: string
@@ -673,6 +716,8 @@ export type Database = {
           linked_note_id?: string | null
           parent_task_id?: string | null
           priority_score?: number
+          reminder_enabled?: boolean
+          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           subject_id?: string | null
           title: string
@@ -688,6 +733,8 @@ export type Database = {
           linked_note_id?: string | null
           parent_task_id?: string | null
           priority_score?: number
+          reminder_enabled?: boolean
+          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           subject_id?: string | null
           title?: string
