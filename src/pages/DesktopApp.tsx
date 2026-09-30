@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
-  Loader2, ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home,
+  Loader2, ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home, CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Section = "home" | "library" | "subjects" | "quiz" | "flashcards" | "drive";
+type Section = "home" | "library" | "subjects" | "deadlines" | "quiz" | "flashcards" | "drive";
 
 interface QuizQuestion { question: string; options: string[]; correctIndex: number; explanation: string }
 interface Card { id: string; question: string; answer: string; subject_id: string | null; mastered: boolean }
@@ -35,6 +35,7 @@ const NAV: { id: Section; label: string; icon: typeof BookOpen }[] = [
   { id: "subjects", label: "Par matière", icon: FolderOpen },
   { id: "quiz", label: "Quiz", icon: Brain },
   { id: "flashcards", label: "Fiches", icon: Layers },
+  { id: "deadlines", label: "Échéances", icon: CalendarClock },
   { id: "drive", label: "Google Drive", icon: HardDrive },
 ];
 
@@ -87,6 +88,7 @@ export default function DesktopApp() {
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
           {section === "drive" && <DrivePanel />}
+          {section === "deadlines" && <><Header title="Échéances" subtitle="Tes tâches par semestre, avec rappel par e-mail la veille." /><SemesterTasks /></>}
         </div>
       </main>
     </div>
