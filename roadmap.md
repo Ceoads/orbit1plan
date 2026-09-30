@@ -26,3 +26,8 @@
 - Abonnement : reporté par l'utilisateur (pas de système pour l'instant) ; Stripe choisi comme prestataire futur ; table `subscribers` déjà créée en base comme fondation
 - Vérification DNS notify.orbit-plan.com en attente
 - Cours manquants le dimanche : conversion timezone non confirmée corrigée
+
+## Nouveau : matières & semestres
+- [ ] Fiche de cours par matière (chapitres + contenus) synchronisée avec le bloc-notes du jour
+- [x] Page Drive dans chaque matière : importer un PDF et le lire (fait : « Ajouter depuis Drive » + « Lire »)
+- [ ] Suivi des tâches par semestre (échéances, rappels) synchronisé avec le calendrier
