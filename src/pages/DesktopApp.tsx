@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { DesktopHome } from "@/components/desktop/DesktopHome";
 import { SubjectIcon } from "@/components/SubjectIcon";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PdfPagesViewer } from "@/components/study-hub/PdfPagesViewer";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -275,6 +277,8 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
   const [open, setOpen] = useState<string | null>(null);
   const [tab, setTab] = useState<"docs" | "quiz" | "flashcards">("docs");
   const [source, setSource] = useState<VaultFile | null>(null);
+  const [driveOpen, setDriveOpen] = useState(false);
+  const [reading, setReading] = useState<VaultFile | null>(null);
   const subj = vault.subjects.find((s) => s.id === open);
   const files = useMemo(() => vault.files.filter((f) => f.subject_id === open), [vault.files, open]);
   const unfiled = vault.files.filter((f) => !f.subject_id).length;
@@ -316,11 +320,16 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         <SubjectIcon name={subj.name} legacyIcon={subj.icon} size="xl" />
         <Header title={subj.name} subtitle={`${files.length} document${files.length > 1 ? "s" : ""}${subj.teacher_name ? ` · ${subj.teacher_name}` : ""}`} />
       </div>
-      <div className="flex gap-2 mb-8">
+      <div className="flex gap-2 mb-8 items-center">
         <Pill active={tab === "docs"} onClick={() => setTab("docs")}>Documents</Pill>
         <Pill active={tab === "quiz"} onClick={() => setTab("quiz")}>Quiz</Pill>
         <Pill active={tab === "flashcards"} onClick={() => setTab("flashcards")}>Fiches</Pill>
+        <button onClick={() => setDriveOpen(true)} className="ml-auto h-10 px-4 rounded-full bg-card text-sm font-medium flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:text-primary">
+          <HardDrive className="w-4 h-4" /> Ajouter depuis Drive
+        </button>
       </div>
+      <SubjectDriveDialog open={driveOpen} onOpenChange={setDriveOpen} subjectId={subj.id} subjectName={subj.name} vault={vault} />
+      <DocReader file={reading} onClose={() => setReading(null)} />
       {tab === "docs" && (files.length === 0 ? (
         <p className="text-muted-foreground py-24 text-center">Aucun document dans cette matière.</p>
       ) : (
@@ -333,11 +342,12 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-semibold truncate">{fileName(f)}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{new Date(f.created_at).toLocaleDateString("fr-FR")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(f.created_at).toLocaleDateString("fr-FR")}{f.tags?.includes("drive") ? " · Drive" : ""}</p>
                 </div>
               </div>
               {f.ai_summary && <p className="text-sm text-muted-foreground line-clamp-3">{f.ai_summary}</p>}
               <div className="flex gap-2 mt-auto">
+                {f.file_url && <button onClick={() => setReading(f)} className="flex-1 h-10 rounded-xl bg-foreground text-background text-sm font-medium">Lire</button>}
                 <button onClick={() => useAs(f, "quiz")} className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium">Quiz</button>
                 <button onClick={() => useAs(f, "flashcards")} className="flex-1 h-10 rounded-xl bg-muted text-foreground text-sm font-medium">Fiches</button>
               </div>
