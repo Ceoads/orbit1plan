@@ -103,14 +103,39 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
   const { user } = useAuth();
   const [q, setQ] = useState("");
   const [subjectIds, setSubjectIds] = useState<string[]>([]);
+  const [semesterId, setSemesterId] = useState<string>("all");
   const [type, setType] = useState<string | null>(null);
 
   const list = useMemo(() => {
     let l = q.trim() ? vault.searchFiles(q) : vault.files;
+    if (semesterId !== "all") l = l.filter((f) => f.semester_id === semesterId);
     if (subjectIds.length > 0) l = l.filter((f) => f.subject_id && subjectIds.includes(f.subject_id));
     if (type) l = l.filter((f) => (f.file_type || "document") === type);
     return l;
-  }, [vault, q, subjectIds, type]);
+  }, [vault, q, subjectIds, semesterId, type]);
+
+  // Semestres regroupés par année universitaire
+  const semesterGroups = useMemo(() => {
+    const groups: { label: string; items: typeof vault.semesters }[] = [];
+    for (const y of vault.academicYears) {
+      const items = vault.semesters.filter((s) => s.academic_year_id === y.id);
+      if (items.length) groups.push({ label: y.name, items });
+    }
+    const orphans = vault.semesters.filter((s) => !s.academic_year_id || !vault.academicYears.some((y) => y.id === s.academic_year_id));
+    if (orphans.length) groups.push({ label: "Autres", items: orphans });
+    return groups;
+  }, [vault.semesters, vault.academicYears]);
+
+  // Matières du semestre choisi en premier ; la sélection est conservée au changement de semestre
+  const subjectsInSemester = useMemo(() => {
+    if (semesterId === "all") return new Set(vault.subjects.map((s) => s.id));
+    return new Set(vault.files.filter((f) => f.semester_id === semesterId && f.subject_id).map((f) => f.subject_id as string));
+  }, [vault.files, vault.subjects, semesterId]);
+  const visibleSubjects = useMemo(
+    () => vault.subjects.filter((s) => subjectsInSemester.has(s.id) || subjectIds.includes(s.id)),
+    [vault.subjects, subjectsInSemester, subjectIds],
+  );
+  const semesterName = vault.semesters.find((s) => s.id === semesterId)?.name;
 
   const toggleSubject = (subjectId: string) => {
     setSubjectIds((current) => current.includes(subjectId)
@@ -139,10 +164,11 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant={subjectIds.length > 0 ? "default" : "outline"}
+              variant={subjectIds.length > 0 || semesterId !== "all" ? "default" : "outline"}
               className="h-11 min-w-56 justify-between rounded-xl px-4 shadow-none"
             >
               <span>
+                {semesterName ? `${semesterName} · ` : ""}
                 {subjectIds.length === 0
                   ? "Toutes les matières"
                   : `${subjectIds.length} matière${subjectIds.length > 1 ? "s" : ""}`}
@@ -150,8 +176,40 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
               <ChevronDown className="h-4 w-4 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-80 max-h-96 overflow-y-auto rounded-2xl p-2">
-            {vault.subjects.map((s) => (
+          <DropdownMenuContent align="start" className="w-80 max-h-[28rem] overflow-y-auto rounded-2xl p-2">
+            {semesterGroups.length > 0 && (
+              <div className="px-2 pb-3 pt-1 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setSemesterId("all")}
+                  className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${semesterId === "all" ? "bg-foreground text-background" : "bg-muted text-foreground hover:bg-muted/70"}`}
+                >
+                  Tous les semestres
+                </button>
+                {semesterGroups.map((g) => (
+                  <div key={g.label} className="space-y-1.5">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{g.label}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {g.items.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setSemesterId(s.id)}
+                          className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${semesterId === s.id ? "bg-foreground text-background" : "bg-muted text-foreground hover:bg-muted/70"}`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className="h-px bg-border/60" />
+              </div>
+            )}
+            {visibleSubjects.length === 0 && (
+              <p className="px-3 py-4 text-sm text-muted-foreground">Aucune matière dans ce semestre.</p>
+            )}
+            {visibleSubjects.map((s) => (
               <DropdownMenuCheckboxItem
                 key={s.id}
                 checked={subjectIds.includes(s.id)}
