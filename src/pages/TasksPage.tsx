@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useScroll, useTransform, PanInfo, useMotionVal
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
+import { SemesterTasks } from "@/components/tasks/SemesterTasks";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { AddTaskModal } from "@/components/modals/AddTaskModal";
@@ -52,6 +53,7 @@ export const TasksPage = () => {
   const [selectedDay, setSelectedDay] = useState<Date>(today);
   const [weekOffset, setWeekOffset] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSemester, setShowSemester] = useState(false);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const [stripWidth, setStripWidth] = useState(0);
@@ -350,6 +352,13 @@ export const TasksPage = () => {
           </button>
         </div>
       </motion.header>
+      <div className="mt-2 mb-4">
+        <button onClick={() => setShowSemester((v) => !v)} className="w-full min-h-[44px] px-5 rounded-2xl bg-card shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between">
+          <span className="text-sm font-semibold">Échéances du semestre</span>
+          <span className="text-xs text-muted-foreground">{showSemester ? "Masquer" : "Ouvrir"}</span>
+        </button>
+        {showSemester && <div className="mt-4"><SemesterTasks /></div>}
+      </div>
 
       {/* TASK LIST */}
       <motion.div
