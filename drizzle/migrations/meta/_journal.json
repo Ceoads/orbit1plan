@@ -29,6 +29,13 @@
       "when": 1790670256209,
       "tag": "0003_daily_notepads",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790750289516,
+      "tag": "0004_course_chapters_and_task_reminders",
+      "breakpoints": true
     }
   ]
 }

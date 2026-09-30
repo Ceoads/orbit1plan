@@ -12,6 +12,7 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CalendarPocketSpaceProps {
   isOpen: boolean;
@@ -52,6 +53,16 @@ export const CalendarPocketSpace = ({
   const [selectedExam, setSelectedExam] = useState<CalendarEvent | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [deadlines, setDeadlines] = useState<{ id: string; title: string; due_date: string; status: string }[]>([]);
+  useEffect(() => {
+    if (!isOpen) return;
+    supabase.from("tasks").select("id,title,due_date,status").not("due_date", "is", null)
+      .then(({ data }) => setDeadlines((data ?? []) as never));
+  }, [isOpen]);
+  const dayDeadlines = useMemo(() => deadlines.filter((t) => {
+    const d = new Date(t.due_date);
+    return d.getFullYear() === selectedDate.getFullYear() && d.getMonth() === selectedDate.getMonth() && d.getDate() === selectedDate.getDate();
+  }), [deadlines, selectedDate]);
 
   // Track scroll position for conditional dismiss
   const handleGridScroll = useCallback((e: Event) => {
@@ -388,6 +399,19 @@ export const CalendarPocketSpace = ({
                   }}
                 />
               </motion.div>
+
+              {dayDeadlines.length > 0 && (
+                <div className="px-4 pb-3 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Échéances</p>
+                  {dayDeadlines.map((t) => (
+                    <div key={t.id} className={cn("flex items-center gap-3 px-4 py-3 rounded-2xl bg-card shadow-[0_8px_30px_rgb(0,0,0,0.04)]", t.status === "done" && "opacity-60")}>
+                      <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                      <span className={cn("flex-1 text-sm font-medium truncate", t.status === "done" && "line-through")}>{t.title}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Main view — liste uniquement */}
               <motion.div

@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import GoogleDriveReturn from "./pages/GoogleDriveReturn";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 import OAuthConsent from "./pages/OAuthConsent";
 import { safeNext } from "./lib/safeNext";
 
@@ -66,6 +67,7 @@ const AppRoutes = () => {
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
+      <Route path="/unsubscribe" element={<UnsubscribePage />} />
       <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/auth" element={
         <PublicRoute>
