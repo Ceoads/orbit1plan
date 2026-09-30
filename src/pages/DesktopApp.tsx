@@ -283,13 +283,43 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
   const [driveOpen, setDriveOpen] = useState(false);
   const [reading, setReading] = useState<VaultFile | null>(null);
   const subj = vault.subjects.find((s) => s.id === open);
-  const files = useMemo(() => vault.files.filter((f) => f.subject_id === open), [vault.files, open]);
+  const files = useMemo(() => vault.files.filter((f) => f.subject_id === open)
+    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [vault.files, open]);
   const unfiled = vault.files.filter((f) => !f.subject_id).length;
+  const unfiledDrive = vault.files.filter((f) => !f.subject_id && f.tags?.includes("drive")).length;
+  const [sorting, setSorting] = useState(false);
+  const autoFile = async () => {
+    setSorting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-drive", { body: { action: "autoFile" } });
+      if (error) throw error;
+      toast.success(data.filed ? `${data.filed} document${data.filed > 1 ? "s" : ""} rangé${data.filed > 1 ? "s" : ""} automatiquement` : "Aucune correspondance trouvée avec tes matières ou ton emploi du temps");
+      vault.refetch();
+    } catch { toast.error("Classement impossible pour le moment"); } finally { setSorting(false); }
+  };
+  const months = useMemo(() => {
+    const g: { label: string; items: VaultFile[] }[] = [];
+    for (const f of files) {
+      const label = new Date(f.created_at).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+      const last = g[g.length - 1];
+      if (last?.label === label) last.items.push(f); else g.push({ label, items: [f] });
+    }
+    return g;
+  }, [files]);
 
   if (!subj) {
     return (
       <>
         <Header title="Par matière" subtitle={`Tes documents rangés par discipline${unfiled ? ` · ${unfiled} sans matière` : ""}.`} />
+        {unfiledDrive > 0 && (
+          <div className="mb-8 bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-4">
+            <HardDrive className="w-5 h-5 text-primary shrink-0" />
+            <p className="flex-1 text-sm"><span className="font-medium">{unfiledDrive} document{unfiledDrive > 1 ? "s" : ""} Drive sans matière.</span> <span className="text-muted-foreground">Orbit peut les ranger selon leur nom, leur dossier et ton emploi du temps.</span></p>
+            <button onClick={autoFile} disabled={sorting} className="h-11 px-5 rounded-2xl bg-foreground text-background text-sm font-medium disabled:opacity-60">
+              {sorting ? "Classement…" : "Classer automatiquement"}
+            </button>
+          </div>
+        )}
         {vault.subjects.length === 0 ? (
           <p className="text-muted-foreground py-24 text-center">Aucune matière pour l'instant.</p>
         ) : (
@@ -338,8 +368,11 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
       {tab === "docs" && (files.length === 0 ? (
         <p className="text-muted-foreground py-24 text-center">Aucun document dans cette matière.</p>
       ) : (
+        <div className="space-y-10">{months.map((m) => (
+        <section key={m.label} className="space-y-4">
+        <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{m.label}</h4>
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
-          {files.map((f) => (
+          {m.items.map((f) => (
             <article key={f.id} className="bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -347,7 +380,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-semibold truncate">{fileName(f)}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{new Date(f.created_at).toLocaleDateString("fr-FR")}{f.tags?.includes("drive") ? " · Drive" : ""}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(f.created_at).toLocaleDateString("fr-FR")}{f.tags?.includes("drive") ? " · Drive" : ""}{f.tags?.includes("auto-ical") ? " · rangé via l'emploi du temps" : f.tags?.includes("auto-name") ? " · rangé automatiquement" : ""}</p>
                 </div>
               </div>
               {f.ai_summary && <p className="text-sm text-muted-foreground line-clamp-3">{f.ai_summary}</p>}
@@ -359,6 +392,8 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
             </article>
           ))}
         </div>
+        </section>
+        ))}</div>
       ))}
       {tab === "sheet" && <CourseSheet key={subj.id} subjectId={subj.id} subjectName={subj.name} />}
       {tab === "quiz" && <QuizStudio key={subj.id} files={files} source={source} setSource={setSource} />}

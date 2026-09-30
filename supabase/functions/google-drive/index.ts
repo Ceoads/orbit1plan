@@ -42,7 +42,57 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("clearFolder") }),
   z.object({ action: z.literal("syncNow") }),
   z.object({ action: z.literal("syncAll") }),
+  z.object({ action: z.literal("autoFile") }),
 ]);
+
+// ---------- Auto-classement : nom de fichier / dossier + emploi du temps iCal ----------
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const STOP = new Set(["de", "des", "du", "la", "le", "les", "et", "en", "a", "au", "aux", "d", "l", "cours", "td", "tp", "cm"]);
+
+type Subj = { id: string; name: string; ical_code: string | null };
+type Ev = { subject_id: string | null; event_date: string | null; start_time: string; end_time: string };
+
+function parisParts(iso: string) {
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+  const p = Object.fromEntries(f.formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, minutes: (Number(p.hour) % 24) * 60 + Number(p.minute) };
+}
+const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+
+function classify(subjects: Subj[], events: Ev[], texts: string[], whenIso?: string | null): { id: string; how: string } | null {
+  const hay = ` ${norm(texts.join(" "))} `;
+  let best: { id: string; score: number } | null = null;
+  for (const s of subjects) {
+    let score = 0;
+    const full = norm(s.name);
+    if (full && hay.includes(` ${full} `)) score += 10;
+    if (s.ical_code && hay.includes(` ${norm(s.ical_code)} `)) score += 8;
+    for (const w of full.split(" ")) if (w.length > 3 && !STOP.has(w) && hay.includes(` ${w} `)) score += 2;
+    if (score > 0 && (!best || score > best.score)) best = { id: s.id, score };
+  }
+  if (best && best.score >= 2) return { id: best.id, how: "name" };
+  if (!whenIso) return null;
+  const { date, minutes } = parisParts(whenIso);
+  const day = events.filter((e) => e.event_date === date && e.subject_id);
+  // pendant le cours (ou jusqu'à 45 min après), sinon le cours le plus proche du jour (< 3 h)
+  const during = day.find((e) => minutes >= toMin(e.start_time) - 10 && minutes <= toMin(e.end_time) + 45);
+  if (during) return { id: during.subject_id!, how: "ical" };
+  let near: { id: string; d: number } | null = null;
+  for (const e of day) {
+    const d = Math.min(Math.abs(minutes - toMin(e.start_time)), Math.abs(minutes - toMin(e.end_time)));
+    if (d <= 180 && (!near || d < near.d)) near = { id: e.subject_id!, d };
+  }
+  return near ? { id: near.id, how: "ical" } : null;
+}
+
+async function loadClassifier(userId: string) {
+  const admin = adminClient();
+  const [{ data: subjects }, { data: events }] = await Promise.all([
+    admin.from("subjects").select("id,name,ical_code").eq("user_id", userId),
+    admin.from("calendar_events").select("subject_id,event_date,start_time,end_time").eq("user_id", userId).not("event_date", "is", null),
+  ]);
+  return { subjects: (subjects ?? []) as Subj[], events: (events ?? []) as Ev[] };
+}
 
 type DriveFn = (path: string) => Promise<Response>;
 const MAX_PER_SYNC = 25;
@@ -55,7 +105,7 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string, s
     const { data: owned } = await admin.from("subjects").select("id").eq("id", subjectId).eq("user_id", userId).maybeSingle();
     if (!owned) throw new DriveError("Matière introuvable", 404);
   }
-  const metaRes = await drive(`/drive/v3/files/${fileId}?fields=id,name,mimeType,size,webViewLink`);
+  const metaRes = await drive(`/drive/v3/files/${fileId}?fields=id,name,mimeType,size,webViewLink,createdTime,modifiedTime,parents`);
   if (await appUserReconnectRequired(metaRes)) throw new DriveError("Accès Drive à renouveler", 401, true);
   if (!metaRes.ok) throw new DriveError("Fichier introuvable", 404);
   const meta = await metaRes.json();
@@ -79,15 +129,27 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string, s
   }
   if (bytes.byteLength > MAX_BYTES) throw new DriveError("Fichier trop lourd (plus de 50 Mo)", 413);
 
+  let finalSubject = subjectId ?? null; let how = subjectId ? "manual" : "";
+  if (!finalSubject) {
+    const texts = [meta.name];
+    const parent = meta.parents?.[0];
+    if (parent) {
+      const pr = await drive(`/drive/v3/files/${parent}?fields=name`);
+      if (pr.ok) texts.push((await pr.json()).name ?? "");
+    }
+    const c = await loadClassifier(userId);
+    const hit = classify(c.subjects, c.events, texts, meta.createdTime ?? meta.modifiedTime);
+    if (hit) { finalSubject = hit.id; how = hit.how; }
+  }
   const path = `${userId}/drive-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
   const up = await admin.storage.from("notes").upload(path, bytes, { contentType });
   if (up.error) throw up.error;
   const { data: signed } = await admin.storage.from("notes").createSignedUrl(path, 60 * 60 * 24 * 365);
   const name = meta.name.endsWith(`.${ext}`) ? meta.name : `${meta.name}.${ext}`;
   const { data: row, error } = await admin.from("vault_files").insert({
-    user_id: userId, subject_id: subjectId ?? null, file_url: signed?.signedUrl ?? path, original_filename: name,
+    user_id: userId, subject_id: finalSubject, created_at: meta.createdTime ?? new Date().toISOString(), file_url: signed?.signedUrl ?? path, original_filename: name,
     file_type: ext === "pdf" ? "pdf" : "document", extracted_text: extractedText,
-    filing_status: "confirmed", tags: ["drive", ext],
+    filing_status: how === "manual" || !finalSubject ? "confirmed" : "auto", tags: how && how !== "manual" ? ["drive", ext, `auto-${how}`] : ["drive", ext],
   }).select("id").single();
   if (error) throw error;
   await admin.from("drive_imported_files").upsert(
@@ -195,6 +257,21 @@ Deno.serve(async (req) => {
         credentialsConfiguration: { scopes: GOOGLE_DRIVE_SCOPES },
       });
       return json({ authorizationUrl });
+    }
+
+    if (body.action === "autoFile") {
+      const admin = adminClient();
+      const c = await loadClassifier(user.id);
+      const { data: rows } = await admin.from("vault_files").select("id,original_filename,created_at,tags,extracted_text")
+        .eq("user_id", user.id).is("subject_id", null).contains("tags", ["drive"]);
+      let filed = 0;
+      for (const r of rows ?? []) {
+        const hit = classify(c.subjects, c.events, [r.original_filename ?? "", (r.extracted_text ?? "").slice(0, 300)], r.created_at);
+        if (!hit) continue;
+        await admin.from("vault_files").update({ subject_id: hit.id, filing_status: "auto", tags: [...(r.tags ?? []), `auto-${hit.how}`] }).eq("id", r.id);
+        filed++;
+      }
+      return json({ filed, total: rows?.length ?? 0 });
     }
 
     if (body.action === "complete") {
