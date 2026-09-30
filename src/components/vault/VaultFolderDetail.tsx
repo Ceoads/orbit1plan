@@ -76,6 +76,7 @@ export const VaultFolderDetail = ({
   const groups = useMemo(() => groupByDay(files), [files]);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(subject.name);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const handleShare = async () => {
@@ -161,6 +162,15 @@ export const VaultFolderDetail = ({
         <p className="text-sm text-muted-foreground mt-0.5">
           {files.length} {files.length === 1 ? "document" : "documents"}
         </p>
+      </div>
+
+      {/* Fiche de cours */}
+      <div>
+        <button onClick={() => setSheetOpen((o) => !o)} className="w-full flex items-center justify-between min-h-[44px] px-5 rounded-2xl bg-card shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          <span className="text-sm font-semibold">Fiche de cours</span>
+          <span className="text-xs text-muted-foreground">{sheetOpen ? "Masquer" : "Ouvrir"}</span>
+        </button>
+        {sheetOpen && <div className="mt-4"><CourseSheet subjectId={subject.id} subjectName={subject.name} /></div>}
       </div>
 
       {/* Actions row */}
