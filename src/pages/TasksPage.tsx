@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmHost";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, PanInfo, useMotionValue, animate } from "framer-motion";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
@@ -43,7 +44,7 @@ const buildWeek = (monday: Date) =>
 
 export const TasksPage = () => {
   const { user } = useAuth();
-  const { tasks, subjects, toggleTask, createTask, getUpcomingExams } = useOrbitData();
+  const { tasks, subjects, toggleTask, createTask, deleteTask, getUpcomingExams } = useOrbitData();
   const haptics = useHaptics();
   const sounds = useSoundEffects();
 
@@ -453,6 +454,8 @@ export const TasksPage = () => {
                         })
                       : "—"}
                   </span>
+                  <button aria-label="Supprimer la tâche" onClick={async () => { if (await confirmAction({ title: "Supprimer cette tâche ?", description: task.title })) deleteTask(task.id); }}
+                    className="shrink-0 -mr-2 w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground/60 hover:text-destructive"><X className="w-4 h-4" /></button>
                 </motion.div>
               );
             })
