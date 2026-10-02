@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmHost";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -255,7 +256,7 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
                     {f.file_type === "photo" ? <ImageIcon className="w-5 h-5 text-primary" /> : <FileText className="w-5 h-5 text-primary" />}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-semibold truncate">{fileName(f)}</h3>
+                    <h3 className="font-semibold truncate pr-8">{fileName(f)}</h3>
                     <p className="text-xs text-muted-foreground mt-1">
                       {subj ? `${subj.name} · ` : ""}{new Date(f.created_at).toLocaleDateString("fr-FR")}
                     </p>
@@ -289,6 +290,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
   const unfiledDrive = vault.files.filter((f) => !f.subject_id && f.tags?.includes("drive")).length;
   const [sorting, setSorting] = useState(false);
   const autoFile = async () => {
+    if (!(await confirmAction({ title: "Classer automatiquement ?", description: `Orbit va ranger tes ${unfiledDrive} documents Drive sans matière selon leur nom et ton emploi du temps.`, confirmLabel: "Classer", destructive: false }))) return;
     setSorting(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-drive", { body: { action: "autoFile" } });
@@ -296,6 +298,16 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
       toast.success(data.filed ? `${data.filed} document${data.filed > 1 ? "s" : ""} rangé${data.filed > 1 ? "s" : ""} automatiquement` : "Aucune correspondance trouvée avec tes matières ou ton emploi du temps");
       vault.refetch();
     } catch { toast.error("Classement impossible pour le moment"); } finally { setSorting(false); }
+  };
+  const removeSubject = async (id: string, name: string) => {
+    if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans la Bibliothèque, sans matière." }))) return;
+    await supabase.from("vault_files").update({ subject_id: null }).eq("subject_id", id);
+    const { error } = await supabase.from("subjects").delete().eq("id", id);
+    if (error) toast.error("Suppression impossible : cette matière est encore liée à des cours ou tâches.");
+    else { toast.success("Matière supprimée"); vault.refetch(); }
+  };
+  const removeFile = async (f: VaultFile) => {
+    if (await confirmAction({ title: "Supprimer ce document ?", description: fileName(f) })) vault.deleteFile(f.id);
   };
   const months = useMemo(() => {
     const g: { label: string; items: VaultFile[] }[] = [];
@@ -327,14 +339,18 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
             {vault.subjects.map((s) => {
               const n = vault.files.filter((f) => f.subject_id === s.id).length;
               return (
-                <button key={s.id} onClick={() => { setOpen(s.id); setTab("docs"); setSource(null); }}
-                  className="text-left bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)] transition-shadow flex flex-col gap-6">
+                <div key={s.id} className="relative group">
+                <button aria-label={`Supprimer ${s.name}`} onClick={() => removeSubject(s.id, s.name)}
+                  className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted hover:text-destructive transition-opacity"><X className="w-4 h-4" /></button>
+                <button onClick={() => { setOpen(s.id); setTab("docs"); setSource(null); }}
+                  className="w-full h-full text-left bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)] transition-shadow flex flex-col gap-6">
                   <SubjectIcon name={s.name} legacyIcon={s.icon} size="xl" />
                   <div>
                     <h3 className="text-lg font-semibold truncate">{s.name}</h3>
                     <p className="text-sm text-muted-foreground mt-1">{n} document{n > 1 ? "s" : ""}</p>
                   </div>
                 </button>
+                </div>
               );
             })}
           </div>
@@ -374,7 +390,9 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
           {m.items.map((f) => (
             <article key={f.id} className="bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 relative">
+                <button aria-label="Supprimer le document" onClick={() => removeFile(f)}
+                  className="absolute -top-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-destructive"><X className="w-4 h-4" /></button>
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   {f.file_type === "photo" ? <ImageIcon className="w-5 h-5 text-primary" /> : <FileText className="w-5 h-5 text-primary" />}
                 </div>
