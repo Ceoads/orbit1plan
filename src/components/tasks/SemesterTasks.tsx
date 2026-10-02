@@ -1,5 +1,6 @@
+import { confirmAction } from "@/components/ConfirmHost";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bell, BellOff, Plus, Check, Loader2 } from "lucide-react";
+import { Bell, BellOff, Plus, Check, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,6 +67,13 @@ export function SemesterTasks() {
     if (error) { toast.error("Mise à jour impossible"); load(); }
   };
 
+  const removeTask = async (t: Row) => {
+    if (!(await confirmAction({ title: "Supprimer cette échéance ?", description: t.title }))) return;
+    setTasks((ts) => ts?.filter((x) => x.id !== t.id) ?? null);
+    const { error } = await supabase.from("tasks").delete().eq("id", t.id);
+    if (error) { toast.error("Suppression impossible"); load(); } else toast.success("Échéance supprimée");
+  };
+
   const subjName = (id: string | null) => subjects.find((s) => s.id === id)?.name;
 
   const Item = ({ t }: { t: Row }) => (
@@ -86,6 +94,7 @@ export function SemesterTasks() {
           {t.reminder_enabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
         </button>
       )}
+      <button aria-label="Supprimer" onClick={() => removeTask(t)} className="w-11 h-11 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive"><X className="w-4 h-4" /></button>
     </li>
   );
 

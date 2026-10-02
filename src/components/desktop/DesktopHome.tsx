@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmHost";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X, CheckCircle2, GraduationCap, ListTodo } from "lucide-react";
 import { useOrbitData } from "@/hooks/useOrbitData";
@@ -26,7 +27,7 @@ const WEEK = ["L", "M", "M", "J", "V", "S", "D"];
 
 export const DesktopHome = ({ greeting }: { greeting: string }) => {
   const { user } = useAuth();
-  const { events, subjects, tasks, createTask, toggleTask, getTodayEvents, getSubjectById, refetch } = useOrbitData();
+  const { events, subjects, tasks, createTask, toggleTask, deleteTask, getTodayEvents, getSubjectById, refetch } = useOrbitData();
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [openDate, setOpenDate] = useState<Date | null>(null);
 
@@ -77,7 +78,10 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
     });
     save([...items, { id: crypto.randomUUID(), kind, text: t, taskId: (created as { id?: string } | null)?.id ?? null }]);
   };
-  const remove = (id: string) => save(items.filter((i) => i.id !== id));
+  const remove = async (id: string) => {
+    if (!(await confirmAction({ title: "Retirer cette ligne du bloc-notes ?", confirmLabel: "Retirer" }))) return;
+    save(items.filter((i) => i.id !== id));
+  };
   const isDone = (i: PadItem) => !!i.taskId && tasks.find((t) => t.id === i.taskId)?.status === "done";
 
   const cycleLabel = new Date(cycle + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
@@ -200,7 +204,7 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
                 const done = t.status === "done";
                 const overdue = !done && t.due_date && toLocalDateStr(new Date(t.due_date)) < todayStr;
                 return (
-                  <li key={t.id}>
+                  <li key={t.id} className="group flex items-center gap-1">
                     <button
                       onClick={() => toggleTask(t.id)}
                       className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-muted/50 text-left transition-colors"
@@ -221,6 +225,8 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
                         </span>
                       )}
                     </button>
+                    <button aria-label="Supprimer la tâche" onClick={async () => { if (await confirmAction({ title: "Supprimer cette tâche ?", description: t.title })) deleteTask(t.id); }}
+                      className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted hover:text-destructive transition-opacity"><X className="w-4 h-4" /></button>
                   </li>
                 );
               })}

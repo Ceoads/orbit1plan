@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmHost";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -73,8 +74,9 @@ export const EditTimelineTaskModal = ({ open, onClose, task, onUpdate, onDelete 
     onClose();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!task) return;
+    if (!(await confirmAction({ title: "Supprimer cette tâche ?", description: task.title }))) return;
     onDelete(task.id);
     onClose();
   };

@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmHost";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, NotebookPen, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +45,7 @@ export function CourseSheet({ subjectId, subjectName }: { subjectId: string; sub
   };
 
   const remove = async (id: string) => {
+    if (!(await confirmAction({ title: "Supprimer ce chapitre ?", description: "Son contenu sera définitivement effacé." }))) return;
     await supabase.from("course_chapters").delete().eq("id", id);
     setChapters((c) => { const n = c?.filter((x) => x.id !== id) ?? []; setActive(n[0]?.id ?? null); return n; });
   };

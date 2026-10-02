@@ -1,3 +1,4 @@
+import { confirmAction } from "@/components/ConfirmHost";
 import { useEffect, useState } from "react";
 import { Search, FileText, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -93,7 +94,7 @@ export function SubjectDriveDialog({ open, onOpenChange, subjectId, subjectName,
               <div key={f.id} className="flex items-center gap-3 bg-muted/40 rounded-2xl px-4 py-3">
                 <FileText className="w-4 h-4 text-primary shrink-0" />
                 <span className="flex-1 truncate text-sm">{fileName(f)}</span>
-                <button onClick={async () => { if (await onFile(f.id)) toast.success("Rangé"); }}
+                <button onClick={async () => { if (!(await confirmAction({ title: `Ranger ce document dans ${subjectName} ?`, description: fileName(f), confirmLabel: "Ranger", destructive: false }))) return; if (await onFile(f.id)) toast.success("Rangé"); }}
                   className="h-10 px-4 rounded-xl bg-foreground text-background text-xs font-medium">Ranger ici</button>
               </div>
             ))}
