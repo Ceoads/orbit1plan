@@ -1,6 +1,6 @@
 import { confirmAction } from "@/components/ConfirmHost";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bell, BellOff, Plus, Check, Loader2 } from "lucide-react";
+import { Bell, BellOff, Plus, Check, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

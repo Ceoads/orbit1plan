@@ -1,7 +1,7 @@
 import { confirmAction } from "@/components/ConfirmHost";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, PanInfo, useMotionValue, animate } from "framer-motion";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
 import { SemesterTasks } from "@/components/tasks/SemesterTasks";
