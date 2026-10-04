@@ -295,16 +295,25 @@ export const TheVaultPage = () => {
   };
 
   const handleDeleteSubject = async (subjectId: string) => {
-    // Detach files from this subject so they stay searchable
-    await supabase
+    // Delete first: vault_files.subject_id is ON DELETE SET NULL, so the DB
+    // detaches files only if the delete actually succeeds. Never detach
+    // manually beforehand — a failed delete would leave the folder emptied.
+    const { data: affected } = await supabase
       .from("vault_files")
-      .update({ subject_id: null, filing_status: "pending" })
+      .select("id")
       .eq("subject_id", subjectId);
 
     const { error } = await supabase.from("subjects").delete().eq("id", subjectId);
     if (error) {
       toast.error("Erreur lors de la suppression");
       return false;
+    }
+
+    // Success: reset filing status on the files that were in this folder so
+    // they go back through smart filing (subject_id is already null via the DB).
+    const ids = (affected || []).map((f) => f.id);
+    if (ids.length > 0) {
+      await supabase.from("vault_files").update({ filing_status: "pending" }).in("id", ids);
     }
     toast.success("Dossier supprimé");
     setSelectedSubject(null);
