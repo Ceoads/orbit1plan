@@ -301,7 +301,9 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
   };
   const removeSubject = async (id: string, name: string) => {
     if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans la Bibliothèque, sans matière." }))) return;
-    await supabase.from("vault_files").update({ subject_id: null }).eq("subject_id", id);
+    // Delete first: vault_files.subject_id is ON DELETE SET NULL, so the DB
+    // detaches documents only if the delete actually succeeds. Never detach
+    // manually beforehand — a failed delete would leave the subject emptied.
     const { error } = await supabase.from("subjects").delete().eq("id", id);
     if (error) toast.error("Suppression impossible : cette matière est encore liée à des cours ou tâches.");
     else { toast.success("Matière supprimée"); vault.refetch(); }
