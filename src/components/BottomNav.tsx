@@ -1,4 +1,4 @@
-import { Home, FolderOpen, CheckSquare, GraduationCap, Brain } from "lucide-react";
+import { Home, FolderOpen, CheckSquare, GraduationCap, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -19,7 +19,7 @@ const tabConfig = [
   { id: 'vault' as const, labelKey: 'nav.vault', icon: FolderOpen },
   { id: 'tasks' as const, labelKey: 'nav.tasks', icon: CheckSquare },
   { id: 'exams' as const, labelKey: 'nav.exams', icon: GraduationCap },
-  { id: 'lab' as const, labelKey: 'nav.lab', icon: Brain },
+  { id: 'lab' as const, labelKey: 'nav.lab', icon: MessageCircle },
 ];
 
 export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
