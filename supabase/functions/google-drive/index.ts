@@ -8,6 +8,7 @@ import {
   adminClient, deleteConnectionForUser, getConnectionKeyForUser, saveConnectionKeyForUser,
 } from "../_shared/appUserConnections.ts";
 import { GOOGLE_DRIVE_SCOPES } from "../_shared/appUserScopes.ts";
+import { aiChat } from "../_shared/ai.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 const CONNECTOR = "google_drive";
@@ -290,13 +291,18 @@ Deno.serve(async (req) => {
     if (body.action === "autoFile") {
       const admin = adminClient();
       const c = await loadClassifier(user.id);
-      const { data: rows } = await admin.from("vault_files").select("id,original_filename,created_at,tags,extracted_text")
+      const { data: rows } = await admin.from("vault_files").select("id,original_filename,created_at,tags,extracted_text,file_url,file_type")
         .eq("user_id", user.id).is("subject_id", null).contains("tags", ["drive"]);
       let filed = 0;
       for (const r of rows ?? []) {
-        const hit = classify(c.subjects, c.events, [r.original_filename ?? "", (r.extracted_text ?? "").slice(0, 300)], r.created_at);
+        let pdf: Uint8Array | null = null;
+        if (!r.extracted_text && r.file_type === "pdf" && r.file_url?.startsWith("http")) {
+          try { const f = await fetch(r.file_url); if (f.ok) pdf = new Uint8Array(await f.arrayBuffer()); } catch { /* ignore */ }
+        }
+        const ai = await aiClassify(c.subjects, { name: r.original_filename ?? "", text: r.extracted_text, pdf });
+        const hit = ai ? { id: ai.id, how: "ai" } : classify(c.subjects, c.events, [r.original_filename ?? "", (r.extracted_text ?? "").slice(0, 300)], r.created_at);
         if (!hit) continue;
-        await admin.from("vault_files").update({ subject_id: hit.id, filing_status: "auto", tags: [...(r.tags ?? []), `auto-${hit.how}`] }).eq("id", r.id);
+        await admin.from("vault_files").update({ subject_id: hit.id, filing_status: "auto", tags: [...(r.tags ?? []), `auto-${hit.how}`], ...(ai?.summary ? { ai_summary: ai.summary } : {}) }).eq("id", r.id);
         filed++;
       }
       return json({ filed, total: rows?.length ?? 0 });
