@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { ArrowUp, RotateCcw, Loader2 } from "lucide-react";
+import { ArrowUp, RotateCcw, Loader2, History, X } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,12 +37,50 @@ export function OrbitAI() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
+  const [convId, setConvId] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState(false);
+  const [past, setPast] = useState<{ id: string; title: string; updated_at: string }[]>([]);
+  const [memories, setMemories] = useState<{ id: string; content: string }[]>([]);
+
+  const callFn = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("orbit-ai", { body });
+    if (error) throw new Error("Orbit AI est indisponible pour le moment.");
+    return data;
+  };
+  const loadConversation = async (id: string) => {
+    setConvId(id);
+    const { data } = await supabase.from("ai_chat_messages").select("role,content").eq("conversation_id", id).order("created_at").limit(200);
+    setMessages((data as Msg[]) ?? []);
+  };
   useEffect(() => {
     if (!user) return;
-    supabase.from("ai_chat_messages").select("role,content").eq("user_id", user.id).order("created_at").limit(200)
-      .then(({ data }) => setMessages((data as Msg[]) ?? []));
+    callFn({ action: "active" }).then((d) => loadConversation(d.conversationId)).catch((e) => toast.error(e.message));
     inputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+  const openDrawer = async () => {
+    setDrawer(true);
+    if (!user) return;
+    const [c, m] = await Promise.all([
+      supabase.from("ai_conversations").select("id,title,updated_at").eq("user_id", user.id).eq("archived", true).order("updated_at", { ascending: false }).limit(50),
+      supabase.from("ai_memories").select("id,content").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
+    ]);
+    setPast(c.data ?? []); setMemories(m.data ?? []);
+  };
+  const resume = async (id: string) => {
+    try { const d = await callFn({ action: "resume", conversationId: id }); await loadConversation(d.conversationId); setDrawer(false); }
+    catch (e) { toast.error((e as Error).message); }
+  };
+  const forget = async (id: string) => {
+    if (!(await confirmAction({ title: "Oublier ce souvenir ?", description: "Orbit AI ne s'en servira plus." }))) return;
+    await supabase.from("ai_memories").delete().eq("id", id);
+    setMemories((m) => m.filter((x) => x.id !== id));
+  };
+  const removePast = async (id: string) => {
+    if (!(await confirmAction({ title: "Supprimer cette conversation ?", description: "Ses souvenirs restent en mémoire." }))) return;
+    await supabase.from("ai_conversations").delete().eq("id", id);
+    setPast((p) => p.filter((x) => x.id !== id));
+  };
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, busy]);
 
   const send = async (raw?: string) => {
@@ -77,10 +116,49 @@ export function OrbitAI() {
   };
 
   const reset = async () => {
-    if (!user || !(await confirmAction({ title: "Effacer la conversation ?", description: "Orbit AI repartira de zéro." }))) return;
-    await supabase.from("ai_chat_messages").delete().eq("user_id", user.id);
-    setMessages([]); inputRef.current?.focus();
+    if (busy) return;
+    setBusy(true);
+    try { const d = await callFn({ action: "new" }); setMessages([]); setConvId(d.conversationId); }
+    catch (e) { toast.error((e as Error).message); }
+    finally { setBusy(false); inputRef.current?.focus(); }
   };
+
+  const historyButton = (
+    <button onClick={openDrawer} aria-label="Anciennes conversations" className="w-10 h-10 rounded-full text-muted-foreground hover:bg-card flex items-center justify-center"><History className="w-4 h-4" /></button>
+  );
+  const drawerEl = (
+    <Sheet open={drawer} onOpenChange={setDrawer}>
+      <SheetContent className="w-[400px] sm:max-w-[400px] p-8 flex flex-col gap-8 overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Historique</SheetTitle>
+          <SheetDescription>Tes anciennes conversations et ce qu'Orbit AI a retenu de toi.</SheetDescription>
+        </SheetHeader>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Conversations</p>
+          {past.length === 0 && <p className="text-sm text-muted-foreground py-4">Aucune ancienne conversation.</p>}
+          {past.map((c) => (
+            <div key={c.id} className="group flex items-center gap-2 rounded-2xl hover:bg-muted/50">
+              <button onClick={() => resume(c.id)} className="flex-1 text-left px-4 py-3 min-w-0">
+                <p className="text-sm font-medium truncate">{c.title}</p>
+                <p className="text-xs text-muted-foreground">{new Date(c.updated_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
+              </button>
+              <button onClick={() => removePast(c.id)} aria-label="Supprimer" className="w-9 h-9 mr-2 rounded-full flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-card"><X className="w-4 h-4" /></button>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mémoire</p>
+          {memories.length === 0 && <p className="text-sm text-muted-foreground py-4">Orbit AI retiendra l'essentiel quand tu commenceras une nouvelle conversation.</p>}
+          {memories.map((m) => (
+            <div key={m.id} className="group flex items-start gap-2 bg-muted/40 rounded-2xl px-4 py-3">
+              <p className="flex-1 text-sm whitespace-pre-wrap">{m.content}</p>
+              <button onClick={() => forget(m.id)} aria-label="Oublier" className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-card"><X className="w-4 h-4" /></button>
+            </div>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 
   const composer = (
     <form onSubmit={(e) => { e.preventDefault(); send(); }}
@@ -99,7 +177,9 @@ export function OrbitAI() {
 
   if (messages.length === 0) {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center gap-10 max-w-3xl mx-auto text-center">
+      <div className="relative min-h-[80vh] flex flex-col items-center justify-center gap-10 max-w-3xl mx-auto text-center">
+        <div className="absolute top-0 right-0">{historyButton}</div>
+        {drawerEl}
         <Mascot />
         <div className="space-y-3">
           <h1 className="text-5xl font-display font-bold tracking-tight">Je serai ton prof perso, toute l'année</h1>
@@ -120,7 +200,9 @@ export function OrbitAI() {
       <div className="flex items-center gap-3 pb-6">
         <Mascot size={40} />
         <p className="text-xl font-bold tracking-tight flex-1">Orbit AI</p>
-        <button onClick={reset} className="h-10 px-4 rounded-full text-sm text-muted-foreground hover:bg-card flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Nouvelle conversation</button>
+        {historyButton}
+        {drawerEl}
+        <button onClick={reset} disabled={busy} className="h-10 px-4 rounded-full text-sm text-muted-foreground hover:bg-card flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Nouvelle conversation</button>
       </div>
       <div className="flex-1 space-y-6 pb-8">
         {messages.map((m, i) => (
