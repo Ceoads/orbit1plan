@@ -14,23 +14,6 @@ interface Msg { role: "user" | "assistant"; content: string }
 
 const SUGGESTIONS = ["Qu'est-ce que j'ai demain ?", "Aide-moi à réviser mon prochain examen", "Découpe mes tâches en petites étapes", "Comment remonter ma moyenne ?"];
 
-/** Friendly blob mascot, Orbit peach palette. */
-const Mascot = ({ size = 72 }: { size?: number }) => (
-  <div className="relative animate-[float_4s_ease-in-out_infinite]" style={{ width: size, height: size }}>
-    <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_10px_25px_hsl(var(--primary)/0.25)]">
-      <defs>
-        <radialGradient id="orbitBlob" cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="hsl(var(--background))" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" />
-        </radialGradient>
-      </defs>
-      <path fill="url(#orbitBlob)" d="M50 6c8 0 11 7 18 9s15-1 19 6-1 13 1 20 9 11 6 18-11 8-15 14-4 14-12 17-12-4-17-4-11 7-18 4-6-11-12-17-14-6-16-14 5-12 4-19-8-12-3-19 13-3 19-6S42 6 50 6z" />
-      <ellipse cx="41" cy="50" rx="3.5" ry="5" fill="hsl(var(--foreground))" />
-      <ellipse cx="59" cy="50" rx="3.5" ry="5" fill="hsl(var(--foreground))" />
-    </svg>
-  </div>
-);
-
 export function OrbitAI() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([]);
