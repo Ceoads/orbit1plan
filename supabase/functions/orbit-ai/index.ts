@@ -24,15 +24,15 @@ Deno.serve(async (req) => {
     const [hist, subjects, events, tasks, grades] = await Promise.all([
       admin.from("ai_chat_messages").select("role,content").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
       admin.from("subjects").select("id,name").eq("user_id", user.id),
-      admin.from("calendar_events").select("title,event_date,start_time,end_time,room,event_type").eq("user_id", user.id).gte("event_date", today).order("event_date").limit(25),
-      admin.from("tasks").select("title,due_date,is_completed").eq("user_id", user.id).eq("is_completed", false).order("due_date").limit(25),
+      admin.from("calendar_events").select("title,event_date,start_time,end_time,room_number,event_type").eq("user_id", user.id).gte("event_date", today).order("event_date").limit(25),
+      admin.from("tasks").select("title,due_date,status").eq("user_id", user.id).neq("status", "completed").order("due_date").limit(25),
       admin.from("grades").select("label,value,max_value,coefficient,grade_date,subject_id").eq("user_id", user.id).order("grade_date", { ascending: false }).limit(30),
     ]);
     const sName = (id: string | null) => subjects.data?.find((s) => s.id === id)?.name ?? "";
     const context = [
       `Date : ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}`,
       `Matières : ${(subjects.data ?? []).map((s) => s.name).join(", ") || "aucune"}`,
-      `Prochains cours :\n${(events.data ?? []).map((e) => `- ${e.event_date} ${e.start_time?.slice(0, 5)}-${e.end_time?.slice(0, 5)} ${e.title}${e.room ? ` (${e.room})` : ""}`).join("\n") || "aucun"}`,
+      `Prochains cours :\n${(events.data ?? []).map((e) => `- ${e.event_date} ${e.start_time?.slice(0, 5)}-${e.end_time?.slice(0, 5)} ${e.title}${e.room_number ? ` (${e.room_number})` : ""}`).join("\n") || "aucun"}`,
       `Tâches à faire :\n${(tasks.data ?? []).map((t) => `- ${t.title}${t.due_date ? ` (échéance ${t.due_date.slice(0, 10)})` : ""}`).join("\n") || "aucune"}`,
       `Notes :\n${(grades.data ?? []).map((g) => `- ${sName(g.subject_id)} · ${g.label} : ${g.value}/${g.max_value} (coef ${g.coefficient})`).join("\n") || "aucune"}`,
     ].join("\n\n");
