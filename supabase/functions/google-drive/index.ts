@@ -85,6 +85,30 @@ function classify(subjects: Subj[], events: Ev[], texts: string[], whenIso?: str
   return near ? { id: near.id, how: "ical" } : null;
 }
 
+const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+const AI_PDF_MAX = 8 * 1024 * 1024;
+
+// Lit le contenu (texte ou PDF) avec Gemini et choisit la matière la plus probable.
+async function aiClassify(subjects: Subj[], doc: { name: string; folder?: string; text?: string | null; pdf?: Uint8Array | null }): Promise<{ id: string; summary: string } | null> {
+  if (!subjects.length) return null;
+  try {
+    const list = subjects.map((s, i) => `${i + 1}. ${s.name}${s.ical_code ? ` (${s.ical_code})` : ""}`).join("\n");
+    const content: unknown[] = [{ type: "text", text:
+      `Voici les matières d'un étudiant :\n${list}\n\nDocument : « ${doc.name} »${doc.folder ? ` (dossier Drive « ${doc.folder} »)` : ""}.\n` +
+      (doc.text ? `Extrait du contenu :\n${doc.text.slice(0, 6000)}\n` : "") +
+      `Lis le contenu et réponds UNIQUEMENT en JSON : {"match": <numéro de la matière ou 0 si aucune ne correspond clairement>, "confidence": <0-1>, "summary": "<résumé d'une phrase dans la langue du document>"}` }];
+    if (!doc.text && doc.pdf && doc.pdf.byteLength <= AI_PDF_MAX) content.push({ type: "image_url", image_url: { url: `data:application/pdf;base64,${b64(doc.pdf)}` } });
+    const res = await aiChat({ model: "google/gemini-3.8-flash", messages: [{ role: "user", content }], response_format: { type: "json_object" } });
+    if (!res.ok) { console.log(JSON.stringify({ event: "drive.ai.error", status: res.status })); return null; }
+    const out = await res.json();
+    const raw = String(out.choices?.[0]?.message?.content ?? "");
+    const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "{}");
+    const idx = Number(parsed.match) - 1;
+    if (idx < 0 || idx >= subjects.length || Number(parsed.confidence ?? 0) < 0.55) return null;
+    return { id: subjects[idx].id, summary: String(parsed.summary ?? "").slice(0, 400) };
+  } catch (e) { console.log(JSON.stringify({ event: "drive.ai.fail", err: String(e) })); return null; }
+}
+
 async function loadClassifier(userId: string) {
   const admin = adminClient();
   const [{ data: subjects }, { data: events }] = await Promise.all([
@@ -129,7 +153,7 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string, s
   }
   if (bytes.byteLength > MAX_BYTES) throw new DriveError("Fichier trop lourd (plus de 50 Mo)", 413);
 
-  let finalSubject = subjectId ?? null; let how = subjectId ? "manual" : "";
+  let finalSubject = subjectId ?? null; let how = subjectId ? "manual" : ""; let summary: string | null = null;
   if (!finalSubject) {
     const texts = [meta.name];
     const parent = meta.parents?.[0];
@@ -138,8 +162,12 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string, s
       if (pr.ok) texts.push((await pr.json()).name ?? "");
     }
     const c = await loadClassifier(userId);
-    const hit = classify(c.subjects, c.events, texts, meta.createdTime ?? meta.modifiedTime);
-    if (hit) { finalSubject = hit.id; how = hit.how; }
+    const ai = await aiClassify(c.subjects, { name: meta.name, folder: texts[1], text: extractedText, pdf: ext === "pdf" ? bytes : null });
+    if (ai) { finalSubject = ai.id; how = "ai"; summary = ai.summary || null; }
+    else {
+      const hit = classify(c.subjects, c.events, texts, meta.createdTime ?? meta.modifiedTime);
+      if (hit) { finalSubject = hit.id; how = hit.how; }
+    }
   }
   const path = `${userId}/drive-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
   const up = await admin.storage.from("notes").upload(path, bytes, { contentType });
@@ -148,7 +176,7 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string, s
   const name = meta.name.endsWith(`.${ext}`) ? meta.name : `${meta.name}.${ext}`;
   const { data: row, error } = await admin.from("vault_files").insert({
     user_id: userId, subject_id: finalSubject, created_at: meta.createdTime ?? new Date().toISOString(), file_url: signed?.signedUrl ?? path, original_filename: name,
-    file_type: ext === "pdf" ? "pdf" : "document", extracted_text: extractedText,
+    file_type: ext === "pdf" ? "pdf" : "document", extracted_text: extractedText, ai_summary: summary,
     filing_status: how === "manual" || !finalSubject ? "confirmed" : "auto", tags: how && how !== "manual" ? ["drive", ext, `auto-${how}`] : ["drive", ext],
   }).select("id").single();
   if (error) throw error;
