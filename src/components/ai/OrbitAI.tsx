@@ -127,7 +127,7 @@ export function OrbitAI() {
           <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
             {m.role === "user"
               ? <div className="max-w-[80%] bg-foreground text-background rounded-3xl rounded-br-lg px-5 py-3 whitespace-pre-wrap">{m.content}</div>
-              : <div className="max-w-full prose prose-sm prose-neutral dark:prose-invert text-foreground leading-relaxed">
+              : <div className="max-w-full text-foreground leading-relaxed space-y-3 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:my-1 [&_strong]:font-semibold [&_h1]:text-xl [&_h2]:text-lg [&_h3]:font-semibold [&_h1]:font-bold [&_h2]:font-bold [&_code]:bg-muted [&_code]:px-1.5 [&_code]:rounded-md">
                   {m.content ? <ReactMarkdown>{m.content}</ReactMarkdown> : <span className="inline-flex gap-1 py-2"><span className="w-2 h-2 rounded-full bg-primary animate-bounce" /><span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" /><span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:300ms]" /></span>}
                 </div>}
           </div>
