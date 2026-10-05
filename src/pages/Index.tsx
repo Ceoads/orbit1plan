@@ -6,7 +6,7 @@ import { PulsePage } from "./PulsePage";
 import { TheVaultPage } from "./TheVaultPage";
 import { TasksPage } from "./TasksPage";
 import { ExamsPage } from "./ExamsPage";
-import { ExamLabPage } from "./ExamLabPage";
+import { OrbitAI } from "@/components/ai/OrbitAI";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
 import { SetupWizard } from "@/components/SetupWizard";
@@ -108,7 +108,7 @@ const Index = () => {
     vault: <TheVaultPage />,
     tasks: <TasksPage />,
     exams: <ExamsPage />,
-    lab: <ExamLabPage />,
+    lab: <OrbitAI />,
   }), []);
 
   const renderPage = () => {
