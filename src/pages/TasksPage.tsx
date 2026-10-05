@@ -5,6 +5,7 @@ import { Plus, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
 import { SemesterTasks } from "@/components/tasks/SemesterTasks";
+import { GradesPage } from "@/components/grades/GradesPage";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { AddTaskModal } from "@/components/modals/AddTaskModal";
@@ -55,6 +56,7 @@ export const TasksPage = () => {
   const [weekOffset, setWeekOffset] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSemester, setShowSemester] = useState(false);
+  const [showGrades, setShowGrades] = useState(false);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const [stripWidth, setStripWidth] = useState(0);
@@ -359,6 +361,11 @@ export const TasksPage = () => {
           <span className="text-xs text-muted-foreground">{showSemester ? "Masquer" : "Ouvrir"}</span>
         </button>
         {showSemester && <div className="mt-4"><SemesterTasks /></div>}
+        <button onClick={() => setShowGrades((v) => !v)} className="mt-3 w-full min-h-[44px] px-5 rounded-2xl bg-card shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between">
+          <span className="text-sm font-semibold">Mes notes</span>
+          <span className="text-xs text-muted-foreground">{showGrades ? "Masquer" : "Ouvrir"}</span>
+        </button>
+        {showGrades && <div className="mt-6"><GradesPage /></div>}
       </div>
 
       {/* TASK LIST */}

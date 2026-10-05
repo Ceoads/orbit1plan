@@ -1,5 +1,5 @@
 import { confirmAction } from "@/components/ConfirmHost";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
@@ -295,16 +295,28 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
   const unfiled = vault.files.filter((f) => !f.subject_id).length;
   const unfiledDrive = vault.files.filter((f) => !f.subject_id && f.tags?.includes("drive")).length;
   const [sorting, setSorting] = useState(false);
-  const autoFile = async () => {
-    if (!(await confirmAction({ title: "Classer automatiquement ?", description: `Orbit va ranger tes ${unfiledDrive} documents Drive sans matière selon leur nom et ton emploi du temps.`, confirmLabel: "Classer", destructive: false }))) return;
+  // Continuous auto-filing: live updates on vault_files + silent auto-classification
+  // of newly arrived unfiled Drive docs (each doc attempted once per session).
+  const tried = useRef<Set<string>>(new Set());
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase.channel(`vault-files-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "vault_files", filter: `user_id=eq.${user.id}` }, () => vault.refetch())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+  useEffect(() => {
+    const fresh = vault.files.filter((f) => !f.subject_id && f.tags?.includes("drive") && !tried.current.has(f.id));
+    if (!fresh.length || sorting) return;
+    fresh.forEach((f) => tried.current.add(f.id));
     setSorting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-drive", { body: { action: "autoFile" } });
-      if (error) throw error;
-      toast.success(data.filed ? `${data.filed} document${data.filed > 1 ? "s" : ""} rangé${data.filed > 1 ? "s" : ""} automatiquement` : "Aucune correspondance trouvée avec tes matières ou ton emploi du temps");
-      vault.refetch();
-    } catch { toast.error("Classement impossible pour le moment"); } finally { setSorting(false); }
-  };
+    supabase.functions.invoke("google-drive", { body: { action: "autoFile" } })
+      .then(({ data }) => { if (data?.filed) { toast.success(`${data.filed} document${data.filed > 1 ? "s" : ""} rangé${data.filed > 1 ? "s" : ""} automatiquement`); vault.refetch(); } })
+      .finally(() => setSorting(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vault.files]);
   const removeSubject = async (id: string, name: string) => {
     if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans la Bibliothèque, sans matière." }))) return;
     // Delete first: vault_files.subject_id is ON DELETE SET NULL, so the DB
@@ -334,10 +346,8 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         {unfiledDrive > 0 && (
           <div className="mb-8 bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-4">
             <HardDrive className="w-5 h-5 text-primary shrink-0" />
-            <p className="flex-1 text-sm"><span className="font-medium">{unfiledDrive} document{unfiledDrive > 1 ? "s" : ""} Drive sans matière.</span> <span className="text-muted-foreground">Orbit peut les ranger selon leur nom, leur dossier et ton emploi du temps.</span></p>
-            <button onClick={autoFile} disabled={sorting} className="h-11 px-5 rounded-2xl bg-foreground text-background text-sm font-medium disabled:opacity-60">
-              {sorting ? "Classement…" : "Classer automatiquement"}
-            </button>
+            <p className="flex-1 text-sm"><span className="font-medium">{unfiledDrive} document{unfiledDrive > 1 ? "s" : ""} Drive sans matière.</span> <span className="text-muted-foreground">Orbit les range tout seul dès qu'il reconnaît leur matière ; sinon, range-les à la main.</span></p>
+            {sorting && <span className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Classement…</span>}
           </div>
         )}
         {vault.subjects.length === 0 ? (
