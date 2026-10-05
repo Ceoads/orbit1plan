@@ -28,3 +28,13 @@ export async function sendToTodayNotepad(userId: string, text: string, subjectId
   const { error } = await supabase.from("daily_notepads").upsert({ user_id: userId, cycle_date: cycle, items: next as never }, { onConflict: "user_id,cycle_date" });
   if (error) throw error;
 }
+
+/** Appends a plain line (no linked task) to today's notepad. */
+export async function appendToTodayNotepad(userId: string, text: string) {
+  const cycle = parisCycleKey();
+  const { data } = await supabase.from("daily_notepads").select("items").eq("user_id", userId).eq("cycle_date", cycle).maybeSingle();
+  const items = ((data?.items as unknown) as PadItem[]) || [];
+  const next = [...items, { id: crypto.randomUUID(), kind: "exam" as const, text, taskId: null }];
+  const { error } = await supabase.from("daily_notepads").upsert({ user_id: userId, cycle_date: cycle, items: next as never }, { onConflict: "user_id,cycle_date" });
+  if (error) throw error;
+}

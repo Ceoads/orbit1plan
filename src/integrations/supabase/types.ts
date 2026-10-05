@@ -408,6 +408,50 @@ export type Database = {
           },
         ]
       }
+      grades: {
+        Row: {
+          coefficient: number
+          created_at: string
+          grade_date: string
+          id: string
+          label: string
+          max_value: number
+          subject_id: string | null
+          user_id: string
+          value: number
+        }
+        Insert: {
+          coefficient?: number
+          created_at?: string
+          grade_date?: string
+          id?: string
+          label: string
+          max_value?: number
+          subject_id?: string | null
+          user_id: string
+          value: number
+        }
+        Update: {
+          coefficient?: number
+          created_at?: string
+          grade_date?: string
+          id?: string
+          label?: string
+          max_value?: number
+          subject_id?: string | null
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grades_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes_vault: {
         Row: {
           ai_summary: string | null
