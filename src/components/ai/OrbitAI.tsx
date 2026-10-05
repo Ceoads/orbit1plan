@@ -128,7 +128,7 @@ export function OrbitAI() {
   );
   const drawerEl = (
     <Sheet open={drawer} onOpenChange={setDrawer}>
-      <SheetContent side="bottom" className="w-full sm:w-[400px] sm:max-w-[400px] h-[92dvh] sm:h-full rounded-t-[2rem] sm:rounded-none p-6 sm:p-8 flex flex-col gap-8 overflow-y-auto">
+      <SheetContent className="w-full sm:w-[400px] sm:max-w-[400px] p-6 sm:p-8 flex flex-col gap-8 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Historique</SheetTitle>
           <SheetDescription>Tes anciennes conversations et ce qu'Orbit AI a retenu de toi.</SheetDescription>
