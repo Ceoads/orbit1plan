@@ -51,7 +51,18 @@ const greeting = () => {
 };
 
 export default function DesktopApp() {
-  const [section, setSection] = useState<Section>("home");
+  const [section, setSectionState] = useState<Section>(() => {
+    const p = new URLSearchParams(window.location.search).get("section") as Section | null;
+    const saved = (p || sessionStorage.getItem("desktop_section")) as Section | null;
+    return saved && NAV.some((n) => n.id === saved) ? saved : "home";
+  });
+  const setSection = useCallback((s: Section) => {
+    setSectionState(s);
+    sessionStorage.setItem("desktop_section", s);
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", s);
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, []);
   const [source, setSource] = useState<VaultFile | null>(null);
   const vault = useVaultData();
   const navigate = useNavigate();
