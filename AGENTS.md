@@ -1,3 +1,4 @@
 - All AI calls (present and future) go through supabase/functions/_shared/ai.ts (aiEndpoint/aiModel/aiFetch) using GEMINI_API_KEY by default — the user requires Gemini as the default AI; aiFetch retries Gemini overloads with fallback models.
+- Exception: Orbit AI chat (orbit-ai function) routes each message to Gemini, GPT (gateway /v1/responses) or Claude (gateway /v1/messages) via pickRoute, falling back to Gemini; the model is never shown to students. Why: user wants Orbit to pick the best AI per request.
 - Render course and subject identities through `SubjectIcon` instead of stored emoji text so every view uses one professional icon system.
 - Task reminder emails: hourly pg_cron 'task-reminders-hourly' → task-reminders edge function → send-transactional-email (template task-reminder); one mail per task via reminder_sent_at. Why: single send path, no duplicates.
