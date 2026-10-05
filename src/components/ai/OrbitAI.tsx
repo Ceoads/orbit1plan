@@ -128,7 +128,7 @@ export function OrbitAI() {
   );
   const drawerEl = (
     <Sheet open={drawer} onOpenChange={setDrawer}>
-      <SheetContent className="w-[400px] sm:max-w-[400px] p-8 flex flex-col gap-8 overflow-y-auto">
+      <SheetContent side="bottom" className="w-full sm:w-[400px] sm:max-w-[400px] h-[92dvh] sm:h-full rounded-t-[2rem] sm:rounded-none p-6 sm:p-8 flex flex-col gap-8 overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Historique</SheetTitle>
           <SheetDescription>Tes anciennes conversations et ce qu'Orbit AI a retenu de toi.</SheetDescription>
@@ -177,12 +177,12 @@ export function OrbitAI() {
 
   if (messages.length === 0) {
     return (
-      <div className="relative min-h-[80vh] flex flex-col items-center justify-center gap-10 max-w-3xl mx-auto text-center">
+      <div className="relative min-h-[70dvh] flex flex-col items-center justify-center gap-8 sm:gap-10 max-w-3xl mx-auto text-center">
         <div className="absolute top-0 right-0">{historyButton}</div>
         {drawerEl}
         <Mascot />
         <div className="space-y-3">
-          <h1 className="text-5xl font-display font-bold tracking-tight">Je serai ton prof perso, toute l'année</h1>
+          <h1 className="text-3xl sm:text-5xl font-display font-bold tracking-tight">Je serai ton prof perso, toute l'année</h1>
           <p className="text-muted-foreground">Orbit AI connaît tes cours, tes tâches et tes notes.</p>
         </div>
         {composer}
@@ -196,13 +196,13 @@ export function OrbitAI() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col min-h-[85vh]">
+    <div className="max-w-3xl mx-auto flex flex-col min-h-[75dvh]">
       <div className="flex items-center gap-3 pb-6">
         <Mascot size={40} />
-        <p className="text-xl font-bold tracking-tight flex-1">Orbit AI</p>
+        <p className="text-lg sm:text-xl font-bold tracking-tight flex-1">Orbit AI</p>
         {historyButton}
         {drawerEl}
-        <button onClick={reset} disabled={busy} className="h-10 px-4 rounded-full text-sm text-muted-foreground hover:bg-card flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Nouvelle conversation</button>
+        <button onClick={reset} disabled={busy} aria-label="Nouvelle conversation" className="h-10 px-3 sm:px-4 rounded-full text-sm text-muted-foreground hover:bg-card flex items-center gap-2"><RotateCcw className="w-4 h-4" /><span className="hidden sm:inline">Nouvelle conversation</span></button>
       </div>
       <div className="flex-1 space-y-6 pb-8">
         {messages.map((m, i) => (
@@ -219,7 +219,7 @@ export function OrbitAI() {
         )}
         <div ref={endRef} />
       </div>
-      <div className="sticky bottom-6">{composer}</div>
+      <div className="sticky bottom-4 sm:bottom-6" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>{composer}</div>
     </div>
   );
 }
