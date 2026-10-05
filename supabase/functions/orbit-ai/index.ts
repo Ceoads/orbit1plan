@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       admin.from("ai_chat_messages").select("role,content").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
       admin.from("subjects").select("id,name").eq("user_id", user.id),
       admin.from("calendar_events").select("title,event_date,start_time,end_time,room_number,event_type").eq("user_id", user.id).gte("event_date", today).order("event_date").limit(25),
-      admin.from("tasks").select("title,due_date,status").eq("user_id", user.id).neq("status", "completed").order("due_date").limit(25),
+      admin.from("tasks").select("title,due_date,status").eq("user_id", user.id).eq("status", "todo").order("due_date").limit(25),
       admin.from("grades").select("label,value,max_value,coefficient,grade_date,subject_id").eq("user_id", user.id).order("grade_date", { ascending: false }).limit(30),
     ]);
     const sName = (id: string | null) => subjects.data?.find((s) => s.id === id)?.name ?? "";
