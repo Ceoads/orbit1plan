@@ -2,8 +2,11 @@ import { useState } from "react";
 import { useOrbitData, CalendarEvent } from "@/hooks/useOrbitData";
 import { ExamCard } from "@/components/ExamCard";
 import { SwipeableItem } from "@/components/SwipeableItem";
-import { GraduationCap, Plus } from "lucide-react";
+import { BarChart3, CalendarClock, ChevronDown, GraduationCap, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GradesPage } from "@/components/grades/GradesPage";
+import { SemesterTasks } from "@/components/tasks/SemesterTasks";
+import { cn } from "@/lib/utils";
 import { AddExamModal, EditExamModal } from "@/components/modals";
 import {
   AlertDialog,
@@ -19,6 +22,7 @@ import {
 export const ExamsPage = () => {
   const { getUpcomingExams, getSubjectById, getNotesBySubject, subjects, deleteEvent } = useOrbitData();
   const [showAddExam, setShowAddExam] = useState(false);
+  const [openSection, setOpenSection] = useState<"grades" | "deadlines" | null>(null);
   const [editingExam, setEditingExam] = useState<CalendarEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   
@@ -53,6 +57,45 @@ export const ExamsPage = () => {
           <Plus className="w-5 h-5" />
         </Button>
       </div>
+
+      {/* Student results and semester planning */}
+      <section className="space-y-3">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setOpenSection((current) => current === "grades" ? null : "grades")}
+          className="h-auto min-h-[64px] w-full justify-start gap-4 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-card/90"
+          aria-expanded={openSection === "grades"}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <BarChart3 className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-foreground">Mes notes</span>
+            <span className="block text-xs font-normal text-muted-foreground">Moyennes et résultats par matière</span>
+          </span>
+          <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", openSection === "grades" && "rotate-180")} />
+        </Button>
+        {openSection === "grades" && <div className="pt-2"><GradesPage /></div>}
+
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setOpenSection((current) => current === "deadlines" ? null : "deadlines")}
+          className="h-auto min-h-[64px] w-full justify-start gap-4 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-card/90"
+          aria-expanded={openSection === "deadlines"}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <CalendarClock className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-foreground">Échéances du semestre</span>
+            <span className="block text-xs font-normal text-muted-foreground">Dates importantes et rappels</span>
+          </span>
+          <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", openSection === "deadlines" && "rotate-180")} />
+        </Button>
+        {openSection === "deadlines" && <div className="pt-2"><SemesterTasks /></div>}
+      </section>
 
       {/* Upcoming Exams */}
       <section>
