@@ -400,7 +400,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-semibold truncate">{fileName(f)}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{new Date(f.created_at).toLocaleDateString("fr-FR")}{f.tags?.includes("drive") ? " · Drive" : ""}{f.tags?.includes("auto-ical") ? " · rangé via l'emploi du temps" : f.tags?.includes("auto-name") ? " · rangé automatiquement" : ""}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(f.created_at).toLocaleDateString("fr-FR")}{f.tags?.includes("drive") ? " · Drive" : ""}{f.tags?.includes("auto-ai") ? " · rangé par l'IA" : f.tags?.includes("auto-ical") ? " · rangé via l'emploi du temps" : f.tags?.includes("auto-name") ? " · rangé automatiquement" : ""}</p>
                 </div>
               </div>
               {f.ai_summary && <p className="text-sm text-muted-foreground line-clamp-3">{f.ai_summary}</p>}

@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
       const admin = adminClient();
       const c = await loadClassifier(user.id);
       const { data: rows } = await admin.from("vault_files").select("id,original_filename,created_at,tags,extracted_text,file_url,file_type")
-        .eq("user_id", user.id).is("subject_id", null).contains("tags", ["drive"]);
+        .eq("user_id", user.id).is("subject_id", null).contains("tags", ["drive"]).limit(15);
       let filed = 0;
       for (const r of rows ?? []) {
         let pdf: Uint8Array | null = null;
