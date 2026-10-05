@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
-  Loader2, ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home, CalendarClock,
+  Loader2, ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home, CalendarClock, GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { DocReader, SubjectDriveDialog } from "@/components/subject/SubjectDrive";
 import { CourseSheet } from "@/components/subject/CourseSheet";
 import { SemesterTasks } from "@/components/tasks/SemesterTasks";
+import { GradesPage } from "@/components/grades/GradesPage";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -25,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Section = "home" | "library" | "subjects" | "deadlines" | "quiz" | "flashcards" | "drive";
+type Section = "home" | "library" | "subjects" | "deadlines" | "grades" | "quiz" | "flashcards" | "drive";
 
 interface QuizQuestion { question: string; options: string[]; correctIndex: number; explanation: string }
 interface Card { id: string; question: string; answer: string; subject_id: string | null; mastered: boolean }
@@ -37,6 +38,7 @@ const NAV: { id: Section; label: string; icon: typeof BookOpen }[] = [
   { id: "quiz", label: "Quiz", icon: Brain },
   { id: "flashcards", label: "Fiches", icon: Layers },
   { id: "deadlines", label: "Échéances", icon: CalendarClock },
+  { id: "grades", label: "Mes notes", icon: GraduationCap },
   { id: "drive", label: "Google Drive", icon: HardDrive },
 ];
 
@@ -89,6 +91,7 @@ export default function DesktopApp() {
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
           {section === "drive" && <DrivePanel />}
+          {section === "grades" && <GradesPage />}
           {section === "deadlines" && <><Header title="Échéances" subtitle="Tes tâches par semestre, avec rappel par e-mail la veille." /><SemesterTasks /></>}
         </div>
       </main>
