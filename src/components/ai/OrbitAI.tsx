@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { ArrowUp, RotateCcw, Loader2, History, X, Mic, MicOff, Volume2, Square } from "lucide-react";
 import { OrbitCompanion, type CompanionHandle } from "./OrbitCompanion";
-import { useOrbitVoice } from "@/hooks/useOrbitVoice";
+import { useOrbitVoice, takeSentences } from "@/hooks/useOrbitVoice";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,9 +75,10 @@ export function OrbitAI() {
     const text = (raw ?? input).trim();
     if (!text || busy) return;
     setInput(""); setBusy(true);
-    voice.stopAudio();
+    const speaking = voice.voiceMode;
+    if (speaking) voice.beginReply(); else voice.stopAudio();
     voice.setState("thinking");
-    let full = "";
+    let full = ""; let pend = "";
     setMessages((m) => [...m, { role: "user", content: text }]);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -97,13 +98,16 @@ export function OrbitAI() {
         if (done) break;
         const chunk = dec.decode(value, { stream: true });
         full += chunk;
+        if (speaking) { const [parts, rest] = takeSentences(pend + chunk); pend = rest; parts.forEach(voice.say); }
         setMessages((m) => { const n = [...m]; n[n.length - 1] = { role: "assistant", content: n[n.length - 1].content + chunk }; return n; });
       }
-      if (voice.voiceMode && full.trim()) voice.speak(full, { success: /c['’]est fait|c['’]est ajouté|j['’]ai ajouté/i.test(full) });
-      else voice.setState(voice.voiceMode ? "listening" : "idle");
+      if (speaking) {
+        takeSentences(pend, true)[0].forEach(voice.say);
+        voice.endReply({ success: /c['’]est fait|c['’]est ajouté|j['’]ai ajouté/i.test(full) });
+      } else voice.setState("idle");
     } catch (e) {
       toast.error((e as Error).message);
-      voice.setState("error"); setTimeout(() => voice.setState(voice.voiceMode ? "listening" : "idle"), 1200);
+      voice.setState("error"); if (speaking) setTimeout(() => voice.endReply(), 1200); else setTimeout(() => voice.setState("idle"), 1200);
     } finally {
       setBusy(false);
       inputRef.current?.focus();
@@ -112,6 +116,13 @@ export function OrbitAI() {
   sendRef.current = (t) => { send(t); };
   const toggleVoice = () => voice.toggleVoice().catch((e) => toast.error((e as Error).message || "Micro indisponible."));
   const companion = (size: number) => <OrbitCompanion ref={companionRef} state={voice.state} size={size} />;
+  const handsFreePill = (
+    <button type="button" onClick={() => voice.setHandsFree(!voice.handsFree)} aria-pressed={voice.handsFree}
+      className={cn("mx-auto flex items-center gap-2 h-9 px-4 rounded-full text-xs font-medium transition-colors", voice.handsFree ? "bg-primary/15 text-primary" : "bg-card/70 text-muted-foreground hover:text-foreground")}>
+      <span className={cn("w-2 h-2 rounded-full", voice.handsFree ? "bg-primary animate-pulse" : "bg-muted-foreground/40")} />
+      Mains libres {voice.handsFree ? "activé" : "désactivé"}
+    </button>
+  );
   const voiceHint = voice.voiceMode && (
     <p className="text-sm text-muted-foreground min-h-5 text-center">
       {voice.interim || (voice.state === "listening" ? "Je t'écoute…" : voice.state === "thinking" ? "Je réfléchis…" : voice.state === "speaking" ? "Parle pour m'interrompre" : "")}
@@ -194,6 +205,7 @@ export function OrbitAI() {
           <p className="text-muted-foreground">Orbit AI connaît tes cours, tes tâches et tes notes.</p>
         </div>
         {composer}
+        {handsFreePill}
         <div className="flex flex-wrap justify-center gap-2">
           {SUGGESTIONS.map((s) => (
             <button key={s} onClick={() => send(s)} className="h-10 px-4 rounded-full bg-card/70 text-sm text-muted-foreground hover:text-foreground hover:bg-card transition-colors">{s}</button>
@@ -228,7 +240,7 @@ export function OrbitAI() {
         )}
         <div ref={endRef} />
       </div>
-      <div className="sticky bottom-4 sm:bottom-6 space-y-2" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>{voiceHint}{composer}</div>
+      <div className="sticky bottom-4 sm:bottom-6 space-y-2" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>{voiceHint}{composer}{handsFreePill}</div>
     </div>
   );
 }
