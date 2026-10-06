@@ -95,6 +95,23 @@ export const ExamsPage = () => {
           <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", openSection === "deadlines" && "rotate-180")} />
         </Button>
         {openSection === "deadlines" && <div className="pt-2"><SemesterTasks /></div>}
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setOpenSection((current) => current === "lab" ? null : "lab")}
+          className="h-auto min-h-[64px] w-full justify-start gap-4 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-card/90"
+          aria-expanded={openSection === "lab"}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <FlaskConical className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-foreground">Exam Lab</span>
+            <span className="block text-xs font-normal text-muted-foreground">Fiches de révision et compte à rebours</span>
+          </span>
+          <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", openSection === "lab" && "rotate-180")} />
+        </Button>
+        {openSection === "lab" && <div className="pt-2"><ExamLabPage /></div>}
       </section>
 
       {/* Upcoming Exams */}

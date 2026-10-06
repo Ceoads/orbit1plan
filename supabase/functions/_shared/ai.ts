@@ -43,18 +43,43 @@ export async function aiChat(body: Record<string, unknown>): Promise<Response> {
 // Resilient fetch: retries transient Gemini errors (429/5xx) with backoff and
 // falls back to the stable "gemini-flash-latest" alias on retries.
 const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.8-flash'];
+
+// Gemini stays the default; when the project's Gemini quota is exhausted (or Gemini keeps
+// failing) the same request is replayed once through the Lovable AI gateway so users aren't blocked.
+async function lovableFallback(body: any, init: RequestInit): Promise<Response | null> {
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key || !body) return null;
+  const model = String(body.model).includes('image') ? 'google/gemini-3.1-flash-image-preview' : 'google/gemini-3-flash-preview';
+  console.warn('[ai] Gemini unavailable, falling back to Lovable AI gateway');
+  return await fetch(LOVABLE_URL, {
+    method: 'POST',
+    signal: init.signal,
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, model }),
+  });
+}
+
 export async function aiFetch(url: string, init: RequestInit): Promise<Response> {
   let body: any = null;
   try { body = init.body ? JSON.parse(String(init.body)) : null; } catch { /* keep raw */ }
+  const isGemini = url.includes('generativelanguage');
   let res: Response | null = null;
   for (let attempt = 0; attempt < 4; attempt++) {
     let reqInit = init;
-    if (attempt > 0 && body && url.includes('generativelanguage') && !String(body.model).includes('image')) {
+    if (attempt > 0 && body && isGemini && !String(body.model).includes('image')) {
       reqInit = { ...init, body: JSON.stringify({ ...body, model: FALLBACK_MODELS[(attempt - 1) % FALLBACK_MODELS.length] }) };
     }
     res = await fetch(url, reqInit);
-    if (res.ok || !(res.status === 429 || res.status >= 500) || attempt === 3) return res;
-    await res.text().catch(() => null);
+    if (res.ok || !(res.status === 429 || res.status >= 500)) return res;
+    const errText = await res.clone().text().catch(() => '');
+    // Daily/project quota: every Gemini model shares it, so retrying is pointless.
+    const quotaExhausted = res.status === 429 && /PerDay|RESOURCE_EXHAUSTED|quota/i.test(errText);
+    if (isGemini && (quotaExhausted || attempt === 3)) {
+      const fb = await lovableFallback(body, init);
+      if (fb) return fb;
+      return res;
+    }
+    if (attempt === 3) return res;
     await new Promise((r) => setTimeout(r, 800 * 2 ** attempt + Math.random() * 400));
   }
   return res!;
