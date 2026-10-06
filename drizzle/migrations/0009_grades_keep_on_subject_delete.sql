@@ -1,0 +1,2 @@
+ALTER TABLE public.grades DROP CONSTRAINT IF EXISTS grades_subject_id_fkey;
+ALTER TABLE public.grades ADD CONSTRAINT grades_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id) ON DELETE SET NULL;
