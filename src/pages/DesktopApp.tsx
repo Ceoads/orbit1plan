@@ -329,7 +329,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vault.files]);
   const removeSubject = async (id: string, name: string) => {
-    if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans la Bibliothèque, sans matière." }))) return;
+    if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans la Bibliothèque et ses notes restent dans « Mes notes », sans matière." }))) return;
     // Delete first: vault_files.subject_id is ON DELETE SET NULL, so the DB
     // detaches documents only if the delete actually succeeds. Never detach
     // manually beforehand — a failed delete would leave the subject emptied.
