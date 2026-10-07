@@ -1,5 +1,6 @@
 import { aiEndpoint, aiModel, aiFetch } from '../_shared/ai.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,9 +14,22 @@ serve(async (req) => {
   }
 
   try {
-    const { rawSubjects } = await req.json();
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user } } = await sb.auth.getUser(authHeader.slice(7));
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-    if (!rawSubjects || !Array.isArray(rawSubjects) || rawSubjects.length === 0) {
+    const body = await req.json().catch(() => ({}));
+    const rawSubjects = Array.isArray(body?.rawSubjects)
+      ? body.rawSubjects.filter((x: unknown) => typeof x === "string").slice(0, 200).map((x: string) => x.slice(0, 200))
+      : null;
+
+    if (!rawSubjects || rawSubjects.length === 0) {
       return new Response(
         JSON.stringify({ error: "No subjects provided" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -128,7 +142,7 @@ Return ONLY a JSON array of objects with this structure:
   } catch (error) {
     console.error("clean-subjects error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Le nettoyage des matières a échoué. Réessaie." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

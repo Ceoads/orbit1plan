@@ -312,7 +312,7 @@ Règles:
   } catch (error) {
     console.error('Error in generate-flashcards:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Une erreur est survenue. Réessaie.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

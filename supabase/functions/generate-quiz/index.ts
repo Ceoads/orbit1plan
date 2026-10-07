@@ -524,7 +524,7 @@ Retourne UNIQUEMENT le JSON final:
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack?.slice(0, 500) : undefined,
     });
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', reqId }), {
+    return new Response(JSON.stringify({ error: 'Une erreur est survenue. Réessaie.', reqId }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
