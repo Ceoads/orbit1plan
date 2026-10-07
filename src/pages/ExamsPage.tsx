@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useOrbitData, CalendarEvent } from "@/hooks/useOrbitData";
 import { ExamCard } from "@/components/ExamCard";
 import { SwipeableItem } from "@/components/SwipeableItem";
-import { BarChart3, CalendarClock, ChevronDown, GraduationCap, Plus } from "lucide-react";
+import { BarChart3, CalendarClock, ChevronDown, FlaskConical, GraduationCap, Plus } from "lucide-react";
+import { ExamLabPage } from "@/pages/ExamLabPage";
 import { Button } from "@/components/ui/button";
 import { GradesPage } from "@/components/grades/GradesPage";
 import { SemesterTasks } from "@/components/tasks/SemesterTasks";
@@ -22,7 +23,7 @@ import {
 export const ExamsPage = () => {
   const { getUpcomingExams, getSubjectById, getNotesBySubject, subjects, deleteEvent } = useOrbitData();
   const [showAddExam, setShowAddExam] = useState(false);
-  const [openSection, setOpenSection] = useState<"grades" | "deadlines" | null>(null);
+  const [openSection, setOpenSection] = useState<"grades" | "deadlines" | "lab" | null>(null);
   const [editingExam, setEditingExam] = useState<CalendarEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   
