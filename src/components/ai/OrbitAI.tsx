@@ -135,7 +135,7 @@ export function OrbitAI() {
           Authorization: `Bearer ${session?.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, voice: speaking }),
       });
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => ({}));
