@@ -22,7 +22,7 @@ const viseme = (ch: string): [number, number] => {
 };
 
 export const stripForSpeech = (md: string) =>
-  md.replace(/```[\s\S]*?```/g, " ").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[*_#`>|~]+/g, "").replace(/\$[^$]*\$/g, " ").replace(/\n{2,}/g, ". ").replace(/\s+/g, " ").trim();
+  md.replace(/```[\s\S]*?```/g, " ").replace(/!\[[^\]]*\]\([^)]*\)/g, " ").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[*_#`>|~]+/g, "").replace(/\$[^$]*\$/g, " ").replace(/\n{2,}/g, ". ").replace(/\s+/g, " ").trim();
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
 
