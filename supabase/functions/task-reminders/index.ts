@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     .select('id, user_id, title, due_date, subject_id')
     .eq('status', 'todo').eq('reminder_enabled', true).is('reminder_sent_at', null)
     .gt('due_date', now.toISOString()).lte('due_date', until.toISOString()).limit(200)
-  if (error) return json({ error: error.message }, 500)
+  if (error) return json({ error: 'Internal error' }, 500)
 
   let sent = 0
   for (const t of tasks ?? []) {
