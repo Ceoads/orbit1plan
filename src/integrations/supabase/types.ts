@@ -141,6 +141,39 @@ export type Database = {
           },
         ]
       }
+      ai_provider_usage: {
+        Row: {
+          blocked_until: string | null
+          daily_limit: number
+          day: string
+          failures: number
+          last_error: string | null
+          provider: string
+          requests: number
+          updated_at: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          daily_limit?: number
+          day?: string
+          failures?: number
+          last_error?: string | null
+          provider: string
+          requests?: number
+          updated_at?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          daily_limit?: number
+          day?: string
+          failures?: number
+          last_error?: string | null
+          provider?: string
+          requests?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_user_connections: {
         Row: {
           connection_key_ciphertext: string
@@ -948,6 +981,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           campus_latitude: number | null
@@ -1148,6 +1199,13 @@ export type Database = {
         Returns: number
       }
       has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -1165,8 +1223,18 @@ export type Database = {
           read_ct: number
         }[]
       }
+      track_ai_usage: {
+        Args: {
+          _block_minutes?: number
+          _error?: string
+          _ok: boolean
+          _provider: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       energy_level: "low" | "medium" | "high"
       event_type: "class" | "exam"
       task_status: "todo" | "done"
@@ -1297,6 +1365,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       energy_level: ["low", "medium", "high"],
       event_type: ["class", "exam"],
       task_status: ["todo", "done"],
