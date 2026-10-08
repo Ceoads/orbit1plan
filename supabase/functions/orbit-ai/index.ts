@@ -198,19 +198,33 @@ Deno.serve(async (req) => {
     await admin.from("ai_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
     const msgs: Msg[] = [...((hist.data ?? []) as Msg[]).reverse(), { role: "user", content: text }];
 
-    const route = pickRoute(text);
-    let up = await callModel(route, system, msgs);
-    if (!up && route !== "gemini") up = await callModel("gemini", system, msgs);
-    if (!up) return json({ error: "Orbit AI est indisponible pour le moment, réessaie dans un instant." }, 503);
-    console.log(JSON.stringify({ fn: "orbit-ai", user: user.id, route }));
+    const voice = body.voice === true;
+    let imageUrl: string | null = null;
+    let sys = system;
+    if (!voice && wantsImage(text)) {
+      imageUrl = await generateImage(admin, user.id, text);
+      sys += imageUrl
+        ? "\n\nUne illustration correspondant à la demande vient d'être générée et s'affiche juste au-dessus de ta réponse. Présente-la en 2 à 4 phrases (ce qu'elle montre, comment l'utiliser pour réviser). N'insère pas d'image toi-même."
+        : "\n\nL'étudiant demande une image mais elle n'a pas pu être générée. Dis-le brièvement puis explique avec du texte (schéma en liste ou tableau Markdown).";
+    }
 
-    let full = "";
+    const route = pickRoute(text, voice);
+    const order: Route[] = [route, ...(["gpt", "gemini", "claude"] as Route[]).filter((r) => r !== route)];
+    let up: Up | null = null;
+    let used: Route = route;
+    for (const r of order) { up = await callModel(admin, r, sys, msgs, voice); if (up) { used = r; break; } }
+    if (!up) return json({ error: "Orbit AI est indisponible pour le moment, réessaie dans un instant." }, 503);
+    console.log(JSON.stringify({ fn: "orbit-ai", user: user.id, route: used, voice, image: !!imageUrl }));
+
+    const prefix = imageUrl ? `![Illustration Orbit](${imageUrl})\n\n` : "";
+    let full = prefix;
     const reader = up.body.getReader();
     const parse = up.parse;
     const dec = new TextDecoder();
     const enc = new TextEncoder();
     const stream = new ReadableStream({
       async start(ctrl) {
+        if (prefix) ctrl.enqueue(enc.encode(prefix));
         let buf = "";
         try {
           while (true) {
