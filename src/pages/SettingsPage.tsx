@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { ProfileAvatar, emitProfileUpdated } from "@/components/ProfileAvatar";
 import { AvatarCropDialog } from "@/components/AvatarCropDialog";
+import { AIUsageCard } from "@/components/ai/AIUsageCard";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -853,6 +854,8 @@ const SettingsPage = () => {
             }}
           />
         </IOSCard>
+
+        <AIUsageCard />
 
         {/* ──── BLOC 5 : Zone de danger ──── */}
         <IOSSectionHeader label="Zone de danger" />
