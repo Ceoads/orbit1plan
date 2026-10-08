@@ -71,6 +71,13 @@
       "when": 1791247612857,
       "tag": "0009_grades_keep_on_subject_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791465631428,
+      "tag": "0010_ai_provider_usage_and_roles",
+      "breakpoints": true
     }
   ]
 }
