@@ -10,39 +10,106 @@ const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Route = "gemini" | "gpt" | "claude";
+type Provider = "gemini" | "openai" | "claude" | "gemini-image";
+type Admin = SupabaseClient;
+
+const providerOf = (r: Route): Provider => (r === "gpt" ? "openai" : r);
+
+/** Each AI has its own budget: one provider's limit never blocks the others. */
+async function isBlocked(admin: Admin, p: Provider): Promise<boolean> {
+  const { data } = await admin.from("ai_provider_usage").select("blocked_until").eq("provider", p).order("day", { ascending: false }).limit(1).maybeSingle();
+  return !!data?.blocked_until && new Date(data.blocked_until) > new Date();
+}
+async function track(admin: Admin, p: Provider, status: number, err = "") {
+  const ok = status >= 200 && status < 300;
+  // Quota/credit errors pause only that provider (1 h); other errors are just counted.
+  const block = status === 402 || status === 429 || (status === 403 && /quota|credit|billing/i.test(err)) ? 60 : 0;
+  await admin.rpc("track_ai_usage", { _provider: p, _ok: ok, _error: ok ? null : `${status} ${err.slice(0, 200)}`, _block_minutes: block });
+}
 
 /** Orbit picks the best model for the request; students never see which one. */
-function pickRoute(text: string): Route {
+function pickRoute(text: string, voice: boolean): Route {
+  if (voice) return "gpt";
   const t = text.toLowerCase();
   if (/(code|python|java|sql|algo|fonction|programm|bug|équation|equation|intégrale|integrale|dérivée|derivee|démontr|demontr|calcul|probabilit|matrice|physique|chimie|exercice de maths|résous|resous|\d+\s*[x×*/^+-]\s*\d+)/.test(t)) return "gpt";
   if (t.length > 600 || /(dissertation|rédige|redige|rédaction|redaction|essai|commentaire|lettre|mémoire|memoire|reformule|résumé détaillé|plan détaillé|argument|philosoph|analyse de texte|corrige mon texte)/.test(t)) return "claude";
   return "gemini";
 }
 
-/** Returns a stream of text deltas, or null if the provider failed before streaming. */
-async function callModel(route: Route, system: string, msgs: Msg[]): Promise<{ body: ReadableStream<Uint8Array>; parse: (d: string) => string | null } | null> {
-  const key = Deno.env.get("LOVABLE_API_KEY");
-  if (route === "gpt" && key) {
-    const res = await fetch(`${GATEWAY}/responses`, {
+export function wantsImage(text: string): boolean {
+  return /(dessine|fais(-| )moi un (dessin|schéma|schema)|un dessin|schéma|schema|diagramme|illustr|génère une image|genere une image|crée une image|cree une image|image de|carte mentale|infographie|\bdraw\b|diagram|picture of)/i.test(text);
+}
+
+/** Gemini image generation on the project's Gemini key; returns a public image URL. */
+async function generateImage(admin: Admin, userId: string, prompt: string): Promise<string | null> {
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key || await isBlocked(admin, "gemini-image")) return null;
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent", {
+    method: "POST",
+    headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: `Crée une illustration pédagogique claire et propre pour un étudiant. Style doux, fond clair, tons pêche/crème, lisible. Si du texte est nécessaire, en français et bien orthographié. Demande : ${prompt}` }] }],
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+    }),
+  });
+  const raw = await res.text();
+  await track(admin, "gemini-image", res.status, res.ok ? "" : raw);
+  if (!res.ok) { console.log(JSON.stringify({ fn: "orbit-ai", image: res.status, body: raw.slice(0, 300) })); return null; }
+  const parts = JSON.parse(raw)?.candidates?.[0]?.content?.parts ?? [];
+  const img = parts.find((p: any) => p.inlineData?.data);
+  if (!img) return null;
+  const bytes = Uint8Array.from(atob(img.inlineData.data), (c) => c.charCodeAt(0));
+  const mime = img.inlineData.mimeType || "image/png";
+  const path = `${userId}/orbit-images/${crypto.randomUUID()}.${mime.split("/")[1] || "png"}`;
+  const { error } = await admin.storage.from("notes").upload(path, bytes, { contentType: mime });
+  if (error) { console.log(JSON.stringify({ fn: "orbit-ai", upload: error.message })); return null; }
+  return admin.storage.from("notes").getPublicUrl(path).data.publicUrl;
+}
+
+type Up = { body: ReadableStream<Uint8Array>; parse: (d: string) => string | null };
+
+/** Returns a stream of text deltas, or null if the provider failed (or is paused) before streaming. */
+async function callModel(admin: Admin, route: Route, system: string, msgs: Msg[], voice = false): Promise<Up | null> {
+  const p = providerOf(route);
+  if (await isBlocked(admin, p)) return null;
+  const responsesParse = (d: string) => { const j = JSON.parse(d); return j.type === "response.output_text.delta" ? j.delta : null; };
+
+  if (route === "gpt") {
+    // ChatGPT runs on the owner's own OpenAI key.
+    const key = Deno.env.get("OPENAI_API_KEY");
+    if (!key) return null;
+    const res = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Lovable-AIG-SDK": "fetch" },
-      body: JSON.stringify({ model: "openai/gpt-6-astra", instructions: system, input: msgs, stream: true, store: false, reasoning: { effort: "low" } }),
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: voice ? "gpt-5.4-mini" : "gpt-5.4",
+        instructions: voice ? `${system}\n\nMODE VOCAL : tu parles à voix haute. Réponds en 1 à 4 phrases courtes et naturelles, sans Markdown, sans listes, sans emojis, sans formules LaTeX.` : system,
+        input: msgs, stream: true, store: false, reasoning: { effort: voice ? "low" : "medium" },
+      }),
     });
-    if (res.ok && res.body) return { body: res.body, parse: (d) => { const j = JSON.parse(d); return j.type === "response.output_text.delta" ? j.delta : null; } };
-    console.log(JSON.stringify({ fn: "orbit-ai", route, status: res.status, body: (await res.text().catch(() => "")).slice(0, 300) }));
+    const err = res.ok ? "" : await res.text().catch(() => "");
+    await track(admin, p, res.status, err);
+    if (res.ok && res.body) return { body: res.body, parse: responsesParse };
+    console.log(JSON.stringify({ fn: "orbit-ai", route, status: res.status, body: err.slice(0, 300) }));
     return null;
   }
-  if (route === "claude" && key) {
+  if (route === "claude") {
+    const key = Deno.env.get("LOVABLE_API_KEY");
+    if (!key) return null;
     const res = await fetch(`${GATEWAY}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json", "X-Lovable-AIG-SDK": "fetch" },
       body: JSON.stringify({ model: "anthropic/claude-sonnet-5", system, messages: msgs, max_tokens: 4096, stream: true }),
     });
+    const err = res.ok ? "" : await res.text().catch(() => "");
+    await track(admin, p, res.status, err);
     if (res.ok && res.body) return { body: res.body, parse: (d) => { const j = JSON.parse(d); return j.type === "content_block_delta" ? j.delta?.text ?? null : null; } };
-    console.log(JSON.stringify({ fn: "orbit-ai", route, status: res.status, body: (await res.text().catch(() => "")).slice(0, 300) }));
+    console.log(JSON.stringify({ fn: "orbit-ai", route, status: res.status, body: err.slice(0, 300) }));
     return null;
   }
-  const res = await aiChat({ model: "google/gemini-3.8-flash", stream: true, messages: [{ role: "system", content: system }, ...msgs] });
+  const sys = voice ? `${system}\n\nMODE VOCAL : réponds en 1 à 4 phrases courtes, sans Markdown.` : system;
+  const res = await aiChat({ model: "google/gemini-3.8-flash", stream: true, messages: [{ role: "system", content: sys }, ...msgs] });
+  await track(admin, "gemini", res.status, res.ok ? "" : await res.clone().text().catch(() => ""));
   if (res.ok && res.body) return { body: res.body, parse: (d) => JSON.parse(d).choices?.[0]?.delta?.content ?? null };
   console.log(JSON.stringify({ fn: "orbit-ai", route: "gemini", status: res.status }));
   return null;
