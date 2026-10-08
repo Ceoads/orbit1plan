@@ -170,6 +170,14 @@ Deno.serve(async (req) => {
       return json({ conversationId: await activeConversation(admin, user.id) });
     }
 
+    if (body.action === "usage") {
+      const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (!isAdmin) return json({ error: "Accès réservé" }, 403);
+      const today = new Date().toISOString().slice(0, 10);
+      const { data } = await admin.from("ai_provider_usage").select("*").eq("day", today);
+      return json({ usage: data ?? [] });
+    }
+
     const text = typeof body.message === "string" ? body.message.trim().slice(0, 4000) : "";
     if (!text) return json({ error: "Message vide" }, 400);
     const convId = await activeConversation(admin, user.id);
