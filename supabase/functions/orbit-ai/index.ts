@@ -63,7 +63,16 @@ async function generateImage(admin: Admin, userId: string, prompt: string): Prom
   const path = `${userId}/orbit-images/${crypto.randomUUID()}.${mime.split("/")[1] || "png"}`;
   const { error } = await admin.storage.from("notes").upload(path, bytes, { contentType: mime });
   if (error) { console.log(JSON.stringify({ fn: "orbit-ai", upload: error.message })); return null; }
-  return admin.storage.from("notes").getPublicUrl(path).data.publicUrl;
+  // Le bucket "notes" est privé : on renvoie un lien signé longue durée (10 ans)
+  // pour que l'image reste visible dans le chat et l'historique.
+  const { data: signed, error: signErr } = await admin.storage
+    .from("notes")
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+  if (signErr || !signed?.signedUrl) {
+    console.log(JSON.stringify({ fn: "orbit-ai", sign: signErr?.message }));
+    return null;
+  }
+  return signed.signedUrl;
 }
 
 type Up = { body: ReadableStream<Uint8Array>; parse: (d: string) => string | null };
