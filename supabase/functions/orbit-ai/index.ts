@@ -181,7 +181,8 @@ Deno.serve(async (req) => {
 
     if (body.action === "usage") {
       const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
-      if (!isAdmin) return json({ error: "Accès réservé" }, 403);
+      // Non-admins simply get no data (the card stays hidden) — not an error.
+      if (!isAdmin) return json({ usage: null });
       const today = new Date().toISOString().slice(0, 10);
       const { data } = await admin.from("ai_provider_usage").select("*").eq("day", today);
       return json({ usage: data ?? [] });
