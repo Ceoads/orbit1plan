@@ -636,6 +636,10 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          onboarding_completed_at: string | null
+          onboarding_current_step: number
+          onboarding_skipped_at: string | null
+          onboarding_status: string
           preferences: Json | null
           school_level: string | null
           updated_at: string
@@ -646,6 +650,10 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          onboarding_completed_at?: string | null
+          onboarding_current_step?: number
+          onboarding_skipped_at?: string | null
+          onboarding_status?: string
           preferences?: Json | null
           school_level?: string | null
           updated_at?: string
@@ -656,6 +664,10 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          onboarding_completed_at?: string | null
+          onboarding_current_step?: number
+          onboarding_skipped_at?: string | null
+          onboarding_status?: string
           preferences?: Json | null
           school_level?: string | null
           updated_at?: string
