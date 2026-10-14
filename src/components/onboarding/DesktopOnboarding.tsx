@@ -522,7 +522,7 @@ function StepReady({ ctx, onComplete }: { ctx: any; onComplete: () => void }) {
         <p className="text-sm font-medium mb-3">Essaie Orbit AI dès maintenant :</p>
         <div className="flex flex-wrap gap-2">
           {["Organise ma semaine", "Aide-moi à réviser mon prochain examen", "Quelles sont mes priorités ?"].map((q) => (
-            <button key={q} onClick={() => { sessionStorage.setItem("orbit_ai_prompt", q); onComplete(); }}
+            <button key={q} onClick={() => { sessionStorage.setItem("orbit_ai_prompt", q); sessionStorage.setItem("desktop_section", "ai"); onComplete(); }}
               className="h-10 px-4 rounded-full bg-muted/60 text-sm font-medium hover:bg-muted transition-colors">
               {q}
             </button>
