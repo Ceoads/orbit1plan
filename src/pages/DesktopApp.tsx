@@ -50,7 +50,12 @@ const greeting = () => {
   return h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
 };
 
-export default function DesktopApp() {
+interface DesktopAppProps {
+  showResumeOnboarding?: boolean;
+  onResumeOnboarding?: () => void;
+}
+
+export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }: DesktopAppProps = {}) {
   const [section, setSectionState] = useState<Section>(() => {
     const p = new URLSearchParams(window.location.search).get("section") as Section | null;
     const saved = (p || sessionStorage.getItem("desktop_section")) as Section | null;
@@ -98,7 +103,14 @@ export default function DesktopApp() {
 
       <main className="flex-1 min-w-0 px-12 py-10">
         <div className="max-w-6xl mx-auto">
-          {section === "home" && <DesktopHome greeting={greeting()} />}
+          {section === "home" && (
+            <DesktopHome
+              greeting={greeting()}
+              onNavigate={(s) => (s === "settings" ? navigate("/settings") : setSection(s as Section))}
+              showResumeOnboarding={!!showResumeOnboarding}
+              onResumeOnboarding={onResumeOnboarding}
+            />
+          )}
           {section === "library" && <Library vault={vault} onUse={useAs} />}
           {section === "subjects" && <SubjectLibrary vault={vault} />}
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
