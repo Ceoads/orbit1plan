@@ -132,6 +132,14 @@ export const DesktopHome = ({ greeting, onNavigate, onResumeOnboarding, showResu
         </p>
       </header>
 
+      {onNavigate && (
+        <GettingStartedCard
+          onNavigate={onNavigate}
+          onResumeOnboarding={onResumeOnboarding}
+          showResume={!!showResumeOnboarding}
+        />
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
         {/* Mini calendar (compact) */}
         <section className="xl:col-span-2 bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
