@@ -14,6 +14,8 @@ import { OrbitOnboarding, useTutorial } from "@/components/onboarding";
 import { CollapsibleHeader } from "@/components/CollapsibleHeader";
 import DesktopApp from "./DesktopApp";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import { DesktopOnboarding } from "@/components/onboarding/DesktopOnboarding";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
