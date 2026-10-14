@@ -12,6 +12,7 @@ import { useVaultData, VaultFile } from "@/hooks/useVaultData";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { cn } from "@/lib/utils";
 import { DesktopHome } from "@/components/desktop/DesktopHome";
+import { DesktopTour } from "@/components/desktop/DesktopTour";
 import { SubjectIcon } from "@/components/SubjectIcon";
 import { Button } from "@/components/ui/button";
 import { DocReader, SubjectDriveDialog } from "@/components/subject/SubjectDrive";
@@ -121,6 +122,7 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
           {section === "deadlines" && <><Header title="Échéances" subtitle="Tes tâches par semestre, avec rappel par e-mail la veille." /><SemesterTasks /></>}
         </div>
       </main>
+      <DesktopTour />
     </div>
   );
 }
