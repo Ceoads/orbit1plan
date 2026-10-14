@@ -25,7 +25,12 @@ const SUGGESTIONS = [
 export function OrbitAI() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => {
+    // Prefill from onboarding step 6 suggestions ("Organise ma semaine", …)
+    const p = sessionStorage.getItem("orbit_ai_prompt");
+    if (p) sessionStorage.removeItem("orbit_ai_prompt");
+    return p ?? "";
+  });
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
