@@ -64,8 +64,10 @@ export function useOnboarding() {
 
   return {
     ...state,
-    /** Show the wizard: only new accounts that haven't finished or skipped. */
-    shouldShow: !state.loading && (state.status === "not_started" || state.status === "in_progress"),
+    /** Auto-show the wizard only for brand-new accounts. An interrupted
+     *  onboarding (in_progress) goes straight to the dashboard with a
+     *  discreet resume card instead — never imposed at each login. */
+    shouldShow: !state.loading && state.status === "not_started",
     /** Interrupted onboarding → discreet resume card on the dashboard. */
     interrupted: !state.loading && state.status === "in_progress",
     setStep,

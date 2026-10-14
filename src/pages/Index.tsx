@@ -14,6 +14,8 @@ import { OrbitOnboarding, useTutorial } from "@/components/onboarding";
 import { CollapsibleHeader } from "@/components/CollapsibleHeader";
 import DesktopApp from "./DesktopApp";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import { DesktopOnboarding } from "@/components/onboarding/DesktopOnboarding";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,6 +27,8 @@ const Index = () => {
   const [tutorialActive, setTutorialActive] = useState(false);
   const tutorial = useTutorial();
   const isDesktop = useIsDesktop();
+  const onboarding = useOnboarding();
+  const [resumeOnboarding, setResumeOnboarding] = useState(false);
 
   // Check if user needs onboarding
   const needsSetup = !loading && subjects.length === 0;
@@ -134,7 +138,24 @@ const Index = () => {
   }
 
   if (isDesktop && !needsSetup && !showSetup && !showOnboarding) {
-    return <DesktopApp />;
+    // First-time desktop onboarding: only new accounts (existing ones were
+    // marked completed by migration). Resume card re-opens it via state.
+    if (onboarding.shouldShow || resumeOnboarding) {
+      return (
+        <DesktopOnboarding
+          initialStep={onboarding.step}
+          onStep={onboarding.setStep}
+          onComplete={() => { setResumeOnboarding(false); onboarding.complete(); }}
+          onSkip={() => { setResumeOnboarding(false); onboarding.skip(); }}
+        />
+      );
+    }
+    return (
+      <DesktopApp
+        showResumeOnboarding={onboarding.interrupted}
+        onResumeOnboarding={() => setResumeOnboarding(true)}
+      />
+    );
   }
 
   return (

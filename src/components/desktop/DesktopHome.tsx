@@ -7,6 +7,7 @@ import { CalendarPocketSpace } from "@/components/calendar";
 import { toLocalDateStr } from "@/lib/dateFormat";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { GettingStartedCard } from "./GettingStartedCard";
 
 type Kind = "task" | "exam";
 interface PadItem { id: string; kind: Kind; text: string; taskId?: string | null }
@@ -25,7 +26,12 @@ const parisCycleKey = (now = new Date()) => {
 
 const WEEK = ["L", "M", "M", "J", "V", "S", "D"];
 
-export const DesktopHome = ({ greeting }: { greeting: string }) => {
+export const DesktopHome = ({ greeting, onNavigate, onResumeOnboarding, showResumeOnboarding }: {
+  greeting: string;
+  onNavigate?: (section: string) => void;
+  onResumeOnboarding?: () => void;
+  showResumeOnboarding?: boolean;
+}) => {
   const { user } = useAuth();
   const { events, subjects, tasks, createTask, toggleTask, deleteTask, getTodayEvents, getSubjectById, refetch } = useOrbitData();
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
@@ -125,6 +131,14 @@ export const DesktopHome = ({ greeting }: { greeting: string }) => {
           {today.length ? `Tu as ${today.length} cours aujourd'hui.` : "Aucun cours aujourd'hui — profite-en."}
         </p>
       </header>
+
+      {onNavigate && (
+        <GettingStartedCard
+          onNavigate={onNavigate}
+          onResumeOnboarding={onResumeOnboarding}
+          showResume={!!showResumeOnboarding}
+        />
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
         {/* Mini calendar (compact) */}
