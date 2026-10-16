@@ -353,7 +353,8 @@ function StepConnect({
       const { data, error } = await supabase.functions.invoke("google-drive", {
         body: { action: "start", origin: window.location.origin },
       });
-      if (error) throw new Error("Google Drive ne répond pas.");
+      if (error || !data?.authorizationUrl) throw new Error("Google Drive ne répond pas.");
+      popup.location.href = data.authorizationUrl;
       await new Promise<void>((resolve, reject) => {
         const onMsg = (e: MessageEvent) => {
           if (e.origin !== window.location.origin || e.source !== popup || e.data?.connectorId !== "google_drive")
