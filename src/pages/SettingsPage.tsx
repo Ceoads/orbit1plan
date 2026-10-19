@@ -559,6 +559,20 @@ const SettingsPage = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    if (!confirm("Supprimer définitivement ton compte et toutes tes données ? Cette action est irréversible.")) return;
+    try {
+      const { error } = await supabase.functions.invoke('delete-account');
+      if (error) throw error;
+      toast.success("Compte supprimé. À bientôt !");
+      await signOut();
+      navigate('/landing');
+    } catch (error: any) {
+      toast.error("Échec de la suppression du compte");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -871,8 +885,15 @@ const SettingsPage = () => {
             iconBg="bg-destructive"
             label="Supprimer toutes mes données"
             destructive
-            last
             onClick={handleClearData}
+          />
+          <IOSRow
+            icon={UserX}
+            iconBg="bg-destructive"
+            label="Supprimer mon compte"
+            destructive
+            last
+            onClick={handleDeleteAccount}
           />
         </IOSCard>
 
