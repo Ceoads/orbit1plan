@@ -18,6 +18,9 @@ import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OAuthConsent from "./pages/OAuthConsent";
+import DeleteAccountPage from "./pages/DeleteAccountPage";
+import { CookieConsent } from "./components/CookieConsent";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { safeNext } from "./lib/safeNext";
 
 const queryClient = new QueryClient();
@@ -69,6 +72,7 @@ const AppRoutes = () => {
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/unsubscribe" element={<UnsubscribePage />} />
+      <Route path="/delete-account" element={<DeleteAccountPage />} />
       <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/auth" element={
         <PublicRoute>
@@ -113,11 +117,14 @@ const App = () => (
       <Toaster />
       <Sonner />
       <ConfirmHost />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+            <CookieConsent />
+          </AuthProvider>
+        </BrowserRouter>
+      </ErrorBoundary>
     </TooltipProvider>
   </QueryClientProvider>
 );
