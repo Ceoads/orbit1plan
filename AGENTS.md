@@ -4,3 +4,4 @@
 - Task reminder emails: hourly pg_cron 'task-reminders-hourly' → task-reminders edge function → send-transactional-email (template task-reminder); one mail per task via reminder_sent_at. Why: single send path, no duplicates.
 - Desktop first-time onboarding: state persisted on profiles (onboarding_status/current_step/completed_at/skipped_at), never localStorage. Wizard auto-shows only for status `not_started`; `in_progress` users get a resume card on the dashboard instead. Why: onboarding must never be re-imposed after login/refresh, and existing accounts were backfilled to `completed` at deploy.
 - Post-signup guidance flags (checklist_dismissed, desktop_tour_done) live in profiles.preferences JSON. Why: avoids new columns for one-shot UI flags.
+- Landing product previews are isolated local illustrations, explicitly labeled as example data, and never invoke AI or write account data. Why: visitors can explore without authentication or paid API calls.
