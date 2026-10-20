@@ -1,5 +1,9 @@
 # Roadmap
 
+## Page de présentation
+- [ ] Moderniser la page et présenter les fonctionnalités existantes avec aperçu interactif et FAQ
+- [ ] Vérifier les boutons, la démo et l'affichage sur téléphone et ordinateur
+
 ## En cours : migration complète du backend vers le projet Supabase « orbit » de l'utilisateur
 - [x] Utilisateur crée un projet Supabase vierge (supabase.com → New project)
 - [x] Récupérer NEW_SUPABASE_DB_URL / NEW_SUPABASE_URL / NEW_SUPABASE_ANON_KEY / NEW_SUPABASE_SERVICE_ROLE_KEY via le formulaire sécurisé
