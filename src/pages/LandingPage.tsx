@@ -58,7 +58,7 @@ const LandingPage = () => {
           </section>
           <div className="border-y border-border/40 bg-card/60 px-5 py-6"><div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-x-12 gap-y-4 text-sm text-muted-foreground">{[{ icon: Cloud, text: "Google Drive" }, { icon: CalendarDays, text: "Calendrier iCal" }, { icon: Mic, text: "Conversation vocale" }, { icon: MonitorSmartphone, text: "Téléphone & ordinateur" }].map(({ icon: Icon, text }) => <span key={text} className="flex items-center gap-2"><Icon className="h-4 w-4 text-accent-foreground" />{text}</span>)}</div></div>
           <section id="workspace" className="scroll-mt-24 px-5 py-20 sm:px-8">
-            <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-6xl">
               <motion.div {...reveal} className="mb-10 text-center"><p className="mb-3 text-sm font-semibold text-accent-foreground">TON ESPACE, PAS UNE APPLICATION DE PLUS</p><h2 className="text-3xl font-bold sm:text-4xl">Tout se retrouve. Tout se relie.</h2><p className="mx-auto mt-4 max-w-xl leading-relaxed text-muted-foreground">Une journée claire, des cours rangés et un coup de main quand tu bloques.</p></motion.div>
               <motion.div {...reveal}><LandingWorkspace /></motion.div>
             </div>
