@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -156,6 +154,17 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Quicksand', system-ui, sans-serif;
     font-weight: 600;
+  }
+}
+
+/* Landing-only accessibility; preserve the existing mascot and app motion. */
+.landing-page { letter-spacing: 0; }
+.landing-page h1, .landing-page h2, .landing-page h3 { letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *, .landing-page *::before, .landing-page *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
