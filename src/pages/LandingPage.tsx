@@ -39,12 +39,12 @@ const LandingPage = () => {
         <header className="sticky top-0 z-40 border-b border-border/40 bg-background/90 backdrop-blur-2xl">
           <nav aria-label="Navigation principale" className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
             <Link to="/landing" aria-label="Orbit, accueil" className="flex items-center gap-2 text-2xl font-bold"><Sparkles className="h-6 w-6 text-accent-foreground" />Orbit<span className="hidden text-xs font-normal text-muted-foreground lg:inline">Your second school brain</span></Link>
-            <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex"><a className="py-3 hover:text-foreground" href="#features">Fonctionnalités</a><a className="py-3 hover:text-foreground" href="#workspace">L’espace Orbit</a><a className="py-3 hover:text-foreground" href="#faq">Questions</a></div>
+            <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex"><a className="py-3 hover:text-foreground" href="#demo">Présentation</a><a className="py-3 hover:text-foreground" href="#features">Fonctionnalités</a><a className="py-3 hover:text-foreground" href="#workspace">L’espace Orbit</a><a className="py-3 hover:text-foreground" href="#faq">Questions</a></div>
             <div className="flex items-center gap-1 sm:gap-3"><Button variant="ghost" className="min-h-11 px-2 sm:px-4" onClick={() => navigate('/auth')}>Connexion</Button><Button onClick={() => navigate('/auth')} className="min-h-11 rounded-full px-4 sm:px-5">Commencer<ArrowRight className="hidden sm:block" /></Button></div>
           </nav>
         </header>
         <main>
-          <section className="relative isolate px-5 py-16 text-center sm:px-8 sm:py-20">
+          <section className="relative isolate px-5 pb-32 pt-16 text-center sm:px-8 sm:pb-24 sm:pt-20">
             <img src={deskImage} alt="" fetchPriority="high" width={1920} height={1088} className="absolute inset-0 -z-20 h-full w-full object-cover" />
             <div className="absolute inset-0 -z-10 bg-background/65 dark:bg-background/90" />
             <motion.div {...reveal} className="mx-auto max-w-3xl">
