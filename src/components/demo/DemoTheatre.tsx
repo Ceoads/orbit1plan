@@ -159,12 +159,13 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                       
                       {/* Screen Content */}
                       <div className="relative h-full pt-12 pb-8 px-4 overflow-hidden">
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence>
+
                           {/* Phase A: Pulse Dashboard */}
                           {(phase === 'A' || (phase === 'B' && !showPocketSpace)) && (
                             <motion.div
                               key="pulse"
-                              className="h-full"
+                              className="absolute inset-x-4 bottom-8 top-12 overflow-hidden"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0, scale: 0.95 }}
@@ -181,7 +182,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                             <motion.div
                               key="pocketspace"
                               layoutId="schedule-widget"
-                              className="h-full"
+                              className="absolute inset-x-4 bottom-8 top-12 overflow-hidden"
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.95 }}
@@ -195,7 +196,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                           {showCourseHub && phase !== 'D' && (
                             <motion.div
                               key="coursehub"
-                              className="h-full"
+                              className="absolute inset-x-4 bottom-8 top-12 overflow-hidden"
                               initial={{ opacity: 0, scale: 0.8, y: 50 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, y: 50 }}
@@ -209,7 +210,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                           {phase === 'D' && (
                             <motion.div
                               key="ailab"
-                              className="h-full"
+                              className="absolute inset-x-4 bottom-8 top-12 overflow-hidden"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
@@ -225,7 +226,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                           {phase === 'end' && (
                             <motion.div
                               key="end"
-                              className="h-full flex flex-col items-center justify-center"
+                              className="absolute inset-x-4 bottom-8 top-12 flex flex-col items-center justify-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                             >
