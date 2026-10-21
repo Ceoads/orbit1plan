@@ -57,6 +57,38 @@ const LandingPage = () => {
             </motion.div>
           </section>
           <div className="border-y border-border/40 bg-card/60 px-5 py-6"><div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-x-12 gap-y-4 text-sm text-muted-foreground">{[{ icon: Cloud, text: "Google Drive" }, { icon: CalendarDays, text: "Calendrier iCal" }, { icon: Mic, text: "Conversation vocale" }, { icon: MonitorSmartphone, text: "Téléphone & ordinateur" }].map(({ icon: Icon, text }) => <span key={text} className="flex items-center gap-2"><Icon className="h-4 w-4 text-accent-foreground" />{text}</span>)}</div></div>
+          <section id="demo" className="scroll-mt-24 px-5 py-16 sm:px-8 sm:py-20">
+            <div className="mx-auto max-w-5xl">
+              <motion.div {...reveal} className="overflow-hidden rounded-3xl bg-card p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-10">
+                <div className="grid items-center gap-10 md:grid-cols-[1.05fr_0.95fr]">
+                  <div>
+                    <p className="mb-3 text-sm font-semibold text-accent-foreground">PRÉSENTATION · 14 SECONDES</p>
+                    <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Regarde, c’est plus clair<br className="hidden sm:block" /> qu’un long discours.</h2>
+                    <p className="mt-5 max-w-md leading-relaxed text-muted-foreground">Une soirée d’étudiante, du prochain cours au dernier quiz. Tu vois tout, tu n’as rien à installer.</p>
+                    <div className="mt-8 flex flex-wrap items-center gap-5">
+                      <Button size="lg" onClick={() => setShowDemo(true)} className="h-12 rounded-full px-7"><Play className="mr-2 h-4 w-4" />Voir la présentation</Button>
+                      <span className="text-xs text-muted-foreground">14 secondes · données d’exemple</span>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setShowDemo(true)} aria-label="Lancer la présentation d’Orbit" className="group mx-auto rounded-[38px] bg-black/5 p-2 transition-transform duration-300 hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-foreground">
+                    <span className="relative block h-[330px] w-[172px] overflow-hidden rounded-[30px] bg-gradient-to-br from-[#FFF5ED] to-[#FFE4D6] px-4 pb-6 pt-9 text-left">
+                      <span className="absolute left-1/2 top-3 h-5 w-16 -translate-x-1/2 rounded-full bg-black" />
+                      <span className="block text-[11px] text-gray-500">Bonsoir 👋</span>
+                      <span className="mt-0.5 block text-base font-bold text-gray-900">Marie</span>
+                      <span className="mt-3 block rounded-xl bg-white/80 px-3 py-2 text-[10px] font-medium text-gray-700 shadow-sm">Tu as 3 cours demain</span>
+                      <span className="mt-3 block space-y-1.5">
+                        {[["09:00", "Économie", "bg-blue-500"], ["11:00", "Marketing", "bg-green-500"], ["14:00", "Droit Civil", "bg-purple-500"]].map(([time, name, color]) => <span key={name} className="flex items-center gap-2 rounded-lg bg-white/70 px-2.5 py-2"><span className={`h-6 w-1 rounded-full ${color}`} /><span className="text-[10px] font-semibold text-gray-900">{name}</span><span className="ml-auto text-[9px] text-gray-500">{time}</span></span>)}
+                      </span>
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/5">
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow-[0_10px_30px_rgb(0,0,0,0.12)] transition-transform duration-300 group-hover:scale-110"><Play className="ml-0.5 h-5 w-5 text-accent-foreground" /></span>
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </section>
+
           <section id="workspace" className="scroll-mt-24 px-5 py-20 sm:px-8">
             <div className="mx-auto max-w-6xl">
               <motion.div {...reveal} className="mb-10 text-center"><p className="mb-3 text-sm font-semibold text-accent-foreground">TON ESPACE, PAS UNE APPLICATION DE PLUS</p><h2 className="text-3xl font-bold sm:text-4xl">Tout se retrouve. Tout se relie.</h2><p className="mx-auto mt-4 max-w-xl leading-relaxed text-muted-foreground">Une journée claire, des cours rangés et un coup de main quand tu bloques.</p></motion.div>

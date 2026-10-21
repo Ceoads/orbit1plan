@@ -159,7 +159,8 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                       
                       {/* Screen Content */}
                       <div className="relative h-full pt-12 pb-8 px-4 overflow-hidden">
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence>
+
                           {/* Phase A: Pulse Dashboard */}
                           {(phase === 'A' || (phase === 'B' && !showPocketSpace)) && (
                             <motion.div
