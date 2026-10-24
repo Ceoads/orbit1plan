@@ -579,6 +579,308 @@ export type Database = {
           },
         ]
       }
+      learning_activities: {
+        Row: {
+          concept_id: string
+          content: Json
+          created_at: string
+          id: string
+          kind: string
+          path_id: string
+          position: number
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          concept_id: string
+          content: Json
+          created_at?: string
+          id?: string
+          kind: string
+          path_id: string
+          position: number
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          concept_id?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          kind?: string
+          path_id?: string
+          position?: number
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_activities_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "learning_concepts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_activities_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_activity_keys: {
+        Row: {
+          activity_id: string
+          answers: Json
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          answers: Json
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          answers?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_activity_keys_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: true
+            referencedRelation: "learning_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_attempts: {
+        Row: {
+          activity_id: string
+          correct_count: number
+          created_at: string
+          feedback: Json
+          id: string
+          question_count: number
+          request_id: string
+          responses: Json
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          correct_count: number
+          created_at?: string
+          feedback: Json
+          id?: string
+          question_count: number
+          request_id: string
+          responses: Json
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          correct_count?: number
+          created_at?: string
+          feedback?: Json
+          id?: string
+          question_count?: number
+          request_id?: string
+          responses?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_attempts_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_concepts: {
+        Row: {
+          application_count: number
+          confidence: number
+          earned_weight: number
+          evidence_weight: number
+          id: string
+          last_practiced_at: string | null
+          mastery: number
+          objective: string
+          path_id: string
+          position: number
+          question_count: number
+          retention_count: number
+          review_at: string | null
+          section: string
+          source_ids: Json
+          title: string
+          user_id: string
+        }
+        Insert: {
+          application_count?: number
+          confidence?: number
+          earned_weight?: number
+          evidence_weight?: number
+          id?: string
+          last_practiced_at?: string | null
+          mastery?: number
+          objective: string
+          path_id: string
+          position: number
+          question_count?: number
+          retention_count?: number
+          review_at?: string | null
+          section: string
+          source_ids?: Json
+          title: string
+          user_id: string
+        }
+        Update: {
+          application_count?: number
+          confidence?: number
+          earned_weight?: number
+          evidence_weight?: number
+          id?: string
+          last_practiced_at?: string | null
+          mastery?: number
+          objective?: string
+          path_id?: string
+          position?: number
+          question_count?: number
+          retention_count?: number
+          review_at?: string | null
+          section?: string
+          source_ids?: Json
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_concepts_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_paths: {
+        Row: {
+          coverage_note: string
+          created_at: string
+          duration_minutes: number
+          exam_date: string | null
+          id: string
+          sources: Json
+          status: string
+          subject_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coverage_note?: string
+          created_at?: string
+          duration_minutes?: number
+          exam_date?: string | null
+          id?: string
+          sources?: Json
+          status?: string
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coverage_note?: string
+          created_at?: string
+          duration_minutes?: number
+          exam_date?: string | null
+          id?: string
+          sources?: Json
+          status?: string
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_paths_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_rate_events: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_sessions: {
+        Row: {
+          activity_id: string | null
+          draft: Json
+          path_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_id?: string | null
+          draft?: Json
+          path_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string | null
+          draft?: Json
+          path_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_sessions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_sessions_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: true
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes_vault: {
         Row: {
           ai_summary: string | null
@@ -1218,6 +1520,38 @@ export type Database = {
         }
         Returns: boolean
       }
+      learning_create_path: {
+        Args: {
+          p_duration: number
+          p_exam: string
+          p_note: string
+          p_sources: Json
+          p_subject: string
+          p_title: string
+          p_units: Json
+          p_user: string
+        }
+        Returns: string
+      }
+      learning_grade: {
+        Args: {
+          p_activity: string
+          p_request: string
+          p_responses: Json
+          p_user: string
+        }
+        Returns: Json
+      }
+      learning_level: {
+        Args: {
+          p_application: number
+          p_confidence: number
+          p_mastery: number
+          p_retention: number
+        }
+        Returns: string
+      }
+      learning_rate_allowed: { Args: { p_user: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
