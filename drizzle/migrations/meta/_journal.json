@@ -85,6 +85,13 @@
       "when": 1791903092062,
       "tag": "0011_add_onboarding_fields_to_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792864396186,
+      "tag": "0012_orbit_concentration_learning",
+      "breakpoints": true
     }
   ]
 }
