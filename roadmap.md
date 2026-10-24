@@ -4,6 +4,7 @@
 - [x] Moderniser la page et présenter les fonctionnalités existantes avec aperçu interactif et FAQ
 - [x] Vérifier les boutons, la démo et l'affichage sur téléphone et ordinateur
 - [x] Adapter l’aperçu ordinateur avec navigation latérale, bloc-notes et semaine ; vérifier les trois onglets et préserver le téléphone
+- [x] Rendre la présentation vidéo visible : section « Présentation » avec aperçu cliquable, lien dans la navigation, transition sans écran vide
 
 ## En cours : migration complète du backend vers le projet Supabase « orbit » de l'utilisateur
 - [x] Utilisateur crée un projet Supabase vierge (supabase.com → New project)
