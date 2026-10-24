@@ -69,6 +69,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
         } else if (next >= SHOW_CTA) {
           setPhase('end');
           setShowCTA(true);
+          return SHOW_CTA;
         }
 
         return next;
@@ -193,7 +194,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                           )}
 
                           {/* Phase C: Course Hub */}
-                          {showCourseHub && phase !== 'D' && (
+                          {showCourseHub && phase === 'C' && (
                             <motion.div
                               key="coursehub"
                               className="absolute inset-x-4 bottom-8 top-12 overflow-hidden"
