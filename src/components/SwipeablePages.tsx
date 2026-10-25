@@ -26,7 +26,6 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
   const haptics = useHaptics();
   const containerRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef<number | null>(null);
   const isEdgeSwipe = useRef(false);
   const isBlockedSwipe = useRef(false);
@@ -59,11 +58,9 @@ export const SwipeablePages = ({ activeTab, onTabChange, children }: SwipeablePa
     
     isEdgeSwipe.current = (isLeftEdge || isRightEdge) && !isBlockedSwipe.current;
     dragStartX.current = clientX;
-    setIsDragging(true);
   }, [isInsideBlockedContainer]);
 
   const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    setIsDragging(false);
     
     // Only process swipes that started from the edge and not inside blocked containers
     if (!isEdgeSwipe.current || isBlockedSwipe.current) {

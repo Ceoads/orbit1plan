@@ -115,8 +115,8 @@ const Index = () => {
     vault: <TheVaultPage />,
     tasks: <TasksPage />,
     exams: <ExamsPage />,
-    lab: <OrbitAI onConcentration={() => setSearchParams({ ...Object.fromEntries(searchParams), mode: "concentration" })} />,
-  }), [searchParams, setSearchParams]);
+    lab: <OrbitAI onConcentration={() => setSearchParams(previous => { const next = new URLSearchParams(previous); next.set("mode", "concentration"); return next; })} />,
+  }), [setSearchParams]);
 
   const renderPage = () => {
     if (searchParams.get("mode") === "concentration") {
