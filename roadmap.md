@@ -1,11 +1,11 @@
 # Roadmap
 
 ## Mode Concentration — premier jalon fonctionnel
-- [ ] Intégrer les entrées/sorties à Orbit et les yeux de concentration de la mascotte existante
-- [ ] Parcours téléphone/ordinateur avec matières réelles, sources et introduction unique
-- [ ] Générer et conserver les leçons/quiz, réponses, preuves de compréhension et reprise
-- [ ] Préparer automatiquement un renforcement après une difficulté ; vérifier le parcours complet et l’isolation des données
-- [ ] Livrer le bilan du premier jalon et distinguer les étapes avancées : réponses subjectives, répétition complète, examens blancs et analyses
+- [x] Intégrer les entrées/sorties à Orbit et les yeux de concentration de la mascotte existante
+- [x] Parcours téléphone/ordinateur avec matières réelles, sources et introduction unique
+- [x] Générer et conserver les leçons/quiz, réponses, preuves de compréhension et reprise
+- [x] Préparer automatiquement un renforcement après une difficulté ; vérifier le parcours complet et l’isolation des données
+- [x] Livrer le bilan du premier jalon dans CONCENTRATION-STATUS.md ; étapes avancées explicitement non terminées
 
 ## Page de présentation
 - [x] Moderniser la page et présenter les fonctionnalités existantes avec aperçu interactif et FAQ
