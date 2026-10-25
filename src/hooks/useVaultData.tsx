@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { readAllPages } from "@/lib/pagedRead";
+import { isStorageUrlFresh } from "@/lib/storageUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
@@ -48,37 +51,25 @@ export interface Semester {
 
 export const useVaultData = () => {
   const { user } = useAuth();
-  const [files, setFiles] = useState<VaultFile[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [semesters, setSemesters] = useState<Semester[]>([]);
-  const [loading, setLoading] = useState(true);
+  const client = useQueryClient();
+  const key = ['vault-data', user?.id];
   const [pendingFile, setPendingFile] = useState<VaultFile | null>(null);
 
   // Fetch all vault data
-  const fetchData = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
+  const query = useQuery({ queryKey: key, enabled: !!user, staleTime: 60000, gcTime: 300000, refetchOnWindowFocus: false, queryFn: async () => {
+      if (!user) throw new Error('Not signed in');
       const [filesRes, subjectsRes, yearsRes, semestersRes] = await Promise.all([
-        supabase.from('vault_files').select('*').order('created_at', { ascending: false }),
-        supabase.from('subjects').select('*').in('icon', ['COURS', 'SAE']).order('name'),
-        supabase.from('academic_years').select('*').order('start_date', { ascending: false }),
-        supabase.from('semesters').select('*').order('start_date', { ascending: false }),
+        readAllPages<VaultFile>((from, to) => supabase.from('vault_files').select('id,subject_id,semester_id,file_url,thumbnail_url,extracted_text,ai_summary,tags,ai_detected_subject,ai_confidence,filing_status,original_filename,file_type,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).order('id').range(from, to)),
+        readAllPages<Subject>((from, to) => supabase.from('subjects').select('id,name,color_key,teacher_name,icon,ical_code').eq('user_id', user.id).in('icon', ['COURS', 'SAE']).order('name').order('id').range(from, to)),
+        readAllPages<AcademicYear>((from, to) => supabase.from('academic_years').select('id,name,start_date,end_date,is_current').eq('user_id', user.id).order('start_date', { ascending: false }).order('id').range(from, to)),
+        readAllPages<Semester>((from, to) => supabase.from('semesters').select('id,academic_year_id,name,start_date,end_date,is_current').eq('user_id', user.id).order('start_date', { ascending: false }).order('id').range(from, to)),
       ]);
 
-      if (filesRes.error) throw filesRes.error;
-      if (subjectsRes.error) throw subjectsRes.error;
-      if (yearsRes.error) throw yearsRes.error;
-      if (semestersRes.error) throw semestersRes.error;
-
       // Re-sign expired URLs
-      const rawFiles = (filesRes.data || []) as VaultFile[];
+      const rawFiles = filesRes;
       const refreshedFiles = await Promise.all(
         rawFiles.map(async (file) => {
+          if (isStorageUrlFresh(file.file_url)) return file;
           try {
             // Extract storage path from signed URL
             const match = file.file_url.match(/\/object\/sign\/([^?]+)/);
@@ -102,21 +93,13 @@ export const useVaultData = () => {
         })
       );
 
-      setFiles(refreshedFiles);
-      setSubjects(subjectsRes.data as Subject[] || []);
-      setAcademicYears(yearsRes.data || []);
-      setSemesters(semestersRes.data || []);
-    } catch (error: any) {
-      console.error('Error fetching vault data:', error);
-      toast.error('Erreur lors du chargement du coffre');
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+      return { files: refreshedFiles, subjects: subjectsRes, academicYears: yearsRes, semesters: semestersRes };
+  } });
+  const { files = [], subjects = [], academicYears = [], semesters = [] } = query.data ?? {};
+  const loading = !!user && query.isPending;
+  const fetchData = () => query.refetch();
+  const setFiles = (update: (prev: VaultFile[]) => VaultFile[]) => client.setQueryData<NonNullable<typeof query.data>>(key, prev => prev ? { ...prev, files: update(prev.files) } : prev);
+  useEffect(() => { if (query.error) toast.error('Erreur lors du chargement du coffre'); }, [query.error]);
 
   // Create a new vault file
   const createFile = async (data: Partial<VaultFile>): Promise<VaultFile | null> => {
