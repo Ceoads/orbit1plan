@@ -45,7 +45,9 @@ const Index = () => {
       tutorial.startTutorial();
     } else if (tabParam && ['pulse', 'vault', 'tasks', 'exams', 'lab'].includes(tabParam)) {
       setActiveTab(tabParam);
-      setSearchParams({});
+      const next = new URLSearchParams(searchParams);
+      next.delete("tab");
+      setSearchParams(next);
     }
   }, [searchParams, user, loading]);
   

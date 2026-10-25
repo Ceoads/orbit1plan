@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOrbitData, CalendarEvent } from "@/hooks/useOrbitData";
 import { ExamCard } from "@/components/ExamCard";
 import { SwipeableItem } from "@/components/SwipeableItem";
-import { BarChart3, CalendarClock, ChevronDown, FlaskConical, GraduationCap, Plus } from "lucide-react";
+import { BarChart3, CalendarClock, ChevronDown, FlaskConical, GraduationCap, Plus, Focus } from "lucide-react";
 import { ExamLabPage } from "@/pages/ExamLabPage";
 import { Button } from "@/components/ui/button";
 import { GradesPage } from "@/components/grades/GradesPage";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const ExamsPage = () => {
+  const navigate = useNavigate();
   const { getUpcomingExams, getSubjectById, getNotesBySubject, subjects, deleteEvent } = useOrbitData();
   const [showAddExam, setShowAddExam] = useState(false);
   const [openSection, setOpenSection] = useState<"grades" | "deadlines" | "lab" | null>(null);
@@ -61,6 +63,10 @@ export const ExamsPage = () => {
 
       {/* Student results and semester planning */}
       <section className="space-y-3">
+        <Button variant="ghost" className="w-full h-auto min-h-16 justify-start gap-4 rounded-2xl bg-card p-4 whitespace-normal text-left" onClick={() => navigate("/?tab=exams&mode=concentration")}>
+          <Focus className="text-primary shrink-0" />
+          <span><span className="block font-semibold">Mode Concentration</span><span className="block text-xs font-normal text-muted-foreground">Mon parcours de révision</span></span>
+        </Button>
         <Button
           type="button"
           variant="ghost"
