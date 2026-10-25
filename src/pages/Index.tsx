@@ -23,7 +23,17 @@ import { readAllPages } from "@/lib/pagedRead";
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const { subjects, loading, refetch } = useOrbitData();
+  // The shell only needs subjects for setup; do not load notes/tasks/calendar here.
+  const subjectQuery = useQuery({ queryKey: ['orbit-setup-subjects', user?.id], enabled: !!user,
+    staleTime: 60000, gcTime: 300000, refetchOnWindowFocus: false,
+    queryFn: async () => {
+      if (!user) return [];
+      return readAllPages<{ id: string }>((from, to) => supabase.from('subjects').select('id').eq('user_id', user.id).order('id').range(from, to));
+    },
+  });
+  const subjects = subjectQuery.data ?? [];
+  const loading = !!user && subjectQuery.isPending;
+  const refetch = subjectQuery.refetch;
   const [activeTab, setActiveTab] = useState<NavTab>('pulse');
   const [showSetup, setShowSetup] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
