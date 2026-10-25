@@ -99,6 +99,13 @@
       "when": 1792928550513,
       "tag": "0013_concentration_atomic_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792932051615,
+      "tag": "0014_concentration_explicit_private_keys",
+      "breakpoints": true
     }
   ]
 }
