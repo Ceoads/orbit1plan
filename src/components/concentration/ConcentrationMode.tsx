@@ -51,9 +51,11 @@ export function ConcentrationMode({ onExit }: { onExit: () => void }) {
     setSelected(resume?.id ?? current?.id ?? activities[0]?.id ?? null);
     if (resume) { setResponses(data.session?.draft.responses ?? []); setPaused(data.session?.status === "paused"); }
   }, [data, selected, activities, current]);
+  const [runningAction, setRunningAction] = useState<string | null>(null);
+  const generating = busy && (runningAction === "create" ? "create" : runningAction === "simplify" || runningAction === "grade" || runningAction === "next" ? "practice" : null);
   const run = async (body: Record<string, unknown>) => {
-    setLocalError(null);
-    try { await draftSaver.flush(); return await action.mutateAsync(body); } catch (e) { setLocalError((e as Error).message); return null; }
+    setLocalError(null); setRunningAction(String(body.action ?? ""));
+    try { await draftSaver.flush(); return await action.mutateAsync(body); } catch (e) { setLocalError((e as Error).message); return null; } finally { setRunningAction(null); }
   };
   const pick = (a: LearningActivity) => { setSelected(a.id); setPlaying(false); setPaused(false); setResult(null); setResponses([]); request.current = crypto.randomUUID(); voice.stopAudio(); };
   const start = async (a: LearningActivity) => {
