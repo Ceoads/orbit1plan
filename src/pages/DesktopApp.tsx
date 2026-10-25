@@ -81,8 +81,6 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
   const navigate = useNavigate();
 
   const useAs = (f: VaultFile, target: Section) => { setSource(f); setSection(target); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (section !== "drive" && section !== "home") vault.refetch(); }, [section]);
 
   return (
     <div className="min-h-screen bg-background flex">

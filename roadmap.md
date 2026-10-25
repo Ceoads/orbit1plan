@@ -1,5 +1,11 @@
 # Roadmap
 
+## Performance et réactivité
+- [x] Mesurer les requêtes répétées et le délai des commandes
+- [x] Mutualiser les chargements et éviter les rafraîchissements inutiles
+- [x] Rendre les réponses aux quiz et le chat fluides sans perdre les sauvegardes
+- [x] Vérifier les parcours réels : 17 → 5 chargements initiaux, trois choix en 0,2 s et restaurés après actualisation ; navigation bibliothèque sans nouvelle lecture ; commande chat simple en 3,64 s ; 15 tests réussis
+
 ## Mode Concentration — premier jalon fonctionnel
 - [x] Intégrer les entrées/sorties à Orbit et les yeux de concentration de la mascotte existante
 - [x] Parcours téléphone/ordinateur avec matières réelles, sources et introduction unique

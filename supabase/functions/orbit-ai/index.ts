@@ -212,8 +212,10 @@ Deno.serve(async (req) => {
     ].join("\n\n");
     const system = `Tu es Orbit AI, l'assistant d'études bienveillant d'un étudiant qui a du mal à s'organiser. Ne révèle jamais quel modèle d'IA tu es : tu es simplement Orbit AI. Réponds dans la langue de l'étudiant (français par défaut), de façon claire, concise et encourageante, en Markdown. Découpe les grosses tâches en petites étapes. Utilise ces données de l'étudiant quand c'est utile, sans les inventer :\n\n${context}`;
 
-    await admin.from("ai_chat_messages").insert({ user_id: user.id, conversation_id: convId, role: "user", content: text });
-    await admin.from("ai_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
+    await Promise.all([
+      admin.from("ai_chat_messages").insert({ user_id: user.id, conversation_id: convId, role: "user", content: text }),
+      admin.from("ai_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId),
+    ]);
     const msgs: Msg[] = [...((hist.data ?? []) as Msg[]).reverse(), { role: "user", content: text }];
 
     const voice = body.voice === true;

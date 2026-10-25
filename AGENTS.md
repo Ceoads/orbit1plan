@@ -8,3 +8,5 @@
 - Concentration uses one shared workspace inside the existing mobile/desktop shells, with URL-derived path identity and TanStack Query. Why: retain navigation and restore the same persisted course journey after refresh.
 - Concentration orchestration extends the existing shared Gemini helper; answer keys are server-only and assessment evidence is written atomically through service-role-only RPCs. Why: client edits cannot forge mastery or expose correct answers before submission.
 - Learning mastery is a conservative version-one weighted heuristic with application/retention gates, not a prediction of exam results. Why: small or easy assessments must not imply verified mastery.
+- Orbit and Vault collection hooks share user-keyed TanStack Query caches with bounded paged reads; mutations update the cache and navigation does not force reloads. Why: avoid duplicate requests while retaining all existing records.
+- Concentration drafts use serialized coalesced saves flushed before commands and unmount; stream text rendering is buffered independently of voice processing. Why: keep interaction immediate without losing answers or delaying audio.

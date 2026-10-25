@@ -25,6 +25,10 @@ export function useConcentration(pathId: string | null) {
   const options = { staleTime: 60000, gcTime: 300000, refetchOnWindowFocus: false, retry: false as const };
   const overview = useQuery({ queryKey: ["concentration-overview", user?.id], queryFn: () => concentrationCall<ConcentrationOverview>({ action: "overview" }), enabled: !!user, ...options });
   const journey = useQuery({ queryKey: ["concentration-path", user?.id, pathId], queryFn: () => concentrationCall<ConcentrationData>({ action: "load", pathId }), enabled: !!user && !!pathId, ...options });
-  const action = useMutation({ mutationFn: (body: Record<string, unknown>) => concentrationCall<ConcentrationResult>({ ...(pathId ? { pathId } : {}), ...body }), onSuccess: () => { client.invalidateQueries({ queryKey: ["concentration-path", user?.id, pathId] }); client.invalidateQueries({ queryKey: ["concentration-overview", user?.id] }); } });
+  const action = useMutation({ mutationFn: (body: Record<string, unknown>) => concentrationCall<ConcentrationResult>({ ...(pathId ? { pathId } : {}), ...body }), onSuccess: (_, body) => {
+    // Drafts and source reads do not change the path or course catalogue.
+    if (body.action !== "session" && body.action !== "source") client.invalidateQueries({ queryKey: ["concentration-path", user?.id, pathId] });
+    if (body.action === "intro" || body.action === "create") client.invalidateQueries({ queryKey: ["concentration-overview", user?.id] });
+  } });
   return { overview, journey, action };
 }

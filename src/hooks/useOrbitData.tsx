@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { readAllPages } from "@/lib/pagedRead";
 import { toLocalDateStr } from "@/lib/dateFormat";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
@@ -55,56 +57,41 @@ export interface Task {
 export const useOrbitData = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [userGroup, setUserGroup] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch all data
-  const fetchData = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const [subjectsRes, eventsRes, notesRes, tasksRes, settingsRes] = await Promise.all([
-        supabase.from('subjects').select('*').order('name'),
-        supabase.from('calendar_events').select('*').order('event_date, start_time'),
-        supabase.from('notes_vault').select('*').order('created_at', { ascending: false }),
-        supabase.from('tasks').select('*').order('priority_score', { ascending: false }),
-        supabase.from('user_settings').select('ical_filter_group').maybeSingle(),
+  const client = useQueryClient();
+  const key = ["orbit-data", user?.id];
+  type OrbitData = { subjects: Subject[]; events: CalendarEvent[]; notes: Note[]; tasks: Task[]; userGroup: string | null };
+  const query = useQuery<OrbitData>({
+    queryKey: key, enabled: !!user, staleTime: 60000, gcTime: 300000, refetchOnWindowFocus: false,
+    queryFn: async () => {
+      if (!user) throw new Error('Not signed in');
+      const [subjects, events, notes, tasks, settings] = await Promise.all([
+        readAllPages<Subject>((from, to) => supabase.from('subjects').select('id,name,color_key,teacher_name,icon').eq('user_id', user.id).order('name').order('id').range(from, to)),
+        readAllPages<CalendarEvent>((from, to) => supabase.from('calendar_events').select('id,title,subject_id,start_time,end_time,day_of_week,event_type,exam_date,event_date,room_number,teacher_name,external_id').eq('user_id', user.id).order('event_date').order('start_time').order('id').range(from, to)),
+        readAllPages<Note>((from, to) => supabase.from('notes_vault').select('id,subject_id,event_id,media_url,raw_text,ai_summary,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).order('id').range(from, to)),
+        readAllPages<Task>((from, to) => supabase.from('tasks').select('id,title,status,priority_score,energy_level,due_date,subject_id,linked_note_id,parent_task_id,is_subtask').eq('user_id', user.id).order('priority_score', { ascending: false }).order('id').range(from, to)),
+        supabase.from('user_settings').select('ical_filter_group').eq('user_id', user.id).maybeSingle(),
       ]);
-
-      if (subjectsRes.error) throw subjectsRes.error;
-      if (eventsRes.error) throw eventsRes.error;
-      if (notesRes.error) throw notesRes.error;
-      if (tasksRes.error) throw tasksRes.error;
-
-      setSubjects(subjectsRes.data || []);
-      setEvents(eventsRes.data as CalendarEvent[] || []);
-      setNotes(notesRes.data as Note[] || []);
-      setTasks(tasksRes.data as Task[] || []);
-      setUserGroup(settingsRes.data?.ical_filter_group || null);
-    } catch (error: any) {
-      console.error('Error fetching data:', error);
-      toast.error(t('toasts.errorLoading'));
-    } finally {
-      setLoading(false);
-    }
+      if (settings.error) throw settings.error;
+      return { subjects, events, notes, tasks, userGroup: settings.data?.ical_filter_group ?? null };
+    },
+  });
+  const { subjects = [], events = [], notes = [], tasks = [], userGroup = null } = query.data ?? {};
+  const loading = !!user && query.isPending;
+  const fetchData = () => query.refetch();
+  const updateCollection = <K extends 'subjects' | 'events' | 'notes' | 'tasks'>(field: K, update: (prev: OrbitData[K]) => OrbitData[K]) => {
+    client.setQueryData<OrbitData>(key, prev => prev ? { ...prev, [field]: update(prev[field]) } : prev);
   };
+  const setSubjects = (update: (prev: Subject[]) => Subject[]) => updateCollection('subjects', update);
+  const setEvents = (update: (prev: CalendarEvent[]) => CalendarEvent[]) => updateCollection('events', update);
+  const setNotes = (update: (prev: Note[]) => Note[]) => updateCollection('notes', update);
+  const setTasks = (update: (prev: Task[]) => Task[]) => updateCollection('tasks', update);
+  useEffect(() => { if (query.error) toast.error(t('toasts.errorLoading')); }, [query.error, t]);
 
   // Filter events by user's group
   const filteredEvents: FilteredEvent[] = useMemo(
     () => filterEventsByGroup(events, userGroup),
     [events, userGroup]
   );
-
-  useEffect(() => {
-    fetchData();
-  }, [user]);
 
   // Create subject
   const createSubject = async (data: Omit<Subject, 'id'>) => {
@@ -144,7 +131,8 @@ export const useOrbitData = () => {
     setEvents(prev => [...prev, newEvent as CalendarEvent]);
     toast.success(t('toasts.eventCreated'));
     // Refresh tasks in case exam triggers created new tasks
-    fetchData();
+    const refreshedTasks = await readAllPages<Task>((from, to) => supabase.from('tasks').select('id,title,status,priority_score,energy_level,due_date,subject_id,linked_note_id,parent_task_id,is_subtask').eq('user_id', user.id).order('priority_score', { ascending: false }).order('id').range(from, to)).catch(() => null);
+    if (refreshedTasks) setTasks(() => refreshedTasks);
     return newEvent;
   };
 
@@ -430,7 +418,7 @@ export const useOrbitData = () => {
     const today = new Date();
     return filteredEvents
       .filter(e => e.event_type === 'exam' && e.exam_date && new Date(e.exam_date) >= today)
-      .sort((a, b) => new Date(a.exam_date!).getTime() - new Date(b.exam_date!).getTime());
+      .sort((a, b) => new Date(a.exam_date ?? '').getTime() - new Date(b.exam_date ?? '').getTime());
   };
 
   // Get today's events (classes and exams)

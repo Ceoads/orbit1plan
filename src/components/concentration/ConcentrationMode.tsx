@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createCoalescedSaver } from "@/lib/coalescedSaver";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { ArrowLeft, BookOpen, Check, ChevronRight, Clock3, Focus, Lightbulb, Loader2, Pause, Play, RotateCcw, Star, Trophy, Volume2, X, ExternalLink, MessageCircle, SkipForward } from "lucide-react";
@@ -9,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { OrbitCompanion, type CompanionHandle } from "@/components/ai/OrbitCompanion";
 import { SubjectIcon } from "@/components/SubjectIcon";
 import { useOrbitVoice } from "@/hooks/useOrbitVoice";
-import { useConcentration, type ConcentrationResult } from "@/hooks/useConcentration";
+import { concentrationCall, useConcentration, type ConcentrationResult } from "@/hooks/useConcentration";
 import { understandingLevel, toggleAnswer, type LearningActivity, type LearningResponse } from "@/lib/concentration";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -34,6 +35,11 @@ export function ConcentrationMode({ onExit }: { onExit: () => void }) {
   const concept = data?.concepts.find(c => c.id === activity?.concept_id);
   const done = activities.filter(a => a.status === "completed").length;
   const busy = action.isPending;
+  const draftSaver = useMemo(() => createCoalescedSaver<Record<string, unknown>>(
+    body => concentrationCall({ pathId, action: "session", ...body }),
+    error => setLocalError((error as Error).message),
+  ), [pathId]);
+  useEffect(() => () => { void draftSaver.flush().catch(() => undefined); }, [draftSaver]);
 
   useEffect(() => {
     if (!data) return;
@@ -47,7 +53,7 @@ export function ConcentrationMode({ onExit }: { onExit: () => void }) {
   }, [data, selected, activities, current]);
   const run = async (body: Record<string, unknown>) => {
     setLocalError(null);
-    try { return await action.mutateAsync(body); } catch (e) { setLocalError((e as Error).message); return null; }
+    try { await draftSaver.flush(); return await action.mutateAsync(body); } catch (e) { setLocalError((e as Error).message); return null; }
   };
   const pick = (a: LearningActivity) => { setSelected(a.id); setPlaying(false); setPaused(false); setResult(null); setResponses([]); request.current = crypto.randomUUID(); voice.stopAudio(); };
   const start = async (a: LearningActivity) => {
@@ -58,12 +64,12 @@ export function ConcentrationMode({ onExit }: { onExit: () => void }) {
   const changeAnswer = async (index: number, choice: number) => {
     if (!activity) return;
     const next = activity.content.questions.map((q, i) => i === index ? toggleAnswer(responses[i] ?? { selected: [], hints: 0 }, choice, q.type === "multiple") : responses[i] ?? { selected: [], hints: 0 });
-    setResponses(next); await run({ action: "session", activityId: activity.id, responses: next, status: "active" });
+    setResponses(next); draftSaver.schedule({ activityId: activity.id, responses: next, status: "active" });
   };
   const hint = async (index: number) => {
     if (!activity) return;
     const next = activity.content.questions.map((_, i) => ({ ...(responses[i] ?? { selected: [], hints: 0 }), hints: i === index ? 1 : responses[i]?.hints ?? 0 }));
-    if (await run({ action: "session", activityId: activity.id, responses: next, status: "active" })) setResponses(next);
+    setResponses(next); draftSaver.schedule({ activityId: activity.id, responses: next, status: "active" });
   };
   const finish = async () => {
     if (!activity) return;

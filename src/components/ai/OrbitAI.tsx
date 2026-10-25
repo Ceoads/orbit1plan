@@ -115,7 +115,7 @@ export function OrbitAI({ onConcentration }: { onConcentration?: () => void } = 
     setPast((p) => p.filter((x) => x.id !== id));
   };
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    endRef.current?.scrollIntoView({ behavior: busy ? "auto" : "smooth", block: "end" });
   }, [messages, busy]);
 
   const send = async (raw?: string) => {
@@ -150,6 +150,15 @@ export function OrbitAI({ onConcentration }: { onConcentration?: () => void } = 
       setMessages((m) => [...m, { role: "assistant", content: "" }]);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
+      let buffered = "";
+      let flushTimer: ReturnType<typeof setTimeout> | undefined;
+      const flush = () => {
+        clearTimeout(flushTimer); flushTimer = undefined;
+        const delta = buffered; buffered = "";
+        if (!delta) return;
+        setMessages(m => { const n = [...m]; const last = n[n.length - 1]; if (last?.role === "assistant") n[n.length - 1] = { ...last, content: last.content + delta }; return n; });
+      };
+      try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -160,12 +169,10 @@ export function OrbitAI({ onConcentration }: { onConcentration?: () => void } = 
           pend = rest;
           parts.forEach(voice.say);
         }
-        setMessages((m) => {
-          const n = [...m];
-          n[n.length - 1] = { role: "assistant", content: n[n.length - 1].content + chunk };
-          return n;
-        });
+        buffered += chunk;
+        if (!flushTimer) flushTimer = setTimeout(flush, 80);
       }
+      } finally { flush(); }
       if (speaking) {
         takeSentences(pend, true)[0].forEach(voice.say);
         voice.endReply({ success: /c['’]est fait|c['’]est ajouté|j['’]ai ajouté/i.test(full) });
