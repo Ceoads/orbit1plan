@@ -31,7 +31,7 @@ export const CookieConsent = () => {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 28 }}
-          className="fixed inset-x-4 bottom-4 z-[90] mx-auto max-w-lg rounded-3xl bg-card p-5 shadow-[0_12px_40px_rgb(0,0,0,0.12)] backdrop-blur-xl md:inset-x-auto md:right-6 md:bottom-6"
+          className="fixed inset-x-4 bottom-4 z-[10000] mx-auto max-w-lg rounded-3xl bg-card p-5 shadow-[0_12px_40px_rgb(0,0,0,0.12)] backdrop-blur-xl md:inset-x-auto md:right-6 md:bottom-6"
           role="dialog"
           aria-label="Consentement cookies"
         >
