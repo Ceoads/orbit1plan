@@ -16,6 +16,7 @@ import DesktopApp from "./DesktopApp";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { DesktopOnboarding } from "@/components/onboarding/DesktopOnboarding";
+import { ConcentrationMode } from "@/components/concentration/ConcentrationMode";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -112,10 +113,13 @@ const Index = () => {
     vault: <TheVaultPage />,
     tasks: <TasksPage />,
     exams: <ExamsPage />,
-    lab: <OrbitAI />,
-  }), []);
+    lab: <OrbitAI onConcentration={() => setSearchParams({ ...Object.fromEntries(searchParams), mode: "concentration" })} />,
+  }), [searchParams, setSearchParams]);
 
   const renderPage = () => {
+    if (searchParams.get("mode") === "concentration") {
+      return <ConcentrationMode onExit={() => { const next = new URLSearchParams(searchParams); next.delete("mode"); setSearchParams(next); }} />;
+    }
     if (showSetup || (needsSetup && !showOnboarding)) {
       return <SetupWizard onComplete={handleSetupComplete} />;
     }

@@ -20,6 +20,7 @@ import { CourseSheet } from "@/components/subject/CourseSheet";
 import { SemesterTasks } from "@/components/tasks/SemesterTasks";
 import { GradesPage } from "@/components/grades/GradesPage";
 import { OrbitAI } from "@/components/ai/OrbitAI";
+import { ConcentrationMode } from "@/components/concentration/ConcentrationMode";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -28,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Section = "home" | "ai" | "library" | "subjects" | "deadlines" | "grades" | "quiz" | "flashcards" | "drive";
+type Section = "home" | "ai" | "concentration" | "library" | "subjects" | "deadlines" | "grades" | "quiz" | "flashcards" | "drive";
 
 interface QuizQuestion { question: string; options: string[]; correctIndex: number; explanation: string }
 interface Card { id: string; question: string; answer: string; subject_id: string | null; mastered: boolean }
@@ -36,6 +37,7 @@ interface Card { id: string; question: string; answer: string; subject_id: strin
 const NAV: { id: Section; label: string; icon: typeof BookOpen }[] = [
   { id: "home", label: "Accueil", icon: Home },
   { id: "ai", label: "Orbit AI", icon: MessageCircle },
+  { id: "concentration", label: "Concentration", icon: Brain },
   { id: "library", label: "Bibliothèque", icon: BookOpen },
   { id: "subjects", label: "Par matière", icon: FolderOpen },
   { id: "quiz", label: "Quiz", icon: Brain },
@@ -102,7 +104,7 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
         </button>
       </aside>
 
-      <main className="flex-1 min-w-0 px-12 py-10">
+      <main className={cn("flex-1 min-w-0 py-10", section === "concentration" ? "px-6" : "px-12")}>
         <div className="max-w-6xl mx-auto">
           {section === "home" && (
             <DesktopHome
@@ -118,7 +120,8 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
           {section === "drive" && <DrivePanel />}
           {section === "grades" && <GradesPage />}
-          {section === "ai" && <OrbitAI />}
+          {section === "ai" && <OrbitAI onConcentration={() => setSection("concentration")} />}
+          {section === "concentration" && <ConcentrationMode onExit={() => setSection("ai")} />}
           {section === "deadlines" && <><Header title="Échéances" subtitle="Tes tâches par semestre, avec rappel par e-mail la veille." /><SemesterTasks /></>}
         </div>
       </main>

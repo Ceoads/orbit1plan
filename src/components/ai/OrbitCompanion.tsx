@@ -14,8 +14,8 @@ export interface CompanionHandle {
  * The existing Orbit blob — same silhouette, gradient and eyes — with animated layers
  * (eyelids, gaze, mouth, halo). All per-frame motion goes through refs.
  */
-export const OrbitCompanion = forwardRef<CompanionHandle, { state?: CompanionState; size?: number; className?: string }>(
-  ({ state = "idle", size = 72, className }, ref) => {
+export const OrbitCompanion = forwardRef<CompanionHandle, { state?: CompanionState; size?: number; className?: string; concentration?: boolean }>(
+  ({ state = "idle", size = 72, className, concentration = false }, ref) => {
     const mouthRef = useRef<SVGEllipseElement>(null);
     const smileRef = useRef<SVGPathElement>(null);
     const eyesRef = useRef<SVGGElement>(null);
@@ -68,7 +68,7 @@ export const OrbitCompanion = forwardRef<CompanionHandle, { state?: CompanionSta
     }, []);
 
     return (
-      <div className={cn("relative", className)} style={{ width: size, height: size }} aria-label={`Orbit — ${state}`}>
+      <div className={cn("relative orbit-companion", concentration && "orbit-concentration", className)} style={{ width: size, height: size }} aria-label={`Orbit — ${concentration ? "concentration — " : ""}${state}`}>
         <div ref={haloRef} className={cn("absolute inset-[-18%] rounded-full bg-primary/25 blur-2xl transition-opacity duration-500", state === "thinking" && "animate-pulse")} style={{ opacity: 0 }} />
         <div className={cn(
           "relative w-full h-full",
@@ -89,8 +89,8 @@ export const OrbitCompanion = forwardRef<CompanionHandle, { state?: CompanionSta
             </defs>
             <path fill="url(#orbitBlobV)" d="M50 6c8 0 11 7 18 9s15-1 19 6-1 13 1 20 9 11 6 18-11 8-15 14-4 14-12 17-12-4-17-4-11 7-18 4-6-11-12-17-14-6-16-14 5-12 4-19-8-12-3-19 13-3 19-6S42 6 50 6z" />
             <g ref={eyesRef}>
-              <ellipse cx="41" cy="50" rx="3.5" ry="5" fill="hsl(var(--foreground))" />
-              <ellipse cx="59" cy="50" rx="3.5" ry="5" fill="hsl(var(--foreground))" />
+              <ellipse className="orbit-eye" cx="41" cy="50" rx="3.5" ry="5" fill="hsl(var(--foreground))" />
+              <ellipse className="orbit-eye" cx="59" cy="50" rx="3.5" ry="5" fill="hsl(var(--foreground))" />
             </g>
             <path ref={smileRef} d="M46 59 Q50 62 54 59" stroke="hsl(var(--foreground))" strokeWidth="1.6" strokeLinecap="round" fill="none" />
             <ellipse ref={mouthRef} cx="50" cy="60.5" rx="5.5" ry="0.4" fill="hsl(var(--foreground))" style={{ opacity: 0 }} />
