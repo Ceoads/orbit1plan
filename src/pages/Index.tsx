@@ -7,7 +7,6 @@ import { TheVaultPage } from "./TheVaultPage";
 import { TasksPage } from "./TasksPage";
 import { ExamsPage } from "./ExamsPage";
 import { OrbitAI } from "@/components/ai/OrbitAI";
-import { useOrbitData } from "@/hooks/useOrbitData";
 import { useAuth } from "@/hooks/useAuth";
 import { SetupWizard } from "@/components/SetupWizard";
 import { OrbitOnboarding, useTutorial } from "@/components/onboarding";
@@ -17,6 +16,9 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { DesktopOnboarding } from "@/components/onboarding/DesktopOnboarding";
 import { ConcentrationMode } from "@/components/concentration/ConcentrationMode";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { readAllPages } from "@/lib/pagedRead";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();

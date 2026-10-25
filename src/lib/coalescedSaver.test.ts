@@ -12,7 +12,7 @@ describe('draft saves', () => {
     let release: () => void = () => undefined;
     const first = new Promise<void>(resolve => { release = resolve; });
     const calls: string[] = [];
-    const saver = createCoalescedSaver(async value => { calls.push(value); if (value === 'A') await first; }, () => undefined);
+    const saver = createCoalescedSaver<string>(async value => { calls.push(value); if (value === 'A') await first; }, () => undefined);
     saver.schedule('A'); const firstFlush = saver.flush();
     await Promise.resolve(); await Promise.resolve();
     saver.schedule('B'); const secondFlush = saver.flush();
