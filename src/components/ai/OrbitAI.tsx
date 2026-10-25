@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { ArrowUp, RotateCcw, Loader2, History, X, Mic, MicOff, Volume2, Square } from "lucide-react";
+import { ArrowUp, RotateCcw, Loader2, History, X, Mic, MicOff, Volume2, Square, Focus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { OrbitCompanion, type CompanionHandle } from "./OrbitCompanion";
 import { useOrbitVoice, takeSentences } from "@/hooks/useOrbitVoice";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -22,7 +23,7 @@ const SUGGESTIONS = [
   "Comment remonter ma moyenne ?",
 ];
 
-export function OrbitAI() {
+export function OrbitAI({ onConcentration }: { onConcentration?: () => void } = {}) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState(() => {
@@ -342,6 +343,7 @@ export function OrbitAI() {
         <div className="absolute top-0 right-0">{historyButton}</div>
         {drawerEl}
         {companion(112)}
+        {onConcentration && <Button variant="outline" className="rounded-full min-h-11" onClick={onConcentration}><Focus />Mode Concentration</Button>}
         {voiceHint}
         <div className="space-y-3">
           <h1 className="text-3xl sm:text-5xl font-display font-bold tracking-tight">
@@ -371,6 +373,7 @@ export function OrbitAI() {
       <div className="flex items-center gap-3 pb-6">
         {companion(voice.voiceMode ? 64 : 44)}
         <p className="text-lg sm:text-xl font-bold tracking-tight flex-1">Orbit AI</p>
+        {onConcentration && <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full" title="Mode Concentration" aria-label="Mode Concentration" onClick={onConcentration}><Focus /></Button>}
         {historyButton}
         {drawerEl}
         <button

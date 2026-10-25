@@ -10,6 +10,13 @@ const json = (b: unknown, status = 200) =>
 
 // Every table keyed by user_id, in an order safe for foreign keys.
 const USER_TABLES = [
+  "learning_attempts",
+  "learning_activity_keys",
+  "learning_sessions",
+  "learning_activities",
+  "learning_concepts",
+  "learning_paths",
+  "learning_rate_events",
   "vault_filing_history",
   "drive_imported_files",
   "drive_sync_folders",

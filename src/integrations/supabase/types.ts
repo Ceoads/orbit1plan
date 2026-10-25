@@ -1520,6 +1520,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      learning_add_practice: {
+        Args: {
+          p_answers: Json
+          p_content: Json
+          p_previous: string
+          p_user: string
+        }
+        Returns: string
+      }
       learning_create_path: {
         Args: {
           p_duration: number
@@ -1542,6 +1551,7 @@ export type Database = {
         }
         Returns: Json
       }
+      learning_intro_done: { Args: { p_user: string }; Returns: undefined }
       learning_level: {
         Args: {
           p_application: number
@@ -1552,6 +1562,16 @@ export type Database = {
         Returns: string
       }
       learning_rate_allowed: { Args: { p_user: string }; Returns: boolean }
+      learning_save_session: {
+        Args: {
+          p_activity: string
+          p_path: string
+          p_responses: Json
+          p_status: string
+          p_user: string
+        }
+        Returns: undefined
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
