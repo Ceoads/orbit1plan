@@ -1,6 +1,6 @@
 import { confirmAction } from "@/components/ConfirmHost";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
   Loader2, ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home, CalendarClock, GraduationCap, MessageCircle,
@@ -59,6 +59,7 @@ interface DesktopAppProps {
 }
 
 export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }: DesktopAppProps = {}) {
+  const location = useLocation();
   const [section, setSectionState] = useState<Section>(() => {
     const p = new URLSearchParams(window.location.search).get("section") as Section | null;
     const saved = (p || sessionStorage.getItem("desktop_section")) as Section | null;
@@ -71,6 +72,10 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
     url.searchParams.set("section", s);
     window.history.replaceState(window.history.state, "", url.toString());
   }, []);
+  useEffect(() => {
+    const value = new URLSearchParams(location.search).get("section");
+    if (value && NAV.some(n => n.id === value)) setSectionState(value as Section);
+  }, [location.search]);
   const [source, setSource] = useState<VaultFile | null>(null);
   const vault = useVaultData();
   const navigate = useNavigate();
