@@ -27,6 +27,7 @@ export function ConcentrationMode({ onExit }: { onExit: () => void }) {
   const [result, setResult] = useState<ConcentrationResult | null>(null);
   const [source, setSource] = useState<{ title: string; text: string; fileId?: string } | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [needsMaterial, setNeedsMaterial] = useState<string | null>(null);
   const request = useRef(crypto.randomUUID()); const companion = useRef<CompanionHandle>(null); const navigate = useNavigate();
   const voice = useOrbitVoice(companion, text => { sessionStorage.setItem("orbit_ai_prompt", text); navigate("/?section=ai&tab=lab"); });
   const data = journey.data, activities = data?.activities ?? [];
