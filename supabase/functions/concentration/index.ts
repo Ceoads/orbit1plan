@@ -143,7 +143,8 @@ Deno.serve(async req => {
       const subject = checked(await db.from("subjects").select("id,name").eq("id", b.subjectId).eq("user_id", user.id).maybeSingle());
       if (!subject) throw new SafeError("Cette matière n’est pas accessible.", 404);
       const sources = await sourcesFor(db, user.id, subject.id);
-      if (!sources.length) throw new SafeError("Aucun texte de cours exploitable dans cette matière. Ajoute un chapitre ou un document avec du texte extrait dans ta Bibliothèque.", 422);
+      // Expected state, not a failure: tell the client so it can guide the student to add material.
+      if (!sources.length) return json({ needsMaterial: true, subjectId: subject.id });
       const units = await generate(sources, `Crée trois unités de départ couvrant les notions prioritaires réellement présentes pour ${subject.name}, en ordre de prérequis. Examen : ${b.examDate ?? "non précisé"}. Durée de séance : ${b.duration ?? 20} minutes. Ce premier parcours est partiel, pas une analyse exhaustive.`);
       const note = `Parcours initial basé sur ${sources.length} source(s) textuelle(s), au maximum 8 000 caractères par source. Les documents sans texte extrait ne sont pas analysés. La couverture du programme n’est pas exhaustive.`;
       const id = checked(await db.rpc("learning_create_path", { p_user: user.id, p_subject: subject.id, p_title: subject.name, p_sources: sources.map(({ text: _text, ...s }) => s), p_note: note, p_exam: b.examDate ?? null, p_duration: b.duration ?? 20, p_units: units }));

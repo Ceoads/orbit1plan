@@ -9,7 +9,7 @@ export interface ConcentrationData {
   concepts: LearningConcept[]; activities: LearningActivity[];
   session: { activity_id: string | null; status: string; draft: { responses?: LearningResponse[] } } | null;
 }
-export interface ConcentrationResult { pathId?: string; activity?: LearningActivity | null; targeted?: boolean; ok?: boolean; source?: { title: string; text: string; fileId?: string }; result?: { correct: number; total: number; mastery: number; confidence: number; feedback: { correct: boolean; answer: number[]; explanation: string }[] }; next?: { activity: LearningActivity | null; targeted: boolean } | null; preparationError?: string | null }
+export interface ConcentrationResult { pathId?: string; needsMaterial?: boolean; activity?: LearningActivity | null; targeted?: boolean; ok?: boolean; source?: { title: string; text: string; fileId?: string }; result?: { correct: number; total: number; mastery: number; confidence: number; feedback: { correct: boolean; answer: number[]; explanation: string }[] }; next?: { activity: LearningActivity | null; targeted: boolean } | null; preparationError?: string | null }
 export async function concentrationCall<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("concentration", { body });
   if (error) {
