@@ -78,6 +78,9 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
   }, [location.search]);
   const [source, setSource] = useState<VaultFile | null>(null);
   const vault = useVaultData();
+  // Drive imports write files server-side; refresh the shared cache once when leaving the Drive panel.
+  const prevSection = useRef(section);
+  useEffect(() => { if (prevSection.current === "drive" && section !== "drive") vault.refetch(); prevSection.current = section; }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
   const navigate = useNavigate();
 
   const useAs = (f: VaultFile, target: Section) => { setSource(f); setSection(target); };
