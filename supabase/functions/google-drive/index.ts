@@ -9,6 +9,7 @@ import {
 } from "../_shared/appUserConnections.ts";
 import { GOOGLE_DRIVE_SCOPES } from "../_shared/appUserScopes.ts";
 import { aiChat } from "../_shared/ai.ts";
+import { serviceAccount, serviceAccountDrive } from "../_shared/serviceAccount.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 const CONNECTOR = "google_drive";
@@ -44,7 +45,31 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("syncNow") }),
   z.object({ action: z.literal("syncAll") }),
   z.object({ action: z.literal("autoFile") }),
+  z.object({ action: z.literal("hubInfo") }),
+  z.object({ action: z.literal("hubLink"), folderId: z.string().regex(/^[A-Za-z0-9_-]{10,200}$/) }),
+  z.object({ action: z.literal("hubSync") }),
+  z.object({ action: z.literal("hubUnlink") }),
 ]);
+
+// ---------- Orbit Hub : dossier partagé avec le bot de synchronisation ----------
+async function syncHub(userId: string, folderId: string) {
+  const admin = adminClient();
+  const types = Object.values(MIME).map((m) => `mimeType = '${m}'`).join(" or ");
+  const params = new URLSearchParams({ q: `'${folderId}' in parents and trashed = false and (${types})`, pageSize: "200", orderBy: "modifiedTime desc", fields: "files(id)", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+  const res = await serviceAccountDrive(`/drive/v3/files?${params}`);
+  if (!res.ok) throw new DriveError("Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot.", 403);
+  const files: { id: string }[] = (await res.json()).files ?? [];
+  const { data: done } = await admin.from("drive_imported_files").select("drive_file_id").eq("user_id", userId);
+  const seen = new Set((done ?? []).map((r) => r.drive_file_id));
+  const fresh = files.filter((f) => !seen.has(f.id));
+  let imported = 0; let lastError: string | null = null;
+  for (const f of fresh.slice(0, MAX_PER_SYNC)) {
+    try { await importDriveFile(serviceAccountDrive, userId, f.id); imported++; }
+    catch (e) { lastError = e instanceof Error ? e.message : String(e); }
+  }
+  await admin.from("profiles").update({ drive_hub_last_synced_at: new Date().toISOString(), drive_hub_last_error: lastError }).eq("user_id", userId);
+  return { imported, remaining: Math.max(0, fresh.length - MAX_PER_SYNC) };
+}
 
 // ---------- Auto-classement : nom de fichier / dossier + emploi du temps iCal ----------
 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -258,6 +283,16 @@ Deno.serve(async (req) => {
           results.push({ user: r.user_id, error: msg });
         }
       }
+      if (serviceAccount()) {
+        const { data: hubs } = await admin.from("profiles").select("user_id,drive_hub_folder_id").not("drive_hub_folder_id", "is", null).limit(500);
+        for (const h of hubs ?? []) {
+          try { results.push({ user: h.user_id, hub: true, ...(await syncHub(h.user_id, h.drive_hub_folder_id!)) }); }
+          catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            await admin.from("profiles").update({ drive_hub_last_error: msg, drive_hub_last_synced_at: new Date().toISOString() }).eq("user_id", h.user_id);
+          }
+        }
+      }
       console.log(JSON.stringify({ event: "drive.syncAll", count: results.length }));
       return json({ results });
     }
@@ -313,6 +348,33 @@ Deno.serve(async (req) => {
       if (connectorId !== CONNECTOR) return json({ error: "Mauvais service" }, 400);
       await saveConnectionKeyForUser(user.id, CONNECTOR, connectionAPIKey);
       return json({ ok: true });
+    }
+
+    if (body.action === "hubInfo") {
+      const sa = serviceAccount();
+      const { data: p } = await adminClient().from("profiles").select("drive_hub_folder_id,drive_hub_connected_at,drive_hub_last_synced_at,drive_hub_last_error").eq("user_id", user.id).maybeSingle();
+      return json({ available: !!sa, botEmail: sa?.client_email ?? null, hub: p?.drive_hub_folder_id ? p : null });
+    }
+    if (body.action === "hubLink") {
+      if (!serviceAccount()) return json({ error: "Le bot de synchronisation n'est pas encore configuré." }, 503);
+      const res = await serviceAccountDrive(`/drive/v3/files/${body.folderId}?fields=id,name,mimeType&supportsAllDrives=true`);
+      if (!res.ok) return json({ error: "Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot." }, 403);
+      const meta = await res.json();
+      if (meta.mimeType !== "application/vnd.google-apps.folder") return json({ error: "Ce lien n'est pas un dossier Drive." }, 400);
+      const { error } = await adminClient().from("profiles").update({ drive_hub_folder_id: body.folderId, drive_hub_connected_at: new Date().toISOString(), drive_hub_last_error: null }).eq("user_id", user.id);
+      if (error) throw error;
+      const result = await syncHub(user.id, body.folderId).catch((e) => ({ imported: 0, error: String(e?.message ?? e) }));
+      return json({ ok: true, name: meta.name, ...result });
+    }
+    if (body.action === "hubSync" || body.action === "hubUnlink") {
+      const admin = adminClient();
+      if (body.action === "hubUnlink") {
+        await admin.from("profiles").update({ drive_hub_folder_id: null, drive_hub_connected_at: null, drive_hub_last_error: null }).eq("user_id", user.id);
+        return json({ ok: true });
+      }
+      const { data: p } = await admin.from("profiles").select("drive_hub_folder_id").eq("user_id", user.id).maybeSingle();
+      if (!p?.drive_hub_folder_id) return json({ error: "Aucun Orbit Hub relié." }, 400);
+      return json({ ok: true, ...(await syncHub(user.id, p.drive_hub_folder_id)) });
     }
 
     const key = await getConnectionKeyForUser(user.id, CONNECTOR);

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { DriveOnboardingModal } from "@/components/drive/DriveOnboardingModal";
 
 const EASE = [0.4, 0, 0.2, 1] as const;
 const STEPS = ["Bienvenue", "Profil", "Connexions", "Cours", "Organisation", "Prêt"];
@@ -313,6 +314,7 @@ function StepConnect({
 }) {
   const { user } = useAuth();
   const [drive, setDrive] = useState<ConnStatus>("idle");
+  const [hubOpen, setHubOpen] = useState(false);
   const [icalUrl, setIcalUrl] = useState("");
   const [cal, setCal] = useState<ConnStatus>("idle");
 
@@ -451,15 +453,21 @@ function StepConnect({
             Autorisation demandée : lecture de tes fichiers, uniquement pour les importer dans ta bibliothèque.
           </p>
           {drive !== "connected" && (
-            <button
-              onClick={connectDrive}
-              disabled={drive === "connecting"}
-              className="mt-3 h-10 px-5 rounded-xl bg-foreground text-background text-sm font-medium flex items-center gap-2 disabled:opacity-60"
-            >
-              {drive === "connecting" && <Loader2 className="w-4 h-4 animate-spin" />}
-              {drive === "error" ? "Réessayer" : "Connecter"}
-            </button>
+            <div className="mt-3 flex items-center gap-4">
+              <button
+                onClick={connectDrive}
+                disabled={drive === "connecting"}
+                className="h-10 px-5 rounded-xl bg-foreground text-background text-sm font-medium flex items-center gap-2 disabled:opacity-60"
+              >
+                {drive === "connecting" && <Loader2 className="w-4 h-4 animate-spin" />}
+                {drive === "error" ? "Réessayer" : "Connecter"}
+              </button>
+              <button onClick={() => setHubOpen(true)} className="text-sm text-primary font-medium">
+                Ou partager un dossier Orbit Hub
+              </button>
+            </div>
           )}
+          <DriveOnboardingModal open={hubOpen} onOpenChange={setHubOpen} onLinked={() => setDrive("connected")} />
         </div>
 
         {/* Calendar iCal */}

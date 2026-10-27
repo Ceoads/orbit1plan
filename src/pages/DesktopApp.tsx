@@ -21,6 +21,7 @@ import { SemesterTasks } from "@/components/tasks/SemesterTasks";
 import { GradesPage } from "@/components/grades/GradesPage";
 import { OrbitAI } from "@/components/ai/OrbitAI";
 import { ConcentrationMode } from "@/components/concentration/ConcentrationMode";
+import { DriveOnboardingModal } from "@/components/drive/DriveOnboardingModal";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -864,6 +865,45 @@ function FolderSync({ folder, onChange }: { folder?: SyncFolder | null; onChange
   );
 }
 
+function HubCard() {
+  const [hub, setHub] = useState<{ available: boolean; hub: { drive_hub_last_synced_at: string | null; drive_hub_last_error: string | null } | null } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const load = useCallback(() => { callDrive({ action: "hubInfo" }).then(setHub).catch(() => setHub(null)); }, []);
+  useEffect(load, [load]);
+  const syncNow = async () => {
+    setSyncing(true);
+    try { const d = await callDrive({ action: "hubSync" }); toast.success(d.imported ? `${d.imported} document(s) importé(s)` : "Ton Orbit Hub est à jour"); load(); }
+    catch (e: any) { toast.error(e.message); } finally { setSyncing(false); }
+  };
+  const unlink = async () => { await callDrive({ action: "hubUnlink" }).catch(() => null); load(); };
+  if (!hub) return null;
+  return (
+    <div className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-2xl mb-10 flex items-center gap-5">
+      <FolderOpen className="w-7 h-7 text-primary shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold">Orbit Hub</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          {hub.hub
+            ? hub.hub.drive_hub_last_error ?? (hub.hub.drive_hub_last_synced_at ? `Synchronisé le ${new Date(hub.hub.drive_hub_last_synced_at).toLocaleString("fr-FR")}` : "Relié · synchronisation chaque matin")
+            : "Partage un seul dossier avec Orbit : il se synchronise tout seul, sans connecter ton compte."}
+        </p>
+      </div>
+      {hub.hub ? (
+        <>
+          <button onClick={syncNow} disabled={syncing} className="h-10 px-5 rounded-xl bg-foreground text-background text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60">
+            {syncing && <Loader2 className="w-4 h-4 animate-spin" />} Synchroniser
+          </button>
+          <button onClick={unlink} className="text-sm text-muted-foreground hover:text-foreground">Retirer</button>
+        </>
+      ) : (
+        <button onClick={() => setOpen(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-medium">Configurer</button>
+      )}
+      <DriveOnboardingModal open={open} onOpenChange={setOpen} onLinked={load} />
+    </div>
+  );
+}
+
 function DrivePanel() {
   const [status, setStatus] = useState<{ connected: boolean; reconnectRequired?: boolean; email?: string; folder?: SyncFolder | null } | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -934,6 +974,7 @@ function DrivePanel() {
     return (
       <>
         <Header title="Google Drive" subtitle="Importe tes cours directement depuis ton Drive." />
+        <HubCard />
         <div className="bg-card rounded-3xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-2xl space-y-5">
           <HardDrive className="w-8 h-8 text-primary" />
           <p className="font-semibold text-lg">{status.reconnectRequired ? "Ton accès Google Drive doit être renouvelé" : "Connecte ton Google Drive"}</p>
@@ -965,6 +1006,7 @@ function DrivePanel() {
   return (
     <>
       <Header title="Google Drive" subtitle={`Connecté${status.email ? ` en tant que ${status.email}` : ""}. Choisis les documents à importer.`} />
+      <HubCard />
       <FolderSync folder={status.folder} onChange={loadStatus} />
       <div className="flex items-center gap-4 mb-8">
         <div className="relative flex-1 max-w-md">
