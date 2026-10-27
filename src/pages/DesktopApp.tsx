@@ -21,6 +21,7 @@ import { SemesterTasks } from "@/components/tasks/SemesterTasks";
 import { GradesPage } from "@/components/grades/GradesPage";
 import { OrbitAI } from "@/components/ai/OrbitAI";
 import { ConcentrationMode } from "@/components/concentration/ConcentrationMode";
+import { DriveOnboardingModal } from "@/components/drive/DriveOnboardingModal";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -973,6 +974,7 @@ function DrivePanel() {
     return (
       <>
         <Header title="Google Drive" subtitle="Importe tes cours directement depuis ton Drive." />
+        <HubCard />
         <div className="bg-card rounded-3xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-2xl space-y-5">
           <HardDrive className="w-8 h-8 text-primary" />
           <p className="font-semibold text-lg">{status.reconnectRequired ? "Ton accès Google Drive doit être renouvelé" : "Connecte ton Google Drive"}</p>
@@ -1004,6 +1006,7 @@ function DrivePanel() {
   return (
     <>
       <Header title="Google Drive" subtitle={`Connecté${status.email ? ` en tant que ${status.email}` : ""}. Choisis les documents à importer.`} />
+      <HubCard />
       <FolderSync folder={status.folder} onChange={loadStatus} />
       <div className="flex items-center gap-4 mb-8">
         <div className="relative flex-1 max-w-md">
