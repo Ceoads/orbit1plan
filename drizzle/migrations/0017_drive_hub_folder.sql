@@ -1,0 +1,2 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS drive_hub_folder_id text, ADD COLUMN IF NOT EXISTS drive_hub_connected_at timestamptz, ADD COLUMN IF NOT EXISTS drive_hub_last_synced_at timestamptz, ADD COLUMN IF NOT EXISTS drive_hub_last_error text;
+CREATE INDEX IF NOT EXISTS idx_profiles_drive_hub ON public.profiles (drive_hub_folder_id) WHERE drive_hub_folder_id IS NOT NULL;

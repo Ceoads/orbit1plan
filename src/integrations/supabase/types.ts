@@ -937,6 +937,10 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          drive_hub_connected_at: string | null
+          drive_hub_folder_id: string | null
+          drive_hub_last_error: string | null
+          drive_hub_last_synced_at: string | null
           id: string
           onboarding_completed_at: string | null
           onboarding_current_step: number
@@ -951,6 +955,10 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          drive_hub_connected_at?: string | null
+          drive_hub_folder_id?: string | null
+          drive_hub_last_error?: string | null
+          drive_hub_last_synced_at?: string | null
           id?: string
           onboarding_completed_at?: string | null
           onboarding_current_step?: number
@@ -965,6 +973,10 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          drive_hub_connected_at?: string | null
+          drive_hub_folder_id?: string | null
+          drive_hub_last_error?: string | null
+          drive_hub_last_synced_at?: string | null
           id?: string
           onboarding_completed_at?: string | null
           onboarding_current_step?: number
