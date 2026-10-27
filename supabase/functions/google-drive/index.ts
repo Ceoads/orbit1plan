@@ -44,7 +44,31 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("syncNow") }),
   z.object({ action: z.literal("syncAll") }),
   z.object({ action: z.literal("autoFile") }),
+  z.object({ action: z.literal("hubInfo") }),
+  z.object({ action: z.literal("hubLink"), folderId: z.string().regex(/^[A-Za-z0-9_-]{10,200}$/) }),
+  z.object({ action: z.literal("hubSync") }),
+  z.object({ action: z.literal("hubUnlink") }),
 ]);
+
+// ---------- Orbit Hub : dossier partagé avec le bot de synchronisation ----------
+async function syncHub(userId: string, folderId: string) {
+  const admin = adminClient();
+  const types = Object.values(MIME).map((m) => `mimeType = '${m}'`).join(" or ");
+  const params = new URLSearchParams({ q: `'${folderId}' in parents and trashed = false and (${types})`, pageSize: "200", orderBy: "modifiedTime desc", fields: "files(id)", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+  const res = await serviceAccountDrive(`/drive/v3/files?${params}`);
+  if (!res.ok) throw new DriveError("Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot.", 403);
+  const files: { id: string }[] = (await res.json()).files ?? [];
+  const { data: done } = await admin.from("drive_imported_files").select("drive_file_id").eq("user_id", userId);
+  const seen = new Set((done ?? []).map((r) => r.drive_file_id));
+  const fresh = files.filter((f) => !seen.has(f.id));
+  let imported = 0; let lastError: string | null = null;
+  for (const f of fresh.slice(0, MAX_PER_SYNC)) {
+    try { await importDriveFile(serviceAccountDrive, userId, f.id); imported++; }
+    catch (e) { lastError = e instanceof Error ? e.message : String(e); }
+  }
+  await admin.from("profiles").update({ drive_hub_last_synced_at: new Date().toISOString(), drive_hub_last_error: lastError }).eq("user_id", userId);
+  return { imported, remaining: Math.max(0, fresh.length - MAX_PER_SYNC) };
+}
 
 // ---------- Auto-classement : nom de fichier / dossier + emploi du temps iCal ----------
 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
