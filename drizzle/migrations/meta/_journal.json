@@ -113,6 +113,13 @@
       "when": 1792932440366,
       "tag": "0015_student_collection_performance_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793120801867,
+      "tag": "0016_rls_cached_auth_uid",
+      "breakpoints": true
     }
   ]
 }
