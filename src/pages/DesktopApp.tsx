@@ -827,7 +827,10 @@ function waitForPopup(popup: Window) {
     const cleanup = () => { window.removeEventListener("message", onMsg); clearInterval(poll); };
     const onMsg = (e: MessageEvent) => {
       if (e.origin !== window.location.origin || e.source !== popup || e.data?.connectorId !== "google_drive") return;
-      if (e.data.type === "appUserConnectorOAuthComplete") { cleanup(); resolve(); }
+      if (e.data.type === "appUserConnectorOAuthCode") {
+        cleanup(); popup.close();
+        callDrive({ action: "complete", code: e.data.code }).then(() => resolve(), reject);
+      } else if (e.data.type === "appUserConnectorOAuthComplete") { cleanup(); resolve(); }
       else if (e.data.type === "appUserConnectorOAuthFailed") { cleanup(); popup.close(); reject(new Error(e.data.reason ?? "Connexion refusée.")); }
     };
     const poll = window.setInterval(() => { if (popup.closed) { cleanup(); reject(new Error("Fenêtre fermée avant la fin.")); } }, 500);

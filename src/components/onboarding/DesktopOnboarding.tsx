@@ -361,8 +361,12 @@ function StepConnect({
         const onMsg = (e: MessageEvent) => {
           if (e.origin !== window.location.origin || e.source !== popup || e.data?.connectorId !== "google_drive")
             return;
-          window.removeEventListener("message", onMsg);
-          if (e.data.type === "appUserConnectorOAuthComplete") resolve();
+          cleanup();
+          if (e.data.type === "appUserConnectorOAuthCode") {
+            popup.close();
+            supabase.functions.invoke("google-drive", { body: { action: "complete", code: e.data.code } })
+              .then(({ error }) => (error ? reject(new Error("Impossible de finaliser la connexion Google Drive.")) : resolve()));
+          } else if (e.data.type === "appUserConnectorOAuthComplete") resolve();
           else reject(new Error(e.data.reason ?? "Connexion refusée."));
         };
         const poll = window.setInterval(() => {

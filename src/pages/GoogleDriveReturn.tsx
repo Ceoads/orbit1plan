@@ -31,6 +31,12 @@ export default function GoogleDriveReturn() {
       notify("appUserConnectorOAuthFailed", reason);
       return;
     }
+    // This window may not share the Orbit session (e.g. in preview), so the opener finishes the exchange.
+    if (window.opener) {
+      window.opener.postMessage({ type: "appUserConnectorOAuthCode", connectorId: "google_drive", code }, window.location.origin);
+      setMessage("Finalisation dans Orbit…");
+      return;
+    }
     supabase.functions.invoke("google-drive", { body: { action: "complete", code } }).then(({ error }) => {
       if (error) {
         const reason = "Impossible de finaliser la connexion Google Drive. Réessaie depuis Orbit.";
