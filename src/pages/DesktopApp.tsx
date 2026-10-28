@@ -112,7 +112,7 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
         </button>
       </aside>
 
-      <main className={cn("flex-1 min-w-0 py-10", section === "concentration" ? "px-6" : "px-12")}>
+      <main className={cn("flex-1 min-w-0 py-6 sm:py-10", section === "concentration" ? "px-4 sm:px-6" : "px-4 sm:px-8 lg:px-12")}>
         <div className="max-w-6xl mx-auto">
           {section === "home" && (
             <DesktopHome
@@ -126,7 +126,7 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
           {section === "subjects" && <SubjectLibrary vault={vault} />}
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
-          {section === "drive" && <DrivePanel onImported={() => vault.refetch()} onOpenLibrary={(ids) => { setFreshIds(ids ?? []); vault.refetch(); setSection("library"); }} />}
+          {section === "drive" && <DrivePanel onImported={() => vault.refetch()} onOpenLibrary={(ids) => { setFreshIds(ids ?? []); setSection("library"); window.scrollTo({ top: 0 }); vault.refetch(); }} />}
           {section === "grades" && <GradesPage />}
           {section === "ai" && <OrbitAI onConcentration={() => setSection("concentration")} />}
           {section === "concentration" && <ConcentrationMode onExit={() => setSection("ai")} />}
@@ -163,6 +163,8 @@ function Library({ vault, onUse, freshIds = [], onClearFresh }: { vault: ReturnT
     return [...l].sort((a, b) => Number(fresh.has(b.id)) - Number(fresh.has(a.id)) || +new Date(b.created_at) - +new Date(a.created_at));
   }, [vault, q, subjectIds, semesterId, type, freshIds]);
   const freshSet = useMemo(() => new Set(freshIds), [freshIds]);
+  // Opening from "Voir": jump to the top so the new documents (sorted first) are in view.
+  useEffect(() => { if (freshIds.length) { window.scrollTo({ top: 0, behavior: "smooth" }); document.querySelector("main")?.scrollTo?.({ top: 0 }); } }, [freshIds]);
   const freshCount = vault.files.filter((f) => freshSet.has(f.id)).length;
 
   // Semestres regroupés par année universitaire
@@ -200,7 +202,7 @@ function Library({ vault, onUse, freshIds = [], onClearFresh }: { vault: ReturnT
     <>
       <Header title="Bibliothèque" subtitle={`${name ? `${greeting()}, ${name}. ` : ""}${vault.files.length} document${vault.files.length > 1 ? "s" : ""} — choisis-en un pour lancer un quiz ou créer des fiches.`} />
       {freshIds.length > 0 && (
-        <div className="mb-8 flex items-center gap-4 rounded-3xl bg-primary/10 px-6 py-5">
+        <div className="mb-8 flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 rounded-3xl bg-primary/10 px-5 sm:px-6 py-4 sm:py-5">
           <Sparkles className="w-5 h-5 text-primary shrink-0" />
           <p className="flex-1 text-sm">
             {freshCount > 0
@@ -210,24 +212,26 @@ function Library({ vault, onUse, freshIds = [], onClearFresh }: { vault: ReturnT
           <button onClick={onClearFresh} className="h-9 px-4 rounded-full text-sm text-muted-foreground hover:text-foreground">OK</button>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="relative flex-1 min-w-64 max-w-xl">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 mb-6">
+        <div className="relative w-full sm:flex-1 sm:min-w-64 sm:max-w-xl">
           <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans tes documents…"
             className="w-full h-12 pl-11 pr-4 rounded-2xl bg-card shadow-[0_8px_30px_rgb(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-primary/30 text-sm" />
         </div>
+        <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1 sm:pb-0 sm:overflow-visible">
         {["pdf", "photo", "note", "document"].map((t) => (
           <Pill key={t} active={type === t} onClick={() => setType(type === t ? null : t)}>
             {{ pdf: "PDF", photo: "Photos", note: "Notes", document: "Documents" }[t]}
           </Pill>
         ))}
+        </div>
       </div>
       <div className="mb-8">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant={subjectIds.length > 0 || semesterId !== "all" ? "default" : "outline"}
-              className="h-11 min-w-56 justify-between rounded-xl px-4 shadow-none"
+              className="h-11 w-full sm:w-auto sm:min-w-56 justify-between rounded-xl px-4 shadow-none"
             >
               <span>
                 {semesterName ? `${semesterName} · ` : ""}
@@ -298,7 +302,7 @@ function Library({ vault, onUse, freshIds = [], onClearFresh }: { vault: ReturnT
       </div>
 
       {vault.loading ? (
-        <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {[0, 1, 2].map((i) => <div key={i} className="h-48 rounded-3xl bg-card/60 animate-pulse" />)}
         </div>
       ) : list.length === 0 ? (
@@ -308,11 +312,11 @@ function Library({ vault, onUse, freshIds = [], onClearFresh }: { vault: ReturnT
           <p className="text-sm text-muted-foreground max-w-sm">{vault.files.length ? "Essaie un autre mot ou retire un filtre." : "Importe tes cours depuis Google Drive pour commencer."}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {list.map((f) => {
             const subj = vault.subjects.find((s) => s.id === f.subject_id);
             return (
-              <article key={f.id} className={cn("group bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)]", freshSet.has(f.id) && "ring-2 ring-primary/40")}>
+              <article key={f.id} className={cn("group bg-card rounded-3xl p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)]", freshSet.has(f.id) && "ring-2 ring-primary/40")}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     {f.file_type === "photo" ? <ImageIcon className="w-5 h-5 text-primary" /> : <FileText className="w-5 h-5 text-primary" />}
@@ -416,13 +420,13 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         {vault.subjects.length === 0 ? (
           <p className="text-muted-foreground py-24 text-center">Aucune matière pour l'instant.</p>
         ) : (
-          <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
             {vault.subjects.map((s) => {
               const n = vault.files.filter((f) => f.subject_id === s.id).length;
               return (
                 <div key={s.id} className="relative group">
                 <button aria-label={`Supprimer ${s.name}`} onClick={() => removeSubject(s.id, s.name)}
-                  className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted hover:text-destructive transition-opacity"><X className="w-4 h-4" /></button>
+                  className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground bg-muted/60 sm:bg-transparent sm:opacity-60 group-hover:opacity-100 focus:opacity-100 hover:bg-muted hover:text-destructive transition-opacity"><X className="w-4 h-4" /></button>
                 <button onClick={() => { setOpen(s.id); setTab("docs"); setSource(null); }}
                   className="w-full h-full text-left bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)] transition-shadow flex flex-col gap-6">
                   <SubjectIcon name={s.name} legacyIcon={s.icon} size="xl" />
@@ -468,7 +472,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         <div className="space-y-10">{months.map((m) => (
         <section key={m.label} className="space-y-4">
         <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{m.label}</h4>
-        <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {m.items.map((f) => (
             <article key={f.id} className="bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
               <div className="flex items-start gap-3 relative">
