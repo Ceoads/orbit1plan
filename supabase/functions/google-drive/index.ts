@@ -343,7 +343,8 @@ Deno.serve(async (req) => {
       if (!clientAPIKey) return json({ error: "Google Drive n'est pas configuré" }, 500);
       const requestedOrigin = new URL(body.origin).origin;
       // Preview hosts vary (id-preview--, preview--, lovableproject.com); accept any for this project only.
-      const projectPreview = /^https:\/\/([a-z0-9-]+--)?dc23bc90-363b-4525-b605-b15310eb5d99(-[a-z0-9]+)?\.(lovable\.app|lovableproject\.com)$/.test(requestedOrigin);
+      const projectPreview = /^https:\/\/([a-z0-9-]+--)?dc23bc90-363b-4525-b605-b15310eb5d99(-[a-z0-9]+)?\.(lovable\.app|lovableproject\.com)$/.test(requestedOrigin)
+        || /^https:\/\/([a-z0-9-]+--)?orbitp1an\.lovable\.app$/.test(requestedOrigin);
       if (!ALLOWED_APP_ORIGINS.has(requestedOrigin) && !projectPreview) {
         console.error(JSON.stringify({ event: "drive.start.origin_rejected", origin: requestedOrigin }));
         return json({ error: "Cette adresse Orbit n'est pas autorisée pour Google Drive." }, 400);
