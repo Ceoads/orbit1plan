@@ -19,7 +19,7 @@ async function callDrive(body: Record<string, unknown>) {
   return data;
 }
 
-export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: boolean; onOpenChange: (v: boolean) => void; onLinked?: (imported: number) => void }) {
+export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: boolean; onOpenChange: (v: boolean) => void; onLinked?: (imported: number, ids?: string[]) => void }) {
   const [step, setStep] = useState(0);
   const [botEmail, setBotEmail] = useState<string | null>(null);
   const [available, setAvailable] = useState(true);
@@ -56,7 +56,7 @@ export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: b
       setResult(d.syncError || d.importError ? `${msg} Certains fichiers n'ont pas pu être importés, Orbit réessaiera demain.` : msg);
       setDone(true);
       toast.success(`« ${d.name ?? "Orbit Hub"} » relié · Orbit voit ton dossier`);
-      onLinked?.(n);
+      onLinked?.(n, d.importedIds);
       setTimeout(() => onOpenChange(false), 2600);
     } catch (e: any) { setError(e.message); } finally { setBusy(false); }
   };
