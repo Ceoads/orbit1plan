@@ -12,3 +12,14 @@ export function extractDriveFolderId(input: string): string | null {
   const id = m?.[1] ?? url.searchParams.get("id");
   return id && ID.test(id) ? id : null;
 }
+
+/** Folder ID plus the optional `resourcekey` some link-shared folders need. */
+export function parseDriveFolderLink(input: string): { id: string; resourceKey?: string } | null {
+  const id = extractDriveFolderId(input);
+  if (!id) return null;
+  try {
+    const rk = new URL(input.trim()).searchParams.get("resourcekey");
+    if (rk && /^[A-Za-z0-9_-]{1,100}$/.test(rk)) return { id, resourceKey: rk };
+  } catch { /* raw ID */ }
+  return { id };
+}

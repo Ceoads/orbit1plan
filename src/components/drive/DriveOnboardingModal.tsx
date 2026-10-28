@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, ExternalLink, FolderPlus, Link2, Loader2, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { extractDriveFolderId } from "@/lib/driveFolderId";
+import { parseDriveFolderLink } from "@/lib/driveFolderId";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -28,7 +28,9 @@ export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: b
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const folderId = useMemo(() => extractDriveFolderId(link), [link]);
+  const parsed = useMemo(() => parseDriveFolderLink(link), [link]);
+  const folderId = parsed?.id ?? null;
+  const [result, setResult] = useState<string>("Tes cours se synchronisent chaque matin.");
 
   useEffect(() => {
     if (!open) return;
@@ -46,11 +48,16 @@ export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: b
     if (!folderId) return;
     setBusy(true); setError(null);
     try {
-      const d = await callDrive({ action: "hubLink", folderId });
+      const d = await callDrive({ action: "hubLink", folderId, resourceKey: parsed?.resourceKey });
+      const n = d.imported ?? 0;
+      const msg = n
+        ? `${n} document${n > 1 ? "s" : ""} importé${n > 1 ? "s" : ""} dans ta Bibliothèque${d.remaining ? ` · ${d.remaining} de plus demain matin` : ""}.`
+        : d.total ? "Tes documents étaient déjà dans ta Bibliothèque." : "Dossier vide pour l'instant : ajoute des PDF, Google Docs ou Word, Orbit les importera.";
+      setResult(d.syncError || d.importError ? `${msg} Certains fichiers n'ont pas pu être importés, Orbit réessaiera demain.` : msg);
       setDone(true);
-      toast.success(d.imported ? `Orbit Hub relié · ${d.imported} document(s) importé(s)` : "Orbit Hub relié");
+      toast.success(`« ${d.name ?? "Orbit Hub"} » relié · Orbit voit ton dossier`);
       onLinked?.();
-      setTimeout(() => onOpenChange(false), 1400);
+      setTimeout(() => onOpenChange(false), 2600);
     } catch (e: any) { setError(e.message); } finally { setBusy(false); }
   };
 
@@ -129,7 +136,7 @@ export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: b
                 <Check className="w-10 h-10" strokeWidth={3} />
               </motion.div>
               <DialogTitle className="text-2xl font-bold">Orbit Hub relié</DialogTitle>
-              <DialogDescription>Tes cours se synchronisent chaque matin.</DialogDescription>
+              <DialogDescription>{result}</DialogDescription>
             </motion.div>
           ) : (
             <motion.div key={step} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={spring} className="space-y-6">
@@ -148,7 +155,7 @@ export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: b
                 {step > 0 && <button onClick={() => setStep(step - 1)} className="h-12 px-5 rounded-2xl text-sm text-muted-foreground">Retour</button>}
                 <motion.button whileTap={{ scale: 0.97 }} onClick={s.next} disabled={s.disabled}
                   className="ml-auto h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium disabled:opacity-50 inline-flex items-center gap-2">
-                  {busy && <Loader2 className="w-4 h-4 animate-spin" />}{s.cta}
+                  {busy && step === 2 && <Loader2 className="w-4 h-4 animate-spin" />}{s.cta}
                 </motion.button>
               </div>
             </motion.div>
