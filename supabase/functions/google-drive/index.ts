@@ -46,29 +46,39 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("syncAll") }),
   z.object({ action: z.literal("autoFile") }),
   z.object({ action: z.literal("hubInfo") }),
-  z.object({ action: z.literal("hubLink"), folderId: z.string().regex(/^[A-Za-z0-9_-]{10,200}$/) }),
+  z.object({ action: z.literal("hubLink"), folderId: z.string().regex(/^[A-Za-z0-9_-]{10,200}$/), resourceKey: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/).optional() }),
   z.object({ action: z.literal("hubSync") }),
   z.object({ action: z.literal("hubUnlink") }),
 ]);
 
 // ---------- Orbit Hub : dossier partagé avec le bot de synchronisation ----------
-async function syncHub(userId: string, folderId: string) {
+async function syncHub(userId: string, folderId: string, rk?: { id: string; key: string } | null) {
   const admin = adminClient();
   const types = Object.values(MIME).map((m) => `mimeType = '${m}'`).join(" or ");
-  const params = new URLSearchParams({ q: `'${folderId}' in parents and trashed = false and (${types})`, pageSize: "200", orderBy: "modifiedTime desc", fields: "files(id)", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
-  const res = await serviceAccountDrive(`/drive/v3/files?${params}`);
-  if (!res.ok) throw new DriveError("Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot.", 403);
-  const files: { id: string }[] = (await res.json()).files ?? [];
+  const files: { id: string }[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({ q: `'${folderId}' in parents and trashed = false and (${types})`, pageSize: "200", orderBy: "modifiedTime desc", fields: "nextPageToken,files(id)", includeItemsFromAllDrives: "true" });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await serviceAccountDrive(`/drive/v3/files?${params}`, rk);
+    if (!res.ok) {
+      console.error(JSON.stringify({ event: "drive.hub.list", status: res.status, detail: (await res.text()).slice(0, 300) }));
+      throw new DriveError([403, 404].includes(res.status) ? "Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot." : `Google Drive a répondu ${res.status}`, 502);
+    }
+    const d = await res.json();
+    files.push(...(d.files ?? []));
+    pageToken = d.nextPageToken;
+  } while (pageToken && files.length < 500);
   const { data: done } = await admin.from("drive_imported_files").select("drive_file_id").eq("user_id", userId);
   const seen = new Set((done ?? []).map((r) => r.drive_file_id));
   const fresh = files.filter((f) => !seen.has(f.id));
   let imported = 0; let lastError: string | null = null;
   for (const f of fresh.slice(0, MAX_PER_SYNC)) {
-    try { await importDriveFile(serviceAccountDrive, userId, f.id); imported++; }
-    catch (e) { lastError = e instanceof Error ? e.message : String(e); }
+    try { await importDriveFile((p) => serviceAccountDrive(p), userId, f.id); imported++; }
+    catch (e) { lastError = e instanceof Error ? e.message : String(e); console.error(JSON.stringify({ event: "drive.hub.import", file: f.id, err: lastError })); }
   }
   await admin.from("profiles").update({ drive_hub_last_synced_at: new Date().toISOString(), drive_hub_last_error: lastError }).eq("user_id", userId);
-  return { imported, remaining: Math.max(0, fresh.length - MAX_PER_SYNC) };
+  return { imported, total: files.length, remaining: Math.max(0, fresh.length - MAX_PER_SYNC), importError: lastError };
 }
 
 // ---------- Auto-classement : nom de fichier / dossier + emploi du temps iCal ----------
@@ -357,13 +367,29 @@ Deno.serve(async (req) => {
     }
     if (body.action === "hubLink") {
       if (!serviceAccount()) return json({ error: "Le bot de synchronisation n'est pas encore configuré." }, 503);
-      const res = await serviceAccountDrive(`/drive/v3/files/${body.folderId}?fields=id,name,mimeType&supportsAllDrives=true`);
-      if (!res.ok) return json({ error: "Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot." }, 403);
-      const meta = await res.json();
+      const rk = body.resourceKey ? { id: body.folderId, key: body.resourceKey } : null;
+      // Google can take a few seconds to propagate a fresh share: retry 404/403 before concluding.
+      let res: Response | null = null;
+      for (let i = 0; i < 3; i++) {
+        res = await serviceAccountDrive(`/drive/v3/files/${body.folderId}?fields=id,name,mimeType,shortcutDetails`, rk);
+        if (res.ok || ![403, 404].includes(res.status)) break;
+        await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      }
+      if (!res!.ok) {
+        const detail = await res!.text();
+        console.error(JSON.stringify({ event: "drive.hub.check", status: res!.status, detail: detail.slice(0, 300) }));
+        if ([403, 404].includes(res!.status)) return json({ error: "Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot." }, 403);
+        return json({ error: `Google Drive ne répond pas (${res!.status}). Réessaie dans un instant.` }, 502);
+      }
+      let meta = await res!.json();
+      if (meta.mimeType === "application/vnd.google-apps.shortcut" && meta.shortcutDetails?.targetMimeType === "application/vnd.google-apps.folder") {
+        meta = { ...meta, id: meta.shortcutDetails.targetId, mimeType: meta.shortcutDetails.targetMimeType };
+      }
       if (meta.mimeType !== "application/vnd.google-apps.folder") return json({ error: "Ce lien n'est pas un dossier Drive." }, 400);
-      const { error } = await adminClient().from("profiles").update({ drive_hub_folder_id: body.folderId, drive_hub_connected_at: new Date().toISOString(), drive_hub_last_error: null }).eq("user_id", user.id);
+      const folderId = meta.id as string;
+      const { error } = await adminClient().from("profiles").update({ drive_hub_folder_id: folderId, drive_hub_connected_at: new Date().toISOString(), drive_hub_last_error: null }).eq("user_id", user.id);
       if (error) throw error;
-      const result = await syncHub(user.id, body.folderId).catch((e) => ({ imported: 0, error: String(e?.message ?? e) }));
+      const result = await syncHub(user.id, folderId, rk).catch((e) => ({ imported: 0, syncError: String(e?.message ?? e) }));
       return json({ ok: true, name: meta.name, ...result });
     }
     if (body.action === "hubSync" || body.action === "hubUnlink") {
