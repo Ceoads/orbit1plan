@@ -125,7 +125,7 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
           {section === "subjects" && <SubjectLibrary vault={vault} />}
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
-          {section === "drive" && <DrivePanel />}
+          {section === "drive" && <DrivePanel onImported={() => vault.refetch()} onOpenLibrary={() => setSection("library")} />}
           {section === "grades" && <GradesPage />}
           {section === "ai" && <OrbitAI onConcentration={() => setSection("concentration")} />}
           {section === "concentration" && <ConcentrationMode onExit={() => setSection("ai")} />}
@@ -865,7 +865,8 @@ function FolderSync({ folder, onChange }: { folder?: SyncFolder | null; onChange
   );
 }
 
-function HubCard() {
+type DriveHooks = { onImported?: () => void; onOpenLibrary?: () => void };
+function HubCard({ onImported, onOpenLibrary }: DriveHooks) {
   const [hub, setHub] = useState<{ available: boolean; hub: { drive_hub_last_synced_at: string | null; drive_hub_last_error: string | null } | null } | null>(null);
   const [open, setOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -873,10 +874,15 @@ function HubCard() {
   useEffect(load, [load]);
   const syncNow = async () => {
     setSyncing(true);
-    try { const d = await callDrive({ action: "hubSync" }); toast.success(d.imported ? `${d.imported} document(s) importé(s)` : "Ton Orbit Hub est à jour"); load(); }
+    try { const d = await callDrive({ action: "hubSync" }); load(); announce(d.imported ?? 0); }
     catch (e: any) { toast.error(e.message); } finally { setSyncing(false); }
   };
   const unlink = async () => { await callDrive({ action: "hubUnlink" }).catch(() => null); load(); };
+  const announce = (n: number) => {
+    if (!n) { toast.success("Ton Orbit Hub est à jour"); return; }
+    onImported?.();
+    toast.success(`${n} document${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""} à ta Bibliothèque`, onOpenLibrary ? { action: { label: "Voir", onClick: onOpenLibrary } } : undefined);
+  };
   if (!hub) return null;
   return (
     <div className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-2xl mb-10 flex items-center gap-5">
@@ -899,12 +905,12 @@ function HubCard() {
       ) : (
         <button onClick={() => setOpen(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-medium">Configurer</button>
       )}
-      <DriveOnboardingModal open={open} onOpenChange={setOpen} onLinked={load} />
+      <DriveOnboardingModal open={open} onOpenChange={setOpen} onLinked={(n) => { load(); if (n) announce(n); }} />
     </div>
   );
 }
 
-function DrivePanel() {
+function DrivePanel({ onImported, onOpenLibrary }: DriveHooks) {
   const [status, setStatus] = useState<{ connected: boolean; reconnectRequired?: boolean; email?: string; folder?: SyncFolder | null } | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [next, setNext] = useState<string | null>(null);
@@ -974,7 +980,7 @@ function DrivePanel() {
     return (
       <>
         <Header title="Google Drive" subtitle="Importe tes cours directement depuis ton Drive." />
-        <HubCard />
+        <HubCard onImported={onImported} onOpenLibrary={onOpenLibrary} />
         <div className="bg-card rounded-3xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-2xl space-y-5">
           <HardDrive className="w-8 h-8 text-primary" />
           <p className="font-semibold text-lg">{status.reconnectRequired ? "Ton accès Google Drive doit être renouvelé" : "Connecte ton Google Drive"}</p>
@@ -1006,7 +1012,7 @@ function DrivePanel() {
   return (
     <>
       <Header title="Google Drive" subtitle={`Connecté${status.email ? ` en tant que ${status.email}` : ""}. Choisis les documents à importer.`} />
-      <HubCard />
+      <HubCard onImported={onImported} onOpenLibrary={onOpenLibrary} />
       <FolderSync folder={status.folder} onChange={loadStatus} />
       <div className="flex items-center gap-4 mb-8">
         <div className="relative flex-1 max-w-md">
