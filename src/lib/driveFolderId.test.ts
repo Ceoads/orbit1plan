@@ -22,3 +22,13 @@ describe("extractDriveFolderId", () => {
     expect(extractDriveFolderId("")).toBeNull();
   });
 });
+
+import { parseDriveFolderLink } from "./driveFolderId";
+describe("parseDriveFolderLink", () => {
+  it("keeps the resource key of link-shared folders", () => {
+    expect(parseDriveFolderLink(`https://drive.google.com/drive/folders/${ID}?resourcekey=0-abcDEF_1&usp=sharing`)).toEqual({ id: ID, resourceKey: "0-abcDEF_1" });
+  });
+  it("works without a resource key", () => {
+    expect(parseDriveFolderLink(ID)).toEqual({ id: ID });
+  });
+});

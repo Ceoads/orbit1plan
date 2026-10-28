@@ -43,5 +43,12 @@ export async function serviceAccountToken(): Promise<string> {
   return cached.token;
 }
 
-export const serviceAccountDrive = (path: string) =>
-  serviceAccountToken().then((t) => fetch(`https://www.googleapis.com${path}`, { headers: { Authorization: `Bearer ${t}` } }));
+// Adds shared-drive support and the folder resource key (needed for some link-shared folders).
+export async function serviceAccountDrive(path: string, resourceKey?: { id: string; key: string } | null) {
+  const t = await serviceAccountToken();
+  const sep = path.includes("?") ? "&" : "?";
+  const url = /supportsAllDrives=/.test(path) ? path : `${path}${sep}supportsAllDrives=true`;
+  const headers: Record<string, string> = { Authorization: `Bearer ${t}` };
+  if (resourceKey) headers["X-Goog-Drive-Resource-Keys"] = `${resourceKey.id}/${resourceKey.key}`;
+  return fetch(`https://www.googleapis.com${url}`, { headers });
+}
