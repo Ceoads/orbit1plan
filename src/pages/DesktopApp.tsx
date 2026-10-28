@@ -79,6 +79,7 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
   }, [location.search]);
   const [source, setSource] = useState<VaultFile | null>(null);
   const vault = useVaultData();
+  const [freshIds, setFreshIds] = useState<string[]>([]);
   // Drive imports write files server-side; refresh the shared cache once when leaving the Drive panel.
   const prevSection = useRef(section);
   useEffect(() => { if (prevSection.current === "drive" && section !== "drive") vault.refetch(); prevSection.current = section; }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,11 +122,11 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
               onResumeOnboarding={onResumeOnboarding}
             />
           )}
-          {section === "library" && <Library vault={vault} onUse={useAs} />}
+          {section === "library" && <Library vault={vault} onUse={useAs} freshIds={freshIds} onClearFresh={() => setFreshIds([])} />}
           {section === "subjects" && <SubjectLibrary vault={vault} />}
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
-          {section === "drive" && <DrivePanel onImported={() => vault.refetch()} onOpenLibrary={() => setSection("library")} />}
+          {section === "drive" && <DrivePanel onImported={() => vault.refetch()} onOpenLibrary={(ids) => { setFreshIds(ids ?? []); vault.refetch(); setSection("library"); }} />}
           {section === "grades" && <GradesPage />}
           {section === "ai" && <OrbitAI onConcentration={() => setSection("concentration")} />}
           {section === "concentration" && <ConcentrationMode onExit={() => setSection("ai")} />}
@@ -146,7 +147,7 @@ const Header = ({ title, subtitle }: { title: string; subtitle: string }) => (
 );
 
 /* ---------- Library ---------- */
-function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onUse: (f: VaultFile, s: Section) => void }) {
+function Library({ vault, onUse, freshIds = [], onClearFresh }: { vault: ReturnType<typeof useVaultData>; onUse: (f: VaultFile, s: Section) => void; freshIds?: string[]; onClearFresh?: () => void }) {
   const { user } = useAuth();
   const [q, setQ] = useState("");
   const [subjectIds, setSubjectIds] = useState<string[]>([]);
@@ -158,8 +159,11 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
     if (semesterId !== "all") l = l.filter((f) => f.semester_id === semesterId);
     if (subjectIds.length > 0) l = l.filter((f) => f.subject_id && subjectIds.includes(f.subject_id));
     if (type) l = l.filter((f) => (f.file_type || "document") === type);
-    return l;
-  }, [vault, q, subjectIds, semesterId, type]);
+    const fresh = new Set(freshIds);
+    return [...l].sort((a, b) => Number(fresh.has(b.id)) - Number(fresh.has(a.id)) || +new Date(b.created_at) - +new Date(a.created_at));
+  }, [vault, q, subjectIds, semesterId, type, freshIds]);
+  const freshSet = useMemo(() => new Set(freshIds), [freshIds]);
+  const freshCount = vault.files.filter((f) => freshSet.has(f.id)).length;
 
   // Semestres regroupés par année universitaire
   const semesterGroups = useMemo(() => {
@@ -194,9 +198,20 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
 
   return (
     <>
-      <Header title={`${greeting()}${name ? `, ${name}` : ""}`} subtitle={`${vault.files.length} documents dans ta bibliothèque. Choisis-en un pour créer un quiz ou des fiches.`} />
-      <div className="flex items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
+      <Header title="Bibliothèque" subtitle={`${name ? `${greeting()}, ${name}. ` : ""}${vault.files.length} document${vault.files.length > 1 ? "s" : ""} — choisis-en un pour lancer un quiz ou créer des fiches.`} />
+      {freshIds.length > 0 && (
+        <div className="mb-8 flex items-center gap-4 rounded-3xl bg-primary/10 px-6 py-5">
+          <Sparkles className="w-5 h-5 text-primary shrink-0" />
+          <p className="flex-1 text-sm">
+            {freshCount > 0
+              ? <><span className="font-semibold">{freshCount} nouveau{freshCount > 1 ? "x" : ""} document{freshCount > 1 ? "s" : ""}</span> depuis ton Drive, affiché{freshCount > 1 ? "s" : ""} en premier.</>
+              : "Chargement de tes nouveaux documents…"}
+          </p>
+          <button onClick={onClearFresh} className="h-9 px-4 rounded-full text-sm text-muted-foreground hover:text-foreground">OK</button>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="relative flex-1 min-w-64 max-w-xl">
           <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans tes documents…"
             className="w-full h-12 pl-11 pr-4 rounded-2xl bg-card shadow-[0_8px_30px_rgb(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-primary/30 text-sm" />
@@ -283,25 +298,38 @@ function Library({ vault, onUse }: { vault: ReturnType<typeof useVaultData>; onU
       </div>
 
       {vault.loading ? (
-        <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
+          {[0, 1, 2].map((i) => <div key={i} className="h-48 rounded-3xl bg-card/60 animate-pulse" />)}
+        </div>
       ) : list.length === 0 ? (
-        <p className="text-muted-foreground py-24 text-center">Aucun document trouvé.</p>
+        <div className="py-24 flex flex-col items-center text-center gap-3">
+          <BookOpen className="w-8 h-8 text-muted-foreground/60" />
+          <p className="font-medium">{vault.files.length ? "Aucun document ne correspond" : "Ta bibliothèque est vide"}</p>
+          <p className="text-sm text-muted-foreground max-w-sm">{vault.files.length ? "Essaie un autre mot ou retire un filtre." : "Importe tes cours depuis Google Drive pour commencer."}</p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
           {list.map((f) => {
             const subj = vault.subjects.find((s) => s.id === f.subject_id);
             return (
-              <article key={f.id} className="bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
+              <article key={f.id} className={cn("group bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgb(0,0,0,0.07)]", freshSet.has(f.id) && "ring-2 ring-primary/40")}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     {f.file_type === "photo" ? <ImageIcon className="w-5 h-5 text-primary" /> : <FileText className="w-5 h-5 text-primary" />}
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="font-semibold truncate pr-8">{fileName(f)}</h3>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold truncate" title={fileName(f)}>{fileName(f)}</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {subj ? `${subj.name} · ` : ""}{new Date(f.created_at).toLocaleDateString("fr-FR")}
+                      {new Date(f.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                      {f.tags?.includes("drive") ? " · Drive" : ""}
                     </p>
                   </div>
+                  {freshSet.has(f.id) && <span className="shrink-0 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold px-2.5 py-1">Nouveau</span>}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {subj
+                    ? <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs"><SubjectIcon name={subj.name} legacyIcon={subj.icon} size="sm" />{subj.name}</span>
+                    : <span className="rounded-full bg-muted/60 px-3 py-1 text-xs text-muted-foreground">Sans matière</span>}
                 </div>
                 {f.ai_summary && <p className="text-sm text-muted-foreground line-clamp-3">{f.ai_summary}</p>}
                 <div className="flex gap-2 mt-auto">
@@ -865,7 +893,7 @@ function FolderSync({ folder, onChange }: { folder?: SyncFolder | null; onChange
   );
 }
 
-type DriveHooks = { onImported?: () => void; onOpenLibrary?: () => void };
+type DriveHooks = { onImported?: () => void; onOpenLibrary?: (ids?: string[]) => void };
 function HubCard({ onImported, onOpenLibrary }: DriveHooks) {
   const [hub, setHub] = useState<{ available: boolean; hub: { drive_hub_last_synced_at: string | null; drive_hub_last_error: string | null } | null } | null>(null);
   const [open, setOpen] = useState(false);
@@ -874,14 +902,14 @@ function HubCard({ onImported, onOpenLibrary }: DriveHooks) {
   useEffect(load, [load]);
   const syncNow = async () => {
     setSyncing(true);
-    try { const d = await callDrive({ action: "hubSync" }); load(); announce(d.imported ?? 0); }
+    try { const d = await callDrive({ action: "hubSync" }); load(); announce(d.imported ?? 0, d.importedIds, d.alreadyThere); }
     catch (e: any) { toast.error(e.message); } finally { setSyncing(false); }
   };
   const unlink = async () => { await callDrive({ action: "hubUnlink" }).catch(() => null); load(); };
-  const announce = (n: number) => {
-    if (!n) { toast.success("Ton Orbit Hub est à jour"); return; }
+  const announce = (n: number, ids: string[] = [], already = 0) => {
+    if (!n) { toast.success(already ? `Ton Orbit Hub est à jour · ${already} fichier${already > 1 ? "s" : ""} déjà dans ta Bibliothèque` : "Ton Orbit Hub est à jour"); return; }
     onImported?.();
-    toast.success(`${n} document${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""} à ta Bibliothèque`, onOpenLibrary ? { action: { label: "Voir", onClick: onOpenLibrary } } : undefined);
+    toast.success(`${n} document${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""} à ta Bibliothèque`, onOpenLibrary ? { action: { label: "Voir", onClick: () => onOpenLibrary(ids) } } : undefined);
   };
   if (!hub) return null;
   return (
@@ -905,7 +933,7 @@ function HubCard({ onImported, onOpenLibrary }: DriveHooks) {
       ) : (
         <button onClick={() => setOpen(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-medium">Configurer</button>
       )}
-      <DriveOnboardingModal open={open} onOpenChange={setOpen} onLinked={(n) => { load(); if (n) announce(n); }} />
+      <DriveOnboardingModal open={open} onOpenChange={setOpen} onLinked={(n, ids) => { load(); if (n) announce(n, ids); }} />
     </div>
   );
 }

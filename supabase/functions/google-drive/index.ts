@@ -51,14 +51,39 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("hubUnlink") }),
 ]);
 
+// Fichiers déjà présents dans la Bibliothèque (même nom, extension ignorée) : jamais réimportés.
+const baseName = (n: string) => norm(n.replace(/\.[a-z0-9]{2,5}$/i, ""));
+async function skipKnown(userId: string, files: { id: string; name?: string }[]) {
+  const admin = adminClient();
+  const [{ data: done }, { data: lib }] = await Promise.all([
+    admin.from("drive_imported_files").select("drive_file_id").eq("user_id", userId),
+    admin.from("vault_files").select("id,original_filename").eq("user_id", userId).not("original_filename", "is", null).limit(5000),
+  ]);
+  const seen = new Set((done ?? []).map((r) => r.drive_file_id));
+  const byName = new Map((lib ?? []).map((r) => [baseName(r.original_filename!), r.id as string]));
+  const fresh: typeof files = []; const links: { user_id: string; drive_file_id: string; vault_file_id: string; imported_at: string }[] = [];
+  const batch = new Set<string>();
+  for (const f of files) {
+    if (seen.has(f.id)) continue;
+    const key = f.name ? baseName(f.name) : "";
+    const existing = key ? byName.get(key) : undefined;
+    if (existing) { links.push({ user_id: userId, drive_file_id: f.id, vault_file_id: existing, imported_at: new Date().toISOString() }); continue; }
+    if (key && batch.has(key)) continue;
+    if (key) batch.add(key);
+    fresh.push(f);
+  }
+  if (links.length) await admin.from("drive_imported_files").upsert(links, { onConflict: "user_id,drive_file_id" });
+  return { fresh, alreadyThere: links.length };
+}
+
 // ---------- Orbit Hub : dossier partagé avec le bot de synchronisation ----------
 async function syncHub(userId: string, folderId: string, rk?: { id: string; key: string } | null) {
   const admin = adminClient();
   const types = Object.values(MIME).map((m) => `mimeType = '${m}'`).join(" or ");
-  const files: { id: string }[] = [];
+  const files: { id: string; name?: string }[] = [];
   let pageToken: string | undefined;
   do {
-    const params = new URLSearchParams({ q: `'${folderId}' in parents and trashed = false and (${types})`, pageSize: "200", orderBy: "modifiedTime desc", fields: "nextPageToken,files(id)", includeItemsFromAllDrives: "true" });
+    const params = new URLSearchParams({ q: `'${folderId}' in parents and trashed = false and (${types})`, pageSize: "200", orderBy: "modifiedTime desc", fields: "nextPageToken,files(id,name)", includeItemsFromAllDrives: "true" });
     if (pageToken) params.set("pageToken", pageToken);
     const res = await serviceAccountDrive(`/drive/v3/files?${params}`, rk);
     if (!res.ok) {
@@ -69,16 +94,14 @@ async function syncHub(userId: string, folderId: string, rk?: { id: string; key:
     files.push(...(d.files ?? []));
     pageToken = d.nextPageToken;
   } while (pageToken && files.length < 500);
-  const { data: done } = await admin.from("drive_imported_files").select("drive_file_id").eq("user_id", userId);
-  const seen = new Set((done ?? []).map((r) => r.drive_file_id));
-  const fresh = files.filter((f) => !seen.has(f.id));
-  let imported = 0; let lastError: string | null = null;
+  const { fresh, alreadyThere } = await skipKnown(userId, files);
+  let imported = 0; let lastError: string | null = null; const importedIds: string[] = [];
   for (const f of fresh.slice(0, MAX_PER_SYNC)) {
-    try { await importDriveFile((p) => serviceAccountDrive(p), userId, f.id); imported++; }
+    try { importedIds.push((await importDriveFile((p) => serviceAccountDrive(p), userId, f.id)).id); imported++; }
     catch (e) { lastError = e instanceof Error ? e.message : String(e); console.error(JSON.stringify({ event: "drive.hub.import", file: f.id, err: lastError })); }
   }
   await admin.from("profiles").update({ drive_hub_last_synced_at: new Date().toISOString(), drive_hub_last_error: lastError }).eq("user_id", userId);
-  return { imported, total: files.length, remaining: Math.max(0, fresh.length - MAX_PER_SYNC), importError: lastError };
+  return { imported, importedIds, alreadyThere, total: files.length, remaining: Math.max(0, fresh.length - MAX_PER_SYNC), importError: lastError };
 }
 
 // ---------- Auto-classement : nom de fichier / dossier + emploi du temps iCal ----------
@@ -230,10 +253,10 @@ async function syncFolder(drive: DriveFn, userId: string) {
   if (!folder) return { imported: 0, skipped: 0, noFolder: true };
   const types = Object.values(MIME).map((m) => `mimeType = '${m}'`).join(" or ");
   const q = `'${folder.folder_id}' in parents and trashed = false and (${types})`;
-  const files: { id: string }[] = [];
+  const files: { id: string; name?: string }[] = [];
   let pageToken: string | undefined;
   do {
-    const params = new URLSearchParams({ q, pageSize: "100", orderBy: "modifiedTime desc", fields: "nextPageToken,files(id)" });
+    const params = new URLSearchParams({ q, pageSize: "100", orderBy: "modifiedTime desc", fields: "nextPageToken,files(id,name)" });
     if (pageToken) params.set("pageToken", pageToken);
     const res = await drive(`/drive/v3/files?${params}`);
     if (await appUserReconnectRequired(res)) throw new DriveError("Accès Drive à renouveler", 401, true);
@@ -243,9 +266,8 @@ async function syncFolder(drive: DriveFn, userId: string) {
     pageToken = d.nextPageToken;
   } while (pageToken && files.length < 500);
 
-  const { data: done } = await admin.from("drive_imported_files").select("drive_file_id").eq("user_id", userId);
-  const seen = new Set((done ?? []).map((r) => r.drive_file_id));
-  const todo = files.filter((f) => !seen.has(f.id)).slice(0, MAX_PER_SYNC);
+  const { fresh } = await skipKnown(userId, files);
+  const todo = fresh.slice(0, MAX_PER_SYNC);
   let imported = 0; let lastError: string | null = null;
   for (const f of todo) {
     try { await importDriveFile(drive, userId, f.id); imported++; }
@@ -254,7 +276,7 @@ async function syncFolder(drive: DriveFn, userId: string) {
   await admin.from("drive_sync_folders").update({
     last_synced_at: new Date().toISOString(), last_imported_count: imported, last_error: lastError,
   }).eq("user_id", userId);
-  return { imported, skipped: files.length - todo.length, remaining: Math.max(0, files.filter((f) => !seen.has(f.id)).length - todo.length) };
+  return { imported, skipped: files.length - todo.length, remaining: Math.max(0, fresh.length - todo.length) };
 }
 
 const makeDrive = (key: string): DriveFn => (path) =>
