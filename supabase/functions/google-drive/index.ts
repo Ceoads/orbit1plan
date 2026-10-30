@@ -10,6 +10,7 @@ import {
 import { GOOGLE_DRIVE_SCOPES } from "../_shared/appUserScopes.ts";
 import { aiChat } from "../_shared/ai.ts";
 import { serviceAccount, serviceAccountDrive } from "../_shared/serviceAccount.ts";
+import { selectFreshDriveFiles } from "./driveIdentity.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 const CONNECTOR = "google_drive";
@@ -51,29 +52,20 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("hubUnlink") }),
 ]);
 
-// Fichiers déjà présents dans la Bibliothèque (même nom, extension ignorée) : jamais réimportés.
-const baseName = (n: string) => norm(n.replace(/\.[a-z0-9]{2,5}$/i, ""));
+// Only an import record for this user's exact Drive ID proves it was imported.
 async function skipKnown(userId: string, files: { id: string; name?: string }[]) {
+  if (!files.length) return { fresh: [], alreadyThere: 0 };
   const admin = adminClient();
-  const [{ data: done }, { data: lib }] = await Promise.all([
-    admin.from("drive_imported_files").select("drive_file_id").eq("user_id", userId),
-    admin.from("vault_files").select("id,original_filename").eq("user_id", userId).not("original_filename", "is", null).limit(5000),
-  ]);
-  const seen = new Set((done ?? []).map((r) => r.drive_file_id));
-  const byName = new Map((lib ?? []).map((r) => [baseName(r.original_filename!), r.id as string]));
-  const fresh: typeof files = []; const links: { user_id: string; drive_file_id: string; vault_file_id: string; imported_at: string }[] = [];
-  const batch = new Set<string>();
-  for (const f of files) {
-    if (seen.has(f.id)) continue;
-    const key = f.name ? baseName(f.name) : "";
-    const existing = key ? byName.get(key) : undefined;
-    if (existing) { links.push({ user_id: userId, drive_file_id: f.id, vault_file_id: existing, imported_at: new Date().toISOString() }); continue; }
-    if (key && batch.has(key)) continue;
-    if (key) batch.add(key);
-    fresh.push(f);
+  const ids = [...new Set(files.map((file) => file.id))];
+  const importedIds: string[] = [];
+  for (let offset = 0; offset < ids.length; offset += 100) {
+    const { data, error } = await admin.from("drive_imported_files")
+      .select("drive_file_id").eq("user_id", userId)
+      .in("drive_file_id", ids.slice(offset, offset + 100)).limit(100);
+    if (error) throw new DriveError("Impossible de vérifier les imports précédents. Réessaie dans un instant.", 503);
+    importedIds.push(...(data ?? []).map((row) => row.drive_file_id));
   }
-  if (links.length) await admin.from("drive_imported_files").upsert(links, { onConflict: "user_id,drive_file_id" });
-  return { fresh, alreadyThere: links.length };
+  return selectFreshDriveFiles(files, importedIds);
 }
 
 // ---------- Orbit Hub : dossier partagé avec le bot de synchronisation ----------
