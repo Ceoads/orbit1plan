@@ -9,6 +9,7 @@ import { ChevronRight, Sparkles, BookOpen, Calendar, Loader2, Link2, ArrowLeft, 
 import { GroupSelector } from "./GroupSelector";
 import { QRCodeScanner } from "./QRCodeScanner";
 import { SubjectIcon } from "./SubjectIcon";
+import { SemesterDatesStep } from "./onboarding/SemesterDates";
 
 const SUBJECT_PRESETS = [
   { name: "Mathématiques", icon: "📐", colorKey: "math" },
@@ -35,6 +36,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [semesterStep, setSemesterStep] = useState(false);
 
   const isValidCalendarUrl = (url: string): boolean => {
     const lowered = url.toLowerCase();
@@ -140,7 +142,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           },
         ]);
 
-        onComplete();
+        setSemesterStep(true);
       } else {
         throw new Error(result?.error || "Sync failed");
       }
@@ -182,7 +184,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
           },
         ]);
 
-        onComplete();
+        setSemesterStep(true);
       } else {
         throw new Error(result?.error || "Sync failed");
       }
@@ -280,7 +282,7 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       ]);
 
       toast.success("Configuration terminée ! Bienvenue sur Orbit 🚀");
-      onComplete();
+      setSemesterStep(true);
     } catch (error: any) {
       console.error("Setup error:", error);
       toast.error("Échec de la configuration");
@@ -288,6 +290,8 @@ export const SetupWizard = ({ onComplete }: SetupWizardProps) => {
       setLoading(false);
     }
   };
+
+  if (semesterStep) return <SemesterDatesStep onComplete={onComplete} onSkip={onComplete} />;
 
   return (
     <div className="space-y-6 animate-fade-in py-4">
