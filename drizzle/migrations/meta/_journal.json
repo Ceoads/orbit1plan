@@ -134,6 +134,13 @@
       "when": 1793369639993,
       "tag": "0018_save_semester_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793370800631,
+      "tag": "0019_semester_edit_reassign",
+      "breakpoints": true
     }
   ]
 }

@@ -24,7 +24,7 @@ export function SemesterDatesForm({ onComplete, onSkip }: { onComplete: () => vo
     const validation = semesterSetupError(rows);
     if (validation) { setError(validation); return; }
     setSaving(true); setError(null);
-    try { await setup.save(rows); toast.success("Dates des semestres enregistrées"); onComplete(); }
+    try { await setup.save(rows); setRows(null); toast.success("Dates des semestres enregistrées"); onComplete(); }
     catch { setError("Impossible d’enregistrer tes dates. Réessaie."); }
     finally { setSaving(false); }
   };
