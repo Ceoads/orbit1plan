@@ -1601,6 +1601,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      save_semester_setup: { Args: { _semesters: Json }; Returns: undefined }
       track_ai_usage: {
         Args: {
           _block_minutes?: number

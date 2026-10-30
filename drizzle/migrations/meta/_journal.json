@@ -127,6 +127,13 @@
       "when": 1793126428907,
       "tag": "0017_drive_hub_folder",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793369639993,
+      "tag": "0018_save_semester_setup",
+      "breakpoints": true
     }
   ]
 }
