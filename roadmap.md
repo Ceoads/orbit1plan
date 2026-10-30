@@ -1,5 +1,9 @@
 # Roadmap
 
+## Classement automatique Drive
+- [ ] Compléter le classement existant par matière et semestre selon la date de création
+- [ ] Vérifier le tri chronologique et les règles de classement sans doublons
+
 ## Performance et réactivité
 - [x] Mesurer les requêtes répétées et le délai des commandes
 - [x] Mutualiser les chargements et éviter les rafraîchissements inutiles
