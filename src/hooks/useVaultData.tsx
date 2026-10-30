@@ -93,7 +93,10 @@ export const useVaultData = () => {
         })
       );
 
-      return { files: refreshedFiles, subjects: subjectsRes, academicYears: yearsRes, semesters: semestersRes };
+      // Course subjects (COURS/SAE) plus any subject that already holds documents, so filed courses never disappear.
+      const used = new Set(refreshedFiles.map((f) => f.subject_id).filter(Boolean));
+      const subjects = subjectsRes.filter((s) => s.icon === 'COURS' || s.icon === 'SAE' || used.has(s.id));
+      return { files: refreshedFiles, subjects, academicYears: yearsRes, semesters: semestersRes };
   } });
   const { files = [], subjects = [], academicYears = [], semesters = [] } = query.data ?? {};
   const loading = !!user && query.isPending;
