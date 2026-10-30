@@ -1,6 +1,7 @@
 // Hourly cron: emails each user one reminder per task due within the next 24h.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { sendTemplateEmail } from '../_shared/transactional-email-templates/send-email.ts'
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
@@ -36,15 +37,18 @@ Deno.serve(async (req) => {
         admin.from('semesters').select('name').eq('user_id', t.user_id).lte('start_date', t.due_date.slice(0, 10)).gte('end_date', t.due_date.slice(0, 10)).limit(1).maybeSingle(),
       ])
       const dueLabel = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(t.due_date))
-      const res = await fetch(`${url}/functions/v1/send-transactional-email`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          templateName: 'task-reminder', recipientEmail: email, idempotencyKey: `task-reminder-${t.id}`,
-          templateData: { title: t.title, dueLabel, subject: (subj as any)?.name, semester: (sem as any)?.name },
-        }),
-      })
-      if (!res.ok) { console.error('send failed', res.status, await res.text()); continue }
+      const templateData = { title: t.title, dueLabel, subject: (subj as any)?.name, semester: (sem as any)?.name }
+      let result
+      try {
+        result = await sendTemplateEmail('task-reminder', email, { templateData, idempotencyKey: `task-reminder-${t.id}` })
+      } catch (e) {
+        const { error: logErr } = await admin.from('email_send_log').insert({ template_name: 'task-reminder', recipient_email: email, status: 'failed', error_message: e instanceof Error ? e.message : String(e) })
+        if (logErr) console.error('log write failed', logErr.code)
+        console.error('send failed', t.id, e instanceof Error ? e.message : e); continue
+      }
+      const { error: logErr } = await admin.from('email_send_log').insert({ template_name: 'task-reminder', recipient_email: email, status: result.sent ? 'sent' : 'suppressed' })
+      if (logErr) console.error('log write failed', logErr.code)
+      if (!result.sent) { await admin.from('tasks').update({ reminder_sent_at: new Date().toISOString() }).eq('id', t.id); continue }
       await admin.from('tasks').update({ reminder_sent_at: new Date().toISOString() }).eq('id', t.id)
       sent++
     } catch (e) { console.error('reminder error', t.id, e) }
