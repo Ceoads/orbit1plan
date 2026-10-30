@@ -10,12 +10,12 @@ describe("Drive sync source identity", () => {
 
   it("keeps both a Word file and a PDF with the same base name", () => {
     const files = [{ id: "pdf-id", name: "Cours.pdf" }, { id: "word-id", name: "Cours.docx" }];
-    expect(selectFreshDriveFiles(files, [])).fresh.toEqual(files);
+    expect(selectFreshDriveFiles(files, []).fresh).toEqual(files);
   });
 
   it("keeps same-name files in a single listing when neither was imported", () => {
     const files = [{ id: "first-id", name: "TD 1.pdf" }, { id: "second-id", name: "TD 1.pdf" }];
-    expect(selectFreshDriveFiles(files, [])).fresh.toEqual(files);
+    expect(selectFreshDriveFiles(files, []).fresh).toEqual(files);
   });
 
   it("skips the exact source on a second sync even after it is renamed", () => {
