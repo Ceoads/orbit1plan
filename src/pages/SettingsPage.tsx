@@ -21,6 +21,7 @@ import {
 import { ProfileAvatar, emitProfileUpdated } from "@/components/ProfileAvatar";
 import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { AIUsageCard } from "@/components/ai/AIUsageCard";
+import { SemesterDatesForm } from "@/components/onboarding/SemesterDates";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -734,6 +735,14 @@ const SettingsPage = () => {
               {syncing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <RefreshCw className="w-5 h-5 mr-2" />}
               {syncing ? "Synchronisation…" : "Synchroniser maintenant"}
             </Button>
+          </div>
+        </IOSCard>
+
+        <IOSSectionHeader label="Semestres" />
+        <IOSCard>
+          <div className="p-6">
+            <p className="text-xs text-muted-foreground mb-6">Orbit range tes cours Drive dans le bon semestre selon leur date de création.</p>
+            <SemesterDatesForm onComplete={() => {}} />
           </div>
         </IOSCard>
 
