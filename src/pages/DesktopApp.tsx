@@ -22,6 +22,7 @@ import { GradesPage } from "@/components/grades/GradesPage";
 import { OrbitAI } from "@/components/ai/OrbitAI";
 import { ConcentrationMode } from "@/components/concentration/ConcentrationMode";
 import { DriveOnboardingModal } from "@/components/drive/DriveOnboardingModal";
+import { semesterForCreation } from "../../supabase/functions/google-drive/courseOrganization";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -375,7 +376,8 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
   useEffect(() => {
-    const fresh = vault.files.filter((f) => !f.subject_id && f.tags?.includes("drive") && !tried.current.has(f.id));
+    const fresh = vault.files.filter((f) => f.tags?.includes("drive") && !tried.current.has(f.id)
+      && (!f.subject_id || (!f.semester_id && semesterForCreation(f.created_at, vault.semesters))));
     if (!fresh.length || sorting) return;
     fresh.forEach((f) => tried.current.add(f.id));
     setSorting(true);
@@ -383,7 +385,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
       .then(({ data }) => { if (data?.filed) { toast.success(`${data.filed} document${data.filed > 1 ? "s" : ""} rangé${data.filed > 1 ? "s" : ""} automatiquement`); vault.refetch(); } })
       .finally(() => setSorting(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vault.files]);
+  }, [vault.files, vault.semesters]);
   const removeSubject = async (id: string, name: string) => {
     if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans la Bibliothèque et ses notes restent dans « Mes notes », sans matière." }))) return;
     // Delete first: vault_files.subject_id is ON DELETE SET NULL, so the DB
