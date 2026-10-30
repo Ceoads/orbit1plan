@@ -19,6 +19,7 @@ import { ConcentrationMode } from "@/components/concentration/ConcentrationMode"
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { readAllPages } from "@/lib/pagedRead";
+import { SemesterDatesPrompt } from "@/components/onboarding/SemesterDates";
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -169,15 +170,16 @@ const Index = () => {
       );
     }
     return (
-      <DesktopApp
+      <><DesktopApp
         showResumeOnboarding={onboarding.interrupted}
         onResumeOnboarding={() => setResumeOnboarding(true)}
-      />
+      /><SemesterDatesPrompt enabled={!onboarding.loading} /></>
     );
   }
 
   return (
     <div className="min-h-screen mesh-background">
+      <SemesterDatesPrompt enabled={!needsSetup && !showSetup && !showOnboarding && !tutorialActive} />
       {/* Onboarding Narrative (first-time users) */}
       {showOnboarding && (
         <OrbitOnboarding
