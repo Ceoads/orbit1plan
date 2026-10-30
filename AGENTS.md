@@ -10,3 +10,4 @@
 - Learning mastery is a conservative version-one weighted heuristic with application/retention gates, not a prediction of exam results. Why: small or easy assessments must not imply verified mastery.
 - Orbit and Vault collection hooks share user-keyed TanStack Query caches with bounded paged reads; mutations update the cache and navigation does not force reloads. Why: avoid duplicate requests while retaining all existing records.
 - Concentration drafts use serialized coalesced saves flushed before commands and unmount; stream text rendering is buffered independently of voice processing. Why: keep interaction immediate without losing answers or delaying audio.
+- Drive folder and Hub sync deduplicate by user-scoped Drive file ID through the shared source-identity selector, never by filename; tracking lookup errors stop sync. Why: same-name course documents are distinct sources and failed lookups must not trigger duplicate imports.
