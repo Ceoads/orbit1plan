@@ -11,6 +11,7 @@ import { GOOGLE_DRIVE_SCOPES } from "../_shared/appUserScopes.ts";
 import { aiChat } from "../_shared/ai.ts";
 import { serviceAccount, serviceAccountDrive } from "../_shared/serviceAccount.ts";
 import { selectFreshDriveFiles } from "./driveIdentity.ts";
+import { collectCourseFiles, semesterForCreation } from "./courseOrganization.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 const CONNECTOR = "google_drive";
@@ -71,29 +72,25 @@ async function skipKnown(userId: string, files: { id: string; name?: string }[])
 // ---------- Orbit Hub : dossier partagé avec le bot de synchronisation ----------
 async function syncHub(userId: string, folderId: string, rk?: { id: string; key: string } | null) {
   const admin = adminClient();
-  const types = Object.values(MIME).map((m) => `mimeType = '${m}'`).join(" or ");
-  const files: { id: string; name?: string }[] = [];
-  let pageToken: string | undefined;
-  do {
-    const params = new URLSearchParams({ q: `'${folderId}' in parents and trashed = false and (${types})`, pageSize: "200", orderBy: "modifiedTime desc", fields: "nextPageToken,files(id,name)", includeItemsFromAllDrives: "true" });
+  const { files, truncated } = await collectCourseFiles(folderId, async (parent, pageToken) => {
+    const params = new URLSearchParams({ q: `'${parent}' in parents and trashed = false`, pageSize: "200", orderBy: "createdTime desc", fields: "nextPageToken,files(id,name,mimeType,createdTime)", includeItemsFromAllDrives: "true" });
     if (pageToken) params.set("pageToken", pageToken);
     const res = await serviceAccountDrive(`/drive/v3/files?${params}`, rk);
     if (!res.ok) {
       console.error(JSON.stringify({ event: "drive.hub.list", status: res.status, detail: (await res.text()).slice(0, 300) }));
       throw new DriveError([403, 404].includes(res.status) ? "Orbit ne voit pas encore ce dossier — vérifie qu'il est partagé avec le bot." : `Google Drive a répondu ${res.status}`, 502);
     }
-    const d = await res.json();
-    files.push(...(d.files ?? []));
-    pageToken = d.nextPageToken;
-  } while (pageToken && files.length < 500);
+    return await res.json();
+  }, Object.values(MIME));
   const { fresh, alreadyThere } = await skipKnown(userId, files);
+  const context = await loadClassifier(userId);
   let imported = 0; let lastError: string | null = null; const importedIds: string[] = [];
   for (const f of fresh.slice(0, MAX_PER_SYNC)) {
-    try { importedIds.push((await importDriveFile((p) => serviceAccountDrive(p), userId, f.id)).id); imported++; }
+    try { importedIds.push((await importDriveFile((p) => serviceAccountDrive(p, rk), userId, f.id, undefined, context, f.folder)).id); imported++; }
     catch (e) { lastError = e instanceof Error ? e.message : String(e); console.error(JSON.stringify({ event: "drive.hub.import", file: f.id, err: lastError })); }
   }
   await admin.from("profiles").update({ drive_hub_last_synced_at: new Date().toISOString(), drive_hub_last_error: lastError }).eq("user_id", userId);
-  return { imported, importedIds, alreadyThere, total: files.length, remaining: Math.max(0, fresh.length - MAX_PER_SYNC), importError: lastError };
+  return { imported, importedIds, alreadyThere, total: files.length, remaining: Math.max(0, fresh.length - MAX_PER_SYNC), truncated, importError: lastError };
 }
 
 // ---------- Auto-classement : nom de fichier / dossier + emploi du temps iCal ----------
@@ -162,11 +159,13 @@ async function aiClassify(subjects: Subj[], doc: { name: string; folder?: string
 
 async function loadClassifier(userId: string) {
   const admin = adminClient();
-  const [{ data: subjects }, { data: events }] = await Promise.all([
-    admin.from("subjects").select("id,name,ical_code").eq("user_id", userId),
-    admin.from("calendar_events").select("subject_id,event_date,start_time,end_time").eq("user_id", userId).not("event_date", "is", null),
+  const [subjects, events, semesters] = await Promise.all([
+    admin.from("subjects").select("id,name,ical_code").eq("user_id", userId).order("id").limit(500),
+    admin.from("calendar_events").select("subject_id,event_date,start_time,end_time").eq("user_id", userId).not("event_date", "is", null).order("event_date", { ascending: false }).limit(2000),
+    admin.from("semesters").select("id,start_date,end_date").eq("user_id", userId).order("start_date", { ascending: false }).limit(100),
   ]);
-  return { subjects: (subjects ?? []) as Subj[], events: (events ?? []) as Ev[] };
+  if (subjects.error || events.error || semesters.error) throw new DriveError("Impossible de charger le classement de tes cours. Réessaie dans un instant.", 503);
+  return { subjects: (subjects.data ?? []) as Subj[], events: (events.data ?? []) as Ev[], semesters: semesters.data ?? [] };
 }
 
 type DriveFn = (path: string) => Promise<Response>;
@@ -174,7 +173,7 @@ const MAX_PER_SYNC = 25;
 
 class DriveError extends Error { constructor(msg: string, public status: number, public reconnect = false) { super(msg); } }
 
-async function importDriveFile(drive: DriveFn, userId: string, fileId: string, subjectId?: string) {
+async function importDriveFile(drive: DriveFn, userId: string, fileId: string, subjectId?: string, context?: Awaited<ReturnType<typeof loadClassifier>>, folderPath?: string) {
   const admin = adminClient();
   if (subjectId) {
     const { data: owned } = await admin.from("subjects").select("id").eq("id", subjectId).eq("user_id", userId).maybeSingle();
@@ -204,16 +203,18 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string, s
   }
   if (bytes.byteLength > MAX_BYTES) throw new DriveError("Fichier trop lourd (plus de 50 Mo)", 413);
 
+  const c = context ?? await loadClassifier(userId);
+  const sourceCreatedAt = meta.createdTime ?? new Date().toISOString();
+  const semesterId = semesterForCreation(sourceCreatedAt, c.semesters);
   let finalSubject = subjectId ?? null; let how = subjectId ? "manual" : ""; let summary: string | null = null;
   if (!finalSubject) {
-    const texts = [meta.name];
+    const texts = [meta.name, folderPath ?? ""];
     const parent = meta.parents?.[0];
     if (parent) {
       const pr = await drive(`/drive/v3/files/${parent}?fields=name`);
       if (pr.ok) texts.push((await pr.json()).name ?? "");
     }
-    const c = await loadClassifier(userId);
-    const ai = await aiClassify(c.subjects, { name: meta.name, folder: texts[1], text: extractedText, pdf: ext === "pdf" ? bytes : null });
+    const ai = await aiClassify(c.subjects, { name: meta.name, folder: texts.slice(1).join(" / "), text: extractedText, pdf: ext === "pdf" ? bytes : null });
     if (ai) { finalSubject = ai.id; how = "ai"; summary = ai.summary || null; }
     else {
       const hit = classify(c.subjects, c.events, texts, meta.createdTime ?? meta.modifiedTime);
@@ -226,7 +227,7 @@ async function importDriveFile(drive: DriveFn, userId: string, fileId: string, s
   const { data: signed } = await admin.storage.from("notes").createSignedUrl(path, 60 * 60 * 24 * 365);
   const name = meta.name.endsWith(`.${ext}`) ? meta.name : `${meta.name}.${ext}`;
   const { data: row, error } = await admin.from("vault_files").insert({
-    user_id: userId, subject_id: finalSubject, created_at: meta.createdTime ?? new Date().toISOString(), file_url: signed?.signedUrl ?? path, original_filename: name,
+    user_id: userId, subject_id: finalSubject, semester_id: semesterId, created_at: sourceCreatedAt, file_url: signed?.signedUrl ?? path, original_filename: name,
     file_type: ext === "pdf" ? "pdf" : "document", extracted_text: extractedText, ai_summary: summary,
     filing_status: how === "manual" || !finalSubject ? "confirmed" : "auto", tags: how && how !== "manual" ? ["drive", ext, `auto-${how}`] : ["drive", ext],
   }).select("id").single();
@@ -243,32 +244,27 @@ async function syncFolder(drive: DriveFn, userId: string) {
   const admin = adminClient();
   const { data: folder } = await admin.from("drive_sync_folders").select("folder_id").eq("user_id", userId).maybeSingle();
   if (!folder) return { imported: 0, skipped: 0, noFolder: true };
-  const types = Object.values(MIME).map((m) => `mimeType = '${m}'`).join(" or ");
-  const q = `'${folder.folder_id}' in parents and trashed = false and (${types})`;
-  const files: { id: string; name?: string }[] = [];
-  let pageToken: string | undefined;
-  do {
-    const params = new URLSearchParams({ q, pageSize: "100", orderBy: "modifiedTime desc", fields: "nextPageToken,files(id,name)" });
+  const { files, truncated } = await collectCourseFiles(folder.folder_id, async (parent, pageToken) => {
+    const params = new URLSearchParams({ q: `'${parent}' in parents and trashed = false`, pageSize: "100", orderBy: "createdTime desc", fields: "nextPageToken,files(id,name,mimeType,createdTime)" });
     if (pageToken) params.set("pageToken", pageToken);
     const res = await drive(`/drive/v3/files?${params}`);
     if (await appUserReconnectRequired(res)) throw new DriveError("Accès Drive à renouveler", 401, true);
     if (!res.ok) throw new DriveError(`Drive a répondu ${res.status}`, 502);
-    const d = await res.json();
-    files.push(...(d.files ?? []));
-    pageToken = d.nextPageToken;
-  } while (pageToken && files.length < 500);
+    return await res.json();
+  }, Object.values(MIME));
 
   const { fresh } = await skipKnown(userId, files);
   const todo = fresh.slice(0, MAX_PER_SYNC);
+  const context = await loadClassifier(userId);
   let imported = 0; let lastError: string | null = null;
   for (const f of todo) {
-    try { await importDriveFile(drive, userId, f.id); imported++; }
+    try { await importDriveFile(drive, userId, f.id, undefined, context, f.folder); imported++; }
     catch (e) { if (e instanceof DriveError && e.reconnect) throw e; lastError = e instanceof Error ? e.message : String(e); }
   }
   await admin.from("drive_sync_folders").update({
     last_synced_at: new Date().toISOString(), last_imported_count: imported, last_error: lastError,
   }).eq("user_id", userId);
-  return { imported, skipped: files.length - todo.length, remaining: Math.max(0, fresh.length - todo.length) };
+  return { imported, skipped: files.length - todo.length, remaining: Math.max(0, fresh.length - todo.length), truncated };
 }
 
 const makeDrive = (key: string): DriveFn => (path) =>
@@ -354,18 +350,29 @@ Deno.serve(async (req) => {
     if (body.action === "autoFile") {
       const admin = adminClient();
       const c = await loadClassifier(user.id);
-      const { data: rows } = await admin.from("vault_files").select("id,original_filename,created_at,tags,extracted_text,file_url,file_type")
-        .eq("user_id", user.id).is("subject_id", null).contains("tags", ["drive"]).limit(15);
+      const { data: rows, error: readError } = await admin.from("vault_files").select("id,subject_id,semester_id,original_filename,created_at,tags,extracted_text,file_url,file_type")
+        .eq("user_id", user.id).or("subject_id.is.null,semester_id.is.null").contains("tags", ["drive"]).order("created_at", { ascending: false }).limit(25);
+      if (readError) throw new DriveError("Impossible de lire les documents à ranger.", 503);
       let filed = 0;
       for (const r of rows ?? []) {
+        const semesterId = r.semester_id ?? semesterForCreation(r.created_at, c.semesters);
+        if (r.subject_id) {
+          if (!r.semester_id && semesterId) {
+            const { error } = await admin.from("vault_files").update({ semester_id: semesterId }).eq("id", r.id).eq("user_id", user.id);
+            if (error) throw error;
+            filed++;
+          }
+          continue;
+        }
         let pdf: Uint8Array | null = null;
         if (!r.extracted_text && r.file_type === "pdf" && r.file_url?.startsWith("http")) {
           try { const f = await fetch(r.file_url); if (f.ok) pdf = new Uint8Array(await f.arrayBuffer()); } catch { /* ignore */ }
         }
         const ai = await aiClassify(c.subjects, { name: r.original_filename ?? "", text: r.extracted_text, pdf });
         const hit = ai ? { id: ai.id, how: "ai" } : classify(c.subjects, c.events, [r.original_filename ?? "", (r.extracted_text ?? "").slice(0, 300)], r.created_at);
-        if (!hit) continue;
-        await admin.from("vault_files").update({ subject_id: hit.id, filing_status: "auto", tags: [...(r.tags ?? []), `auto-${hit.how}`], ...(ai?.summary ? { ai_summary: ai.summary } : {}) }).eq("id", r.id);
+        if (!hit && !semesterId) continue;
+        const { error } = await admin.from("vault_files").update({ semester_id: semesterId, ...(hit ? { subject_id: hit.id, filing_status: "auto", tags: [...new Set([...(r.tags ?? []), `auto-${hit.how}`])] } : {}), ...(ai?.summary ? { ai_summary: ai.summary } : {}) }).eq("id", r.id).eq("user_id", user.id);
+        if (error) throw error;
         filed++;
       }
       return json({ filed, total: rows?.length ?? 0 });
