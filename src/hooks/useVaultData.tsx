@@ -60,7 +60,7 @@ export const useVaultData = () => {
       if (!user) throw new Error('Not signed in');
       const [filesRes, subjectsRes, yearsRes, semestersRes] = await Promise.all([
         readAllPages<VaultFile>((from, to) => supabase.from('vault_files').select('id,subject_id,semester_id,file_url,thumbnail_url,extracted_text,ai_summary,tags,ai_detected_subject,ai_confidence,filing_status,original_filename,file_type,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).order('id').range(from, to)),
-        readAllPages<Subject>((from, to) => supabase.from('subjects').select('id,name,color_key,teacher_name,icon,ical_code').eq('user_id', user.id).in('icon', ['COURS', 'SAE']).order('name').order('id').range(from, to)),
+        readAllPages<Subject>((from, to) => supabase.from('subjects').select('id,name,color_key,teacher_name,icon,ical_code').eq('user_id', user.id).order('name').order('id').range(from, to)),
         readAllPages<AcademicYear>((from, to) => supabase.from('academic_years').select('id,name,start_date,end_date,is_current').eq('user_id', user.id).order('start_date', { ascending: false }).order('id').range(from, to)),
         readAllPages<Semester>((from, to) => supabase.from('semesters').select('id,academic_year_id,name,start_date,end_date,is_current').eq('user_id', user.id).order('start_date', { ascending: false }).order('id').range(from, to)),
       ]);
@@ -93,7 +93,10 @@ export const useVaultData = () => {
         })
       );
 
-      return { files: refreshedFiles, subjects: subjectsRes, academicYears: yearsRes, semesters: semestersRes };
+      // Course subjects (COURS/SAE) plus any subject that already holds documents, so filed courses never disappear.
+      const used = new Set(refreshedFiles.map((f) => f.subject_id).filter(Boolean));
+      const subjects = subjectsRes.filter((s) => s.icon === 'COURS' || s.icon === 'SAE' || used.has(s.id));
+      return { files: refreshedFiles, subjects, academicYears: yearsRes, semesters: semestersRes };
   } });
   const { files = [], subjects = [], academicYears = [], semesters = [] } = query.data ?? {};
   const loading = !!user && query.isPending;
