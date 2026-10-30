@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Classement automatique Drive
-- [ ] Demander et enregistrer les dates des semestres pendant l’accueil ; fenêtre dédiée si accueil passé, sans répétition après sauvegarde
+- [x] Demander et enregistrer les dates des semestres pendant l’accueil ; fenêtre dédiée si accueil passé ; 4 tests de validation, contrôle authentifié ordinateur/téléphone et rejet serveur des chevauchements
+- [ ] Vérifier la sauvegarde complète de dates réelles : attend les réponses de l’utilisateur ; aucune date inventée enregistrée
 - [x] Compléter le classement existant par matière et semestre selon la date de création ; sous-dossiers OAuth et Hub inclus
 - [x] Vérifier le tri existant et les règles de classement : 18 tests ; autoFile authentifié sans erreur, matières existantes préservées
 - [ ] Vérifier un nouvel import réel et son semestre : attend les dates correctes des semestres (plages actuellement identiques) et un nouveau fichier Drive

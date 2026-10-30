@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { DriveOnboardingModal } from "@/components/drive/DriveOnboardingModal";
 import { SemesterDatesStep } from "./SemesterDates";
+import { useSemesterSetup } from "@/hooks/useSemesterSetup";
 
 const EASE = [0.4, 0, 0.2, 1] as const;
 const STEPS = ["Bienvenue", "Profil", "Connexions", "Cours", "Organisation", "Prêt"];
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export function DesktopOnboarding({ initialStep, onStep, onComplete, onSkip }: Props) {
+  const semesterSetup = useSemesterSetup();
   const [step, setStep] = useState(Math.min(Math.max(initialStep, 0), 5));
   const [ctx, setCtx] = useState({ drive: false, calendar: false, docs: 0, task: false, profile: false });
 
@@ -81,7 +83,7 @@ export function DesktopOnboarding({ initialStep, onStep, onComplete, onSkip }: P
                 )}
                 {step === 2 && <StepConnect ctx={ctx} setCtx={setCtx} onDone={() => go(3)} />}
                 {step === 3 && <StepImport ctx={ctx} setCtx={setCtx} onDone={() => go(4)} />}
-                {step === 4 && <div className="space-y-10"><SemesterDatesStep onComplete={() => toast.success("Ton année est prête")} /><StepOrganize ctx={ctx} setCtx={setCtx} onDone={() => go(5)} /></div>}
+                {step === 4 && <div className="space-y-10">{semesterSetup.needsSetup && <SemesterDatesStep onComplete={() => toast.success("Ton année est prête")} />}<StepOrganize ctx={ctx} setCtx={setCtx} onDone={() => go(5)} /></div>}
                 {step === 5 && <StepReady ctx={ctx} onComplete={onComplete} />}
 
                 {step > 0 && step < 5 && (
