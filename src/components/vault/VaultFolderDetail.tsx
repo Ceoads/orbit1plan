@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { VaultFile, Subject } from "@/hooks/useVaultData";
 import { getCourseColor } from "@/lib/courseColors";
 import { VaultAddContentMenu } from "./VaultAddContentMenu";
+import { SortIntoSubjectButton } from "./SortIntoSubjectButton";
 import { useHaptics } from "@/hooks/useHaptics";
 import { cn } from "@/lib/utils";
 import {
@@ -179,7 +180,10 @@ export const VaultFolderDetail = ({
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           Documents
         </span>
-        <VaultAddContentMenu subjectId={subject.id} onContentAdded={onContentAdded} />
+        <div className="flex items-center gap-1">
+          <SortIntoSubjectButton subjectId={subject.id} subjectName={subject.name} onDone={onContentAdded} />
+          <VaultAddContentMenu subjectId={subject.id} onContentAdded={onContentAdded} />
+        </div>
       </div>
 
       {/* Grouped by date */}
