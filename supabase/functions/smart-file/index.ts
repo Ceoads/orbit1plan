@@ -1,7 +1,7 @@
 import { aiEndpoint, aiModel, aiFetch } from '../_shared/ai.ts';
 import { aiChat } from '../_shared/ai.ts';
 import { readAllPages, mapLimit } from '../_shared/paging.ts';
-import { semesterForCreation } from '../google-drive/courseOrganization.ts';
+import { semesterForCreation } from '../_shared/courseOrganization.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
