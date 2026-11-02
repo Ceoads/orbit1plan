@@ -46,7 +46,7 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("clearFolder") }),
   z.object({ action: z.literal("syncNow") }),
   z.object({ action: z.literal("syncAll") }),
-  z.object({ action: z.literal("autoFile") }),
+  z.object({ action: z.literal("autoFile"), after: z.string().uuid().optional() }),
   z.object({ action: z.literal("hubInfo") }),
   z.object({ action: z.literal("hubLink"), folderId: z.string().regex(/^[A-Za-z0-9_-]{10,200}$/), resourceKey: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/).optional() }),
   z.object({ action: z.literal("hubSync") }),
@@ -351,9 +351,9 @@ Deno.serve(async (req) => {
       const admin = adminClient();
       const c = await loadClassifier(user.id);
       const { data: rows, error: readError } = await admin.from("vault_files").select("id,subject_id,semester_id,original_filename,created_at,tags,extracted_text,file_url,file_type")
-        .eq("user_id", user.id).or("subject_id.is.null,semester_id.is.null").contains("tags", ["drive"]).order("created_at", { ascending: false }).limit(25);
+        .eq("user_id", user.id).or("subject_id.is.null,semester_id.is.null").contains("tags", ["drive"]).order("id").gt("id", body.after ?? "00000000-0000-0000-0000-000000000000").limit(25);
       if (readError) throw new DriveError("Impossible de lire les documents à ranger.", 503);
-      let filed = 0;
+      let filed = 0, ambiguous = 0;
       for (const r of rows ?? []) {
         const semesterId = r.semester_id ?? semesterForCreation(r.created_at, c.semesters);
         if (r.subject_id) {
@@ -370,12 +370,14 @@ Deno.serve(async (req) => {
         }
         const ai = await aiClassify(c.subjects, { name: r.original_filename ?? "", text: r.extracted_text, pdf });
         const hit = ai ? { id: ai.id, how: "ai" } : classify(c.subjects, c.events, [r.original_filename ?? "", (r.extracted_text ?? "").slice(0, 300)], r.created_at);
+        if (!hit) ambiguous++;
         if (!hit && !semesterId) continue;
         const { error } = await admin.from("vault_files").update({ semester_id: semesterId, ...(hit ? { subject_id: hit.id, filing_status: "auto", tags: [...new Set([...(r.tags ?? []), `auto-${hit.how}`])] } : {}), ...(ai?.summary ? { ai_summary: ai.summary } : {}) }).eq("id", r.id).eq("user_id", user.id);
         if (error) throw error;
         filed++;
       }
-      return json({ filed, total: rows?.length ?? 0 });
+      const list = rows ?? [];
+      return json({ filed, ambiguous, total: list.length, nextCursor: list.length === 25 ? list[list.length - 1].id : null });
     }
 
     if (body.action === "complete") {
