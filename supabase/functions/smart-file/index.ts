@@ -1,4 +1,7 @@
 import { aiEndpoint, aiModel, aiFetch } from '../_shared/ai.ts';
+import { aiChat } from '../_shared/ai.ts';
+import { readAllPages, mapLimit } from '../_shared/paging.ts';
+import { semesterForCreation } from '../_shared/courseOrganization.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -394,3 +397,70 @@ Réponds avec du JSON uniquement :
     });
   }
 });
+
+type SortRow = { id: string; original_filename: string | null; ai_summary: string | null; extracted_text: string | null; file_url: string | null; file_type: string | null; created_at: string };
+
+const toB64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+
+// Returns the index of the matching subject, -1 for none, or null if the analysis failed.
+async function classifyRow(subjects: { name: string; ical_code: string | null }[], r: SortRow): Promise<number | null> {
+  const list = subjects.map((s, i) => `${i + 1}. ${s.name}${s.ical_code ? ` (${s.ical_code})` : ""}`).join("\n");
+  let pdf: Uint8Array | null = null;
+  if (!r.extracted_text && r.file_type === "pdf" && r.file_url?.startsWith("http")) {
+    try { const f = await fetch(r.file_url); if (f.ok) { const b = new Uint8Array(await f.arrayBuffer()); if (b.byteLength <= 8 * 1024 * 1024) pdf = b; } } catch { /* text-only */ }
+  }
+  const content: unknown[] = [{ type: "text", text:
+    `Matières de l'étudiant :\n${list}\n\nDocument : « ${r.original_filename ?? "sans nom"} »\n` +
+    (r.ai_summary ? `Résumé : ${r.ai_summary}\n` : "") +
+    (r.extracted_text ? `Contenu :\n${r.extracted_text.slice(0, 6000)}\n` : "") +
+    `Réponds UNIQUEMENT en JSON : {"match": <numéro de la matière, 0 si aucune ne correspond clairement>, "confidence": <0-1>}` }];
+  if (pdf) content.push({ type: "image_url", image_url: { url: `data:application/pdf;base64,${toB64(pdf)}` } });
+  try {
+    const res = await aiChat({ model: "google/gemini-3.8-flash", messages: [{ role: "user", content }], response_format: { type: "json_object" } });
+    if (!res.ok) return null;
+    const out = await res.json();
+    const parsed = JSON.parse(String(out.choices?.[0]?.message?.content ?? "").match(/\{[\s\S]*\}/)?.[0] ?? "{}");
+    const idx = Number(parsed.match) - 1;
+    if (idx < 0 || idx >= subjects.length || Number(parsed.confidence ?? 0) < 0.55) return -1;
+    return idx;
+  } catch { return null; }
+}
+
+async function sortIntoSubject(db: ReturnType<typeof createClient>, userId: string, subjectId: string) {
+  const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  if (!/^[0-9a-f-]{36}$/i.test(subjectId)) return reply({ error: "Matière invalide." }, 400);
+  const [subj, sems] = await Promise.all([
+    db.from("subjects").select("id,name,ical_code").eq("user_id", userId).order("id").limit(500),
+    db.from("semesters").select("id,start_date,end_date").eq("user_id", userId).limit(100),
+  ]);
+  if (subj.error || sems.error) return reply({ error: "Impossible de charger tes matières." }, 503);
+  const subjects = subj.data ?? [];
+  const target = subjects.findIndex((s: any) => s.id === subjectId);
+  if (target < 0) return reply({ error: "Matière introuvable." }, 404);
+  let rows: SortRow[];
+  try {
+    rows = await readAllPages<SortRow>(async (from, to) => {
+      const { data, error } = await db.from("vault_files").select("id,original_filename,ai_summary,extracted_text,file_url,file_type,created_at")
+        .eq("user_id", userId).is("subject_id", null).order("id").range(from, to);
+      if (error) throw error;
+      return (data ?? []) as SortRow[];
+    });
+  } catch { return reply({ error: "Impossible de lire tes documents." }, 503); }
+  let failed = 0;
+  const verdicts = await mapLimit(rows, 4, async (r) => {
+    let v = await classifyRow(subjects as any, r);
+    if (v === null) v = await classifyRow(subjects as any, r);
+    if (v === null) failed++;
+    return v;
+  });
+  const movedIds: string[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (verdicts[i] !== target) continue;
+    const r = rows[i];
+    const semester_id = semesterForCreation(r.created_at, sems.data ?? []);
+    const { data, error } = await db.from("vault_files").update({ subject_id: subjectId, filing_status: "auto", ...(semester_id ? { semester_id } : {}) })
+      .eq("id", r.id).eq("user_id", userId).is("subject_id", null).select("id");
+    if (!error && data?.length) movedIds.push(r.id);
+  }
+  return reply({ movedIds, failed, scanned: rows.length });
+}

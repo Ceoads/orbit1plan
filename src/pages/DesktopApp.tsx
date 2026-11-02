@@ -1,4 +1,5 @@
 import { SortIntoSubjectButton } from "@/components/vault/SortIntoSubjectButton";
+import { SortDriveCoursesButton } from "@/components/vault/SortDriveCoursesButton";
 import { confirmAction } from "@/components/ConfirmHost";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -413,6 +414,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
     return (
       <>
         <Header title="Par matière" subtitle={`Tes documents rangés par discipline${unfiled ? ` · ${unfiled} sans matière` : ""}.`} />
+        <div className="-mt-4 mb-6 flex justify-end"><SortDriveCoursesButton onDone={vault.refetch} /></div>
         {unfiledDrive > 0 && (
           <div className="mb-8 bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-4">
             <HardDrive className="w-5 h-5 text-primary shrink-0" />

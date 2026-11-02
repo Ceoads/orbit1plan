@@ -1,3 +1,4 @@
+import { SortDriveCoursesButton } from "@/components/vault/SortDriveCoursesButton";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useVaultData, VaultFile, Subject } from "@/hooks/useVaultData";
@@ -453,6 +454,7 @@ export const TheVaultPage = () => {
         />
       )}
 
+      {inHome && <div className="flex justify-end -mb-2"><SortDriveCoursesButton onDone={refetch} /></div>}
       {/* Header */}
       <div className="flex items-center gap-3 pt-2">
         {(selectedSubject || isSearchMode) && (
