@@ -40,7 +40,6 @@ const NAV: { id: Section; label: string; icon: typeof BookOpen }[] = [
   { id: "home", label: "Accueil", icon: Home },
   { id: "ai", label: "Orbit AI", icon: MessageCircle },
   { id: "concentration", label: "Concentration", icon: Brain },
-  { id: "library", label: "Bibliothèque", icon: BookOpen },
   { id: "subjects", label: "Par matière", icon: FolderOpen },
   { id: "quiz", label: "Quiz", icon: Brain },
   { id: "flashcards", label: "Fiches", icon: Layers },
@@ -64,7 +63,8 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
   const location = useLocation();
   const [section, setSectionState] = useState<Section>(() => {
     const p = new URLSearchParams(window.location.search).get("section") as Section | null;
-    const saved = (p || sessionStorage.getItem("desktop_section")) as Section | null;
+    const raw = (p || sessionStorage.getItem("desktop_section")) as Section | null;
+    const saved = (raw === "library" ? "subjects" : raw) as Section | null;
     return saved && NAV.some((n) => n.id === saved) ? saved : "home";
   });
   const setSection = useCallback((s: Section) => {
@@ -127,7 +127,7 @@ export default function DesktopApp({ showResumeOnboarding, onResumeOnboarding }:
           {section === "subjects" && <SubjectLibrary vault={vault} />}
           {section === "quiz" && <QuizStudio files={vault.files} source={source} setSource={setSource} />}
           {section === "flashcards" && <FlashcardStudio files={vault.files} subjects={vault.subjects} source={source} setSource={setSource} />}
-          {section === "drive" && <DrivePanel onImported={() => vault.refetch()} onOpenLibrary={(ids) => { setFreshIds(ids ?? []); setSection("library"); window.scrollTo({ top: 0 }); vault.refetch(); }} />}
+          {section === "drive" && <DrivePanel onImported={() => vault.refetch()} onOpenLibrary={(ids) => { setFreshIds(ids ?? []); setSection("subjects"); window.scrollTo({ top: 0 }); vault.refetch(); }} />}
           {section === "grades" && <GradesPage />}
           {section === "ai" && <OrbitAI onConcentration={() => setSection("concentration")} />}
           {section === "concentration" && <ConcentrationMode onExit={() => setSection("ai")} />}
@@ -387,7 +387,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vault.files, vault.semesters]);
   const removeSubject = async (id: string, name: string) => {
-    if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans la Bibliothèque et ses notes restent dans « Mes notes », sans matière." }))) return;
+    if (!(await confirmAction({ title: `Supprimer la matière « ${name} » ?`, description: "Ses documents restent dans Orbit et ses notes restent dans « Mes notes », sans matière." }))) return;
     // Delete first: vault_files.subject_id is ON DELETE SET NULL, so the DB
     // detaches documents only if the delete actually succeeds. Never detach
     // manually beforehand — a failed delete would leave the subject emptied.
@@ -916,9 +916,9 @@ function HubCard({ onImported, onOpenLibrary }: DriveHooks) {
   };
   const unlink = async () => { await callDrive({ action: "hubUnlink" }).catch(() => null); load(); };
   const announce = (n: number, ids: string[] = [], already = 0) => {
-    if (!n) { toast.success(already ? `Ton Orbit Hub est à jour · ${already} fichier${already > 1 ? "s" : ""} déjà dans ta Bibliothèque` : "Ton Orbit Hub est à jour"); return; }
+    if (!n) { toast.success(already ? `Ton Orbit Hub est à jour · ${already} fichier${already > 1 ? "s" : ""} déjà dans Orbit` : "Ton Orbit Hub est à jour"); return; }
     onImported?.();
-    toast.success(`${n} document${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""} à ta Bibliothèque`, onOpenLibrary ? { action: { label: "Voir", onClick: () => onOpenLibrary(ids) } } : undefined);
+    toast.success(`${n} document${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""} dans « Par matière »`, onOpenLibrary ? { action: { label: "Voir", onClick: () => onOpenLibrary(ids) } } : undefined);
   };
   if (!hub) return null;
   return (
@@ -1033,8 +1033,8 @@ function DrivePanel({ onImported, onOpenLibrary }: DriveHooks) {
           {[
             ["Connecte ton compte", "Clique sur « Connecter Google Drive », choisis ton compte Google et accepte l'accès en lecture seule."],
             ["Choisis un dossier", "Sélectionne le dossier où tu ranges tes cours. Orbit y importera chaque nouveau document automatiquement, chaque matin."],
-            ["Ou importe à la main", "Clique sur n'importe quel fichier de la liste pour l'ajouter tout de suite à ta Bibliothèque."],
-            ["Révise", "Tes documents apparaissent dans Bibliothèque : lance un quiz ou crée des fiches en un clic."],
+            ["Ou importe à la main", "Clique sur n'importe quel fichier de la liste pour l'ajouter tout de suite à « Par matière »."],
+            ["Révise", "Tes documents apparaissent dans « Par matière » : lance un quiz ou crée des fiches en un clic."],
           ].map(([t, d], i) => (
             <div key={t} className="flex gap-5 bg-card rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
               <span className="w-9 h-9 shrink-0 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center">{i + 1}</span>

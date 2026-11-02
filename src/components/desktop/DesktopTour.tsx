@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 const TOUR = [
   { title: "Navigation latérale", desc: "Toutes tes sections sont ici : bibliothèque, matières, quiz, fiches, échéances et notes." },
   { title: "Orbit AI", desc: "Ton prof perso : pose-lui une question, demande un schéma ou parle-lui au micro." },
-  { title: "Cours et documents", desc: "La Bibliothèque range tes documents par matière, automatiquement." },
+  { title: "Cours et documents", desc: "« Par matière » range tes documents par matière, automatiquement." },
   { title: "Calendrier et tâches", desc: "Ton emploi du temps, tes échéances et tes tâches du jour, synchronisés." },
   { title: "Intégrations", desc: "Connecte Google Drive et ton calendrier depuis la section Google Drive ou les réglages." },
 ];

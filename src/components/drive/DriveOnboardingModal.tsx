@@ -51,8 +51,8 @@ export function DriveOnboardingModal({ open, onOpenChange, onLinked }: { open: b
       const d = await callDrive({ action: "hubLink", folderId, resourceKey: parsed?.resourceKey });
       const n = d.imported ?? 0;
       const msg = n
-        ? `${n} document${n > 1 ? "s" : ""} importé${n > 1 ? "s" : ""} dans ta Bibliothèque${d.remaining ? ` · ${d.remaining} de plus demain matin` : ""}.`
-        : d.total ? "Tes documents étaient déjà dans ta Bibliothèque." : "Dossier vide pour l'instant : ajoute des PDF, Google Docs ou Word, Orbit les importera.";
+        ? `${n} document${n > 1 ? "s" : ""} importé${n > 1 ? "s" : ""} dans « Par matière »${d.remaining ? ` · ${d.remaining} de plus demain matin` : ""}.`
+        : d.total ? "Tes documents étaient déjà dans « Par matière »." : "Dossier vide pour l'instant : ajoute des PDF, Google Docs ou Word, Orbit les importera.";
       setResult(d.syncError || d.importError ? `${msg} Certains fichiers n'ont pas pu être importés, Orbit réessaiera demain.` : msg);
       setDone(true);
       toast.success(`« ${d.name ?? "Orbit Hub"} » relié · Orbit voit ton dossier`);
