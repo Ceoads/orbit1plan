@@ -15,7 +15,9 @@ export const SortIntoSubjectButton = ({ subjectId, subjectName, onDone, classNam
       const { data, error } = await supabase.functions.invoke("smart-file", { body: { action: "sortIntoSubject", subjectId } });
       if (error || data?.error) throw new Error(data?.error || "Le rangement a échoué. Réessaie.");
       const ids: string[] = data?.movedIds ?? [];
+      const failed: number = data?.failed ?? 0;
       onDone();
+      if (failed) toast(`${failed} document${failed > 1 ? "s n'ont" : " n'a"} pas pu être analysé${failed > 1 ? "s" : ""}`, { description: "Réessaie dans un instant." });
       if (ids.length === 0) { toast("Rien à ranger", { description: `Aucun document non classé ne concerne ${subjectName}.` }); return; }
       toast.success(`${ids.length} document${ids.length > 1 ? "s" : ""} rangé${ids.length > 1 ? "s" : ""} dans ${subjectName}`, {
         action: { label: "Annuler", onClick: async () => {
