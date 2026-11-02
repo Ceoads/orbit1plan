@@ -79,6 +79,10 @@ serve(async (req) => {
       });
     }
 
+    const reqBody = await req.json();
+    if (reqBody?.action === 'sortIntoSubject') {
+      return await sortIntoSubject(supabaseAuth, user.id, String(reqBody.subjectId ?? ''));
+    }
     const { 
       imageBase64, 
       userId,
@@ -88,7 +92,7 @@ serve(async (req) => {
       geolocation,
       contextMode,
       classHistory,
-    } = await req.json();
+    } = reqBody;
 
     const LOVABLE_API_KEY = (Deno.env.get('GEMINI_API_KEY') || Deno.env.get('LOVABLE_API_KEY'));
     
