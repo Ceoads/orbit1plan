@@ -1,3 +1,4 @@
+import { SortIntoSubjectButton } from "@/components/vault/SortIntoSubjectButton";
 import { confirmAction } from "@/components/ConfirmHost";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -461,7 +462,8 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         <Pill active={tab === "sheet"} onClick={() => setTab("sheet")}>Fiche de cours</Pill>
         <Pill active={tab === "quiz"} onClick={() => setTab("quiz")}>Quiz</Pill>
         <Pill active={tab === "flashcards"} onClick={() => setTab("flashcards")}>Fiches</Pill>
-        <button onClick={() => setDriveOpen(true)} className="ml-auto h-10 px-4 rounded-full bg-card text-sm font-medium flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:text-primary">
+        <SortIntoSubjectButton subjectId={subj.id} subjectName={subj.name} onDone={vault.refetch} className="ml-auto" />
+        <button onClick={() => setDriveOpen(true)} className="h-10 px-4 rounded-full bg-card text-sm font-medium flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:text-primary">
           <HardDrive className="w-4 h-4" /> Ajouter depuis Drive
         </button>
       </div>

@@ -1,10 +1,14 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Plus, FileText, Camera, PenLine, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { VaultNoteEditor } from "./VaultNoteEditor";
@@ -12,6 +16,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVaultData } from "@/hooks/useVaultData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useOrbitData } from "@/hooks/useOrbitData";
+import { suggestSubjectFromToday } from "@/lib/todayClassSuggestion";
 
 interface VaultAddContentMenuProps {
   subjectId: string;
@@ -21,6 +27,14 @@ interface VaultAddContentMenuProps {
 export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddContentMenuProps) => {
   const { user } = useAuth();
   const { createFile } = useVaultData();
+  const { subjects, events } = useOrbitData();
+  const suggestion = useMemo(() => {
+    const sug = suggestSubjectFromToday(events as any);
+    return sug && subjects.some((x) => x.id === sug.subjectId) ? sug : null;
+  }, [events, subjects]);
+  const [picked, setPicked] = useState<string | null>(null);
+  const target = picked ?? suggestion?.subjectId ?? subjectId;
+  const reasonLabel = suggestion ? (suggestion.reason === "current" ? `cours en cours (${suggestion.startTime})` : suggestion.reason === "recent" ? `cours de ${suggestion.startTime}` : `prochain cours (${suggestion.startTime})`) : null;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,7 +96,7 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
 
       await createFile({
         file_url: fileUrl,
-        subject_id: subjectId,
+        subject_id: target,
         extracted_text: extractedText,
         ai_summary: aiSummary,
         original_filename: file.name,
@@ -177,7 +191,7 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
       // Store markdown note as a vault file with extracted_text = markdown content
       await createFile({
         file_url: "",
-        subject_id: subjectId,
+        subject_id: target,
         extracted_text: markdownContent,
         ai_summary: title,
         file_type: "note",
@@ -213,7 +227,23 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48 rounded-xl">
+        <DropdownMenuContent align="end" className="w-60 rounded-xl">
+          {subjects.length > 1 && (
+            <>
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Ranger dans{reasonLabel && !picked && target === suggestion?.subjectId ? ` · suggéré : ${reasonLabel}` : ""}
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={target} onValueChange={setPicked}>
+                {[...subjects].sort((a, b) => (a.id === suggestion?.subjectId ? -1 : b.id === suggestion?.subjectId ? 1 : a.id === subjectId ? -1 : b.id === subjectId ? 1 : 0)).slice(0, 6).map((x) => (
+                  <DropdownMenuRadioItem key={x.id} value={x.id} onSelect={(e) => e.preventDefault()} className="rounded-lg text-sm">
+                    <span className="truncate">{x.name}</span>
+                    {x.id === suggestion?.subjectId && <span className="ml-auto pl-2 text-[10px] text-primary">Suggéré</span>}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem
             onClick={() => fileInputRef.current?.click()}
             className="gap-3 py-2.5 rounded-lg"

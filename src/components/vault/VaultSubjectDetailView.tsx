@@ -4,6 +4,7 @@ import { differenceInDays, isToday, startOfDay } from "date-fns";
 import { VaultFile } from "@/hooks/useVaultData";
 import { VaultFileCard } from "./VaultFileCard";
 import { VaultAddContentMenu } from "./VaultAddContentMenu";
+import { SortIntoSubjectButton } from "./SortIntoSubjectButton";
 import { SwipeableItem } from "@/components/SwipeableItem";
 import { cn } from "@/lib/utils";
 
@@ -137,7 +138,10 @@ export const VaultSubjectDetailView = ({
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           Documents
         </span>
-        <VaultAddContentMenu subjectId={subjectId} onContentAdded={onContentAdded} />
+        <div className="flex items-center gap-1">
+          <SortIntoSubjectButton subjectId={subjectId} subjectName="cette matière" onDone={onContentAdded} />
+          <VaultAddContentMenu subjectId={subjectId} onContentAdded={onContentAdded} />
+        </div>
       </div>
 
       {/* Search */}
