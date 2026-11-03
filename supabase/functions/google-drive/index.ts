@@ -12,6 +12,7 @@ import { aiChat } from "../_shared/ai.ts";
 import { serviceAccount, serviceAccountDrive } from "../_shared/serviceAccount.ts";
 import { selectFreshDriveFiles } from "./driveIdentity.ts";
 import { collectCourseFiles, semesterForCreation } from "./courseOrganization.ts";
+import { filingOutcome } from "./filingResult.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 const CONNECTOR = "google_drive";
@@ -353,14 +354,15 @@ Deno.serve(async (req) => {
       const { data: rows, error: readError } = await admin.from("vault_files").select("id,subject_id,semester_id,original_filename,created_at,tags,extracted_text,file_url,file_type")
         .eq("user_id", user.id).or("subject_id.is.null,semester_id.is.null").contains("tags", ["drive"]).order("id").gt("id", body.after ?? "00000000-0000-0000-0000-000000000000").limit(25);
       if (readError) throw new DriveError("Impossible de lire les documents à ranger.", 503);
-      let filed = 0, ambiguous = 0;
+      let filed = 0, ambiguous = 0, semestersUpdated = 0;
       for (const r of rows ?? []) {
         const semesterId = r.semester_id ?? semesterForCreation(r.created_at, c.semesters);
         if (r.subject_id) {
           if (!r.semester_id && semesterId) {
-            const { error } = await admin.from("vault_files").update({ semester_id: semesterId }).eq("id", r.id).eq("user_id", user.id);
+            const { data: updated, error } = await admin.from("vault_files").update({ semester_id: semesterId }).eq("id", r.id).eq("user_id", user.id).select("subject_id,semester_id").maybeSingle();
             if (error) throw error;
-            filed++;
+            if (!updated) throw new DriveError("Le document n’a pas pu être mis à jour. Réessaie.", 409);
+            semestersUpdated += filingOutcome(r, updated).semestersUpdated;
           }
           continue;
         }
@@ -370,14 +372,20 @@ Deno.serve(async (req) => {
         }
         const ai = await aiClassify(c.subjects, { name: r.original_filename ?? "", text: r.extracted_text, pdf });
         const hit = ai ? { id: ai.id, how: "ai" } : classify(c.subjects, c.events, [r.original_filename ?? "", (r.extracted_text ?? "").slice(0, 300)], r.created_at);
-        if (!hit) ambiguous++;
-        if (!hit && !semesterId) continue;
-        const { error } = await admin.from("vault_files").update({ semester_id: semesterId, ...(hit ? { subject_id: hit.id, filing_status: "auto", tags: [...new Set([...(r.tags ?? []), `auto-${hit.how}`])] } : {}), ...(ai?.summary ? { ai_summary: ai.summary } : {}) }).eq("id", r.id).eq("user_id", user.id);
+        if (!hit && semesterId === r.semester_id) {
+          ambiguous += filingOutcome(r, r).ambiguous;
+          continue;
+        }
+        const { data: updated, error } = await admin.from("vault_files").update({ semester_id: semesterId, ...(hit ? { subject_id: hit.id, filing_status: "auto", tags: [...new Set([...(r.tags ?? []), `auto-${hit.how}`])] } : {}), ...(ai?.summary ? { ai_summary: ai.summary } : {}) }).eq("id", r.id).eq("user_id", user.id).select("subject_id,semester_id").maybeSingle();
         if (error) throw error;
-        filed++;
+        if (!updated) throw new DriveError("Le document n’a pas pu être mis à jour. Réessaie.", 409);
+        const outcome = filingOutcome(r, updated);
+        filed += outcome.filed;
+        ambiguous += outcome.ambiguous;
+        semestersUpdated += outcome.semestersUpdated;
       }
       const list = rows ?? [];
-      return json({ filed, ambiguous, total: list.length, nextCursor: list.length === 25 ? list[list.length - 1].id : null });
+      return json({ filed, ambiguous, semestersUpdated, total: list.length, nextCursor: list.length === 25 ? list[list.length - 1].id : null });
     }
 
     if (body.action === "complete") {
