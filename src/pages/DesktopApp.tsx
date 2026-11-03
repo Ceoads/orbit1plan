@@ -384,7 +384,10 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
     fresh.forEach((f) => tried.current.add(f.id));
     setSorting(true);
     supabase.functions.invoke("google-drive", { body: { action: "autoFile" } })
-      .then(({ data }) => { if (data?.filed) { toast.success(`${data.filed} document${data.filed > 1 ? "s" : ""} rangé${data.filed > 1 ? "s" : ""} automatiquement`); vault.refetch(); } })
+      .then(({ data }) => {
+        if (data?.filed) toast.success(`${data.filed} document${data.filed > 1 ? "s" : ""} rangé${data.filed > 1 ? "s" : ""} automatiquement`);
+        if (data?.filed || data?.semestersUpdated) vault.refetch();
+      })
       .finally(() => setSorting(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vault.files, vault.semesters]);
