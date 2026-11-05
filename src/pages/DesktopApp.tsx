@@ -588,9 +588,9 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
     return (
       <>
         <StudyStudioHeader kind="quiz" title="Quiz" detail="Une nouvelle session de révision" />
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-8 xl:gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_270px] gap-8 xl:gap-12">
           <SourcePicker files={files} source={source} setSource={setSource} text={text} setText={setText} />
-          <div className="flex min-w-0 flex-col gap-6 xl:border-l xl:border-border/60 xl:pl-8">
+          <div className="flex min-w-0 flex-col gap-6 lg:border-l lg:border-border/60 lg:pl-6">
             <h2 className="text-sm font-semibold">Personnaliser le quiz</h2>
             <div>
               <p className="text-sm font-medium mb-2">Nombre de questions</p>
@@ -657,9 +657,9 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
           <div className="space-y-3">
             {q.options.map((o, i) => (
               <Button variant="ghost" key={i} onClick={() => setAnswers(answers.map((a, j) => (j === idx ? i : a)))}
-                className={cn("w-full text-left p-4 rounded-2xl text-sm transition-colors flex gap-3",
+                className={cn("w-full h-auto min-h-14 whitespace-normal justify-start items-start text-left p-4 rounded-2xl text-sm transition-colors flex gap-3",
                   answers[idx] === i ? "bg-primary/15 ring-2 ring-primary" : "bg-muted hover:bg-muted/70")}>
-                <span className="font-semibold">{"ABCD"[i]}</span>{o}
+                <span className="font-semibold shrink-0">{"ABCD"[i]}</span><span className="min-w-0 break-words">{o}</span>
               </Button>
             ))}
           </div>
@@ -771,9 +771,9 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
       <>
         <StudyStudioHeader kind="flashcards" title={`Fiche ${idx + 1} / ${deck.length}`} detail={subjects.find((s) => s.id === c.subject_id)?.name ?? "Sans matière"} />
         <div className="max-w-3xl">
-          <Button variant="ghost" onClick={() => setFlipped(!flipped)} className="w-full min-h-[320px] bg-card rounded-3xl p-6 sm:p-12 shadow-soft flex flex-col items-center justify-center text-center gap-4">
+          <Button variant="ghost" onClick={() => setFlipped(!flipped)} className="w-full h-auto min-h-[320px] whitespace-normal bg-card hover:bg-card rounded-3xl p-6 sm:p-12 shadow-soft flex flex-col items-center justify-center text-center gap-4">
             <span className="text-xs uppercase tracking-widest text-muted-foreground">{flipped ? "Réponse" : "Question"}</span>
-            <p className="text-xl sm:text-2xl font-semibold leading-relaxed break-words">{flipped ? c.answer : c.question}</p>
+            <p className="w-full min-w-0 text-xl sm:text-2xl font-semibold leading-relaxed break-words">{flipped ? c.answer : c.question}</p>
           </Button>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
             <Button variant="ghost" onClick={() => mark("unknown")} className="h-12 rounded-2xl bg-destructive/10 text-destructive font-medium flex items-center justify-center gap-2"><X className="w-4 h-4" /> À revoir</Button>
@@ -795,9 +795,9 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
   return (
     <>
       <StudyStudioHeader kind="flashcards" title="Fiches" detail={`${cards.length} fiches · ${decks.length} paquets`} />
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-8 xl:gap-12 mb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_270px] gap-8 xl:gap-12 mb-12">
         <SourcePicker files={files} source={source} setSource={setSource} text={text} setText={setText} />
-        <div className="flex min-w-0 flex-col gap-6 xl:border-l xl:border-border/60 xl:pl-8">
+        <div className="flex min-w-0 flex-col gap-6 lg:border-l lg:border-border/60 lg:pl-6">
           <div className="flex items-center gap-2 text-sm font-semibold"><Layers className="h-4 w-4 text-primary" /> Nouveau paquet</div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-4 w-4" /> Enregistrement automatique</div>
           <StudyGenerateButton loading={loading} onClick={generate} label="Générer les fiches" />
