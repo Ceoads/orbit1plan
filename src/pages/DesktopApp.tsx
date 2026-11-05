@@ -664,7 +664,7 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
             ))}
           </div>
         </div>
-        <div className="sticky bottom-24 sm:static z-10 grid grid-cols-2 sm:flex sm:justify-between gap-3 mt-6 sm:mt-8">
+        <div className="grid grid-cols-2 sm:flex sm:justify-between gap-3 mt-6 sm:mt-8">
           <Button variant="ghost" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="h-14 sm:h-12 px-4 sm:px-6 rounded-2xl bg-muted font-medium flex items-center justify-center gap-2 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /> Précédent</Button>
           {idx < questions.length - 1 ? (
             <Button variant="ghost" onClick={() => setIdx(idx + 1)} className="h-14 sm:h-12 px-4 sm:px-6 rounded-2xl bg-foreground text-background font-medium flex items-center justify-center gap-2">Suivant <ChevronRight className="w-4 h-4" /></Button>
