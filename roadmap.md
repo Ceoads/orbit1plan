@@ -1,5 +1,9 @@
 # Roadmap
 
+## Fiches et Quiz — présentation
+- [ ] Épurer les écrans de création et les paquets de fiches, sans changer la génération
+- [ ] Harmoniser les séances de révision et vérifier l’affichage et les commandes
+
 ## Classement automatique Drive
 - [x] Demander et enregistrer les dates des semestres pendant l’accueil ; fenêtre dédiée si accueil passé ; 4 tests de validation, contrôle authentifié ordinateur/téléphone et rejet serveur des chevauchements
 - [ ] Vérifier la sauvegarde complète de dates réelles : attend les réponses de l’utilisateur ; aucune date inventée enregistrée
