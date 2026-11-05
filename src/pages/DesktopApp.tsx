@@ -594,13 +594,13 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
             <h2 className="text-sm font-semibold">Personnaliser le quiz</h2>
             <div>
               <p className="text-sm font-medium mb-2">Nombre de questions</p>
-              <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted/60 p-1">{[5, 10, 15, 20].map((n) => <Button variant="ghost" key={n} aria-pressed={count === n} onClick={() => setCount(n)} className={cn("h-10 rounded-lg px-2", count === n && "bg-card shadow-soft text-foreground")}>{n}</Button>)}</div>
+              <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted/60 p-1">{[5, 10, 15, 20].map((n) => <Button variant="ghost" key={n} aria-pressed={count === n} onClick={() => setCount(n)} className={cn("h-12 sm:h-10 rounded-lg px-2 text-base sm:text-sm", count === n && "bg-card shadow-soft text-foreground")}>{n}</Button>)}</div>
             </div>
             <div>
               <p className="text-sm font-medium mb-2">Difficulté</p>
               <div className="flex flex-col gap-2">
                 {([["basic", "Basique", "Compréhension"], ["intermediate", "Intermédiaire", "Application"], ["advanced", "Avancé", "Synthèse"]] as const).map(([v, l, d]) => (
-                  <Button variant="ghost" key={v} aria-pressed={difficulty === v} onClick={() => setDifficulty(v)} className={cn("h-12 px-4 rounded-xl text-sm flex justify-between items-center", difficulty === v ? "bg-accent text-accent-foreground" : "bg-muted/40")}>
+                  <Button variant="ghost" key={v} aria-pressed={difficulty === v} onClick={() => setDifficulty(v)} className={cn("h-14 sm:h-12 px-4 rounded-xl text-sm flex justify-between items-center", difficulty === v ? "bg-accent text-accent-foreground" : "bg-muted/40")}>
                     <span className="font-medium">{l}</span><span className="opacity-70 text-xs">{d}</span>
                   </Button>
                 ))}
@@ -622,12 +622,12 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
           {questions.map((q, i) => {
             const ok = answers[i] === q.correctIndex;
             return (
-              <div key={i} className="bg-card rounded-3xl p-8 shadow-soft">
+              <div key={i} className="bg-card rounded-3xl p-5 sm:p-8 shadow-soft">
                 <div className="flex items-start gap-3">
                   <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", ok ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
                     {ok ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                   </span>
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2 break-words">
                     <p className="font-semibold">{q.question}</p>
                     <p className="text-sm">Bonne réponse : <span className="font-medium">{q.options[q.correctIndex]}</span></p>
                     {!ok && answers[i] != null && <p className="text-sm text-destructive">Ta réponse : {q.options[answers[i] ?? 0]}</p>}
@@ -638,9 +638,9 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
             );
           })}
         </div>
-        <div className="flex gap-3 mt-8">
-          <Button variant="ghost" onClick={() => { setAnswers(answers.map(() => null)); setIdx(0); setSubmitted(false); }} className="h-12 px-6 rounded-2xl bg-muted font-medium flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Recommencer</Button>
-          <Button variant="ghost" onClick={() => setQuestions(null)} className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">Nouveau quiz</Button>
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-8">
+          <Button variant="ghost" onClick={() => { setAnswers(answers.map(() => null)); setIdx(0); setSubmitted(false); }} className="h-14 sm:h-12 px-6 rounded-2xl bg-muted font-medium flex items-center justify-center gap-2"><RotateCcw className="w-4 h-4" /> Recommencer</Button>
+          <Button variant="ghost" onClick={() => setQuestions(null)} className="h-14 sm:h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">Nouveau quiz</Button>
         </div>
       </>
     );
@@ -652,25 +652,25 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
       <StudyStudioHeader kind="quiz" title={`Question ${idx + 1} / ${questions.length}`} detail={source ? fileName(source) : "Texte du cours"} />
       <div className="max-w-3xl">
         <div className="h-1.5 rounded-full bg-muted mb-8"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((idx + 1) / questions.length) * 100}%` }} /></div>
-        <div className="bg-card rounded-3xl p-6 sm:p-10 shadow-soft">
-          <p className="text-xl font-semibold mb-8">{q.question}</p>
+        <div className="bg-card rounded-3xl p-5 sm:p-10 shadow-soft">
+          <p className="text-lg sm:text-xl font-semibold leading-snug mb-6 sm:mb-8 break-words">{q.question}</p>
           <div className="space-y-3">
             {q.options.map((o, i) => (
               <Button variant="ghost" key={i} onClick={() => setAnswers(answers.map((a, j) => (j === idx ? i : a)))}
-                className={cn("w-full h-auto min-h-14 whitespace-normal justify-start items-start text-left p-4 rounded-2xl text-sm transition-colors flex gap-3",
+                className={cn("w-full h-auto min-h-14 whitespace-normal justify-start items-start text-left p-4 rounded-2xl text-base sm:text-sm transition-colors flex gap-3",
                   answers[idx] === i ? "bg-primary/15 ring-2 ring-primary" : "bg-muted hover:bg-muted/70")}>
                 <span className="font-semibold shrink-0">{"ABCD"[i]}</span><span className="min-w-0 break-words">{o}</span>
               </Button>
             ))}
           </div>
         </div>
-        <div className="flex justify-between mt-8">
-          <Button variant="ghost" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="h-12 px-6 rounded-2xl bg-muted font-medium flex items-center gap-2 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /> Précédent</Button>
+        <div className="grid grid-cols-2 sm:flex sm:justify-between gap-3 mt-6 sm:mt-8">
+          <Button variant="ghost" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="h-14 sm:h-12 px-4 sm:px-6 rounded-2xl bg-muted font-medium flex items-center justify-center gap-2 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /> Précédent</Button>
           {idx < questions.length - 1 ? (
-            <Button variant="ghost" onClick={() => setIdx(idx + 1)} className="h-12 px-6 rounded-2xl bg-foreground text-background font-medium flex items-center gap-2">Suivant <ChevronRight className="w-4 h-4" /></Button>
+            <Button variant="ghost" onClick={() => setIdx(idx + 1)} className="h-14 sm:h-12 px-4 sm:px-6 rounded-2xl bg-foreground text-background font-medium flex items-center justify-center gap-2">Suivant <ChevronRight className="w-4 h-4" /></Button>
           ) : (
             <Button variant="ghost" onClick={() => answers.some((a) => a == null) ? toast.error("Réponds à toutes les questions avant de valider.") : setSubmitted(true)}
-              className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">Valider mes réponses</Button>
+              className="h-14 sm:h-12 px-4 sm:px-6 rounded-2xl bg-primary text-primary-foreground font-medium whitespace-normal">Valider mes réponses</Button>
           )}
         </div>
       </div>
@@ -771,20 +771,20 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
       <>
         <StudyStudioHeader kind="flashcards" title={`Fiche ${idx + 1} / ${deck.length}`} detail={subjects.find((s) => s.id === c.subject_id)?.name ?? "Sans matière"} />
         <div className="max-w-3xl">
-          <Button variant="ghost" onClick={() => setFlipped(!flipped)} className="w-full h-auto min-h-[320px] whitespace-normal bg-card hover:bg-card rounded-3xl p-6 sm:p-12 shadow-soft flex flex-col items-center justify-center text-center gap-4">
+          <Button variant="ghost" onClick={() => setFlipped(!flipped)} className="w-full h-auto min-h-[280px] sm:min-h-[320px] whitespace-normal bg-card hover:bg-card rounded-3xl p-6 sm:p-12 shadow-soft flex flex-col items-center justify-center text-center gap-4">
             <span className="text-xs uppercase tracking-widest text-muted-foreground">{flipped ? "Réponse" : "Question"}</span>
-            <p className="w-full min-w-0 text-xl sm:text-2xl font-semibold leading-relaxed break-words">{flipped ? c.answer : c.question}</p>
+            <p className="w-full min-w-0 text-lg sm:text-2xl font-semibold leading-relaxed break-words">{flipped ? c.answer : c.question}</p>
           </Button>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
-            <Button variant="ghost" onClick={() => mark("unknown")} className="h-12 rounded-2xl bg-destructive/10 text-destructive font-medium flex items-center justify-center gap-2"><X className="w-4 h-4" /> À revoir</Button>
-            <Button variant="ghost" onClick={() => mark("learning")} className="h-12 rounded-2xl bg-primary/10 text-primary font-medium flex items-center justify-center gap-2"><CircleDashed className="w-4 h-4" /> En cours</Button>
-            <Button variant="ghost" onClick={() => mark("known")} className="h-12 rounded-2xl bg-success/10 text-success font-medium flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Connue</Button>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-6">
+            <Button variant="ghost" onClick={() => mark("unknown")} className="h-16 sm:h-12 rounded-2xl bg-destructive/10 flex-col sm:flex-row text-sm text-destructive font-medium flex items-center justify-center gap-2"><X className="w-4 h-4" /> À revoir</Button>
+            <Button variant="ghost" onClick={() => mark("learning")} className="h-16 sm:h-12 rounded-2xl bg-primary/10 flex-col sm:flex-row text-sm text-primary font-medium flex items-center justify-center gap-2"><CircleDashed className="w-4 h-4" /> En cours</Button>
+            <Button variant="ghost" onClick={() => mark("known")} className="h-16 sm:h-12 rounded-2xl bg-success/10 flex-col sm:flex-row text-sm text-success font-medium flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Connue</Button>
           </div>
           <div className="flex flex-wrap gap-4 items-center justify-between mt-8 text-sm text-muted-foreground">
             <span>Connues {pct(count("known"))} % · En cours {pct(count("learning"))} % · À revoir {pct(count("unknown"))} %</span>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => { setDeck([...deck].sort(() => Math.random() - 0.5)); setIdx(0); setFlipped(false); }} className="h-10 px-4 rounded-xl bg-muted flex items-center gap-2"><Shuffle className="w-4 h-4" /> Mélanger</Button>
-              <Button variant="ghost" onClick={() => setDeck(null)} className="h-10 px-4 rounded-xl bg-muted">Terminer</Button>
+            <div className="grid w-full grid-cols-2 sm:flex sm:w-auto gap-2">
+              <Button variant="ghost" onClick={() => { setDeck([...deck].sort(() => Math.random() - 0.5)); setIdx(0); setFlipped(false); }} className="h-12 sm:h-10 px-4 rounded-xl bg-muted flex items-center justify-center gap-2"><Shuffle className="w-4 h-4" /> Mélanger</Button>
+              <Button variant="ghost" onClick={() => setDeck(null)} className="h-12 sm:h-10 px-4 rounded-xl bg-muted">Terminer</Button>
             </div>
           </div>
         </div>
@@ -809,7 +809,7 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
           {decks.map((d) => {
             const known = d.list.filter((c) => marks[c.id] === "known" || c.mastered).length;
             return (
-              <Button variant="ghost" key={d.key} onClick={() => startDeck(d.list)} className="group h-auto min-h-48 w-full items-stretch whitespace-normal text-left bg-card rounded-2xl p-6 shadow-soft flex-col gap-5 hover:bg-card hover:ring-1 hover:ring-primary/30">
+              <Button variant="ghost" key={d.key} onClick={() => startDeck(d.list)} className="group h-auto min-h-40 sm:min-h-48 w-full items-stretch whitespace-normal text-left bg-card rounded-2xl p-5 sm:p-6 shadow-soft flex-col gap-5 hover:bg-card hover:ring-1 hover:ring-primary/30">
                 <div className="flex items-center justify-between gap-3"><SubjectIcon name={d.name} size="md" /><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" /></div>
                 <div><p className="font-semibold break-words">{d.name}</p><p className="text-xs text-muted-foreground mt-1.5">{d.list.length} fiches · {known} connues</p></div>
                 <div className="h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${(known / d.list.length) * 100}%` }} /></div>
