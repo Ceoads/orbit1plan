@@ -1,3 +1,4 @@
+import { StudyStudioHeader, StudyGenerateButton } from "@/components/desktop/StudyStudioUI";
 import { SortIntoSubjectButton } from "@/components/vault/SortIntoSubjectButton";
 import { SortDriveCoursesButton } from "@/components/vault/SortDriveCoursesButton";
 import { confirmAction } from "@/components/ConfirmHost";
@@ -524,20 +525,26 @@ function SourcePicker({ files, source, setSource, text, setText }: {
   files: VaultFile[]; source: VaultFile | null; setSource: (f: VaultFile | null) => void; text: string; setText: (t: string) => void;
 }) {
   return (
-    <div className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-6">
-      <div>
-        <label className="text-sm font-medium">Document source</label>
-        <select value={source?.id ?? "__none__"} onChange={(e) => setSource(files.find((f) => f.id === e.target.value) ?? null)}
-          className="mt-2 w-full h-12 px-4 rounded-2xl bg-muted outline-none text-sm">
-          <option value="__none__">— Coller un texte à la place —</option>
+    <div className="min-w-0 space-y-5">
+      <div className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary" /> Cours à réviser</div>
+      <div className="space-y-2">
+        <label htmlFor="study-source" className="text-xs font-medium text-muted-foreground">Document source</label>
+        <select id="study-source" value={source?.id ?? "__none__"} onChange={(e) => setSource(files.find((f) => f.id === e.target.value) ?? null)}
+          className="w-full min-w-0 h-12 px-4 rounded-xl bg-card border border-border/60 outline-none focus-visible:ring-2 focus-visible:ring-ring text-sm">
+          <option value="__none__">Texte du cours</option>
           {files.map((f) => <option key={f.id} value={f.id}>{fileName(f)}</option>)}
         </select>
       </div>
-      {!source && (
-        <div>
-          <label className="text-sm font-medium">Texte du cours</label>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} placeholder="Colle ici le contenu à réviser…"
-            className="mt-2 w-full p-4 rounded-2xl bg-muted outline-none text-sm resize-none" />
+      {!source ? (
+        <div className="space-y-2">
+          <label htmlFor="study-text" className="text-xs font-medium text-muted-foreground">Texte du cours</label>
+          <textarea id="study-text" value={text} onChange={(e) => setText(e.target.value)} rows={7} placeholder="Colle le contenu de ton cours…"
+            className="w-full p-4 rounded-xl bg-card border border-border/60 outline-none focus-visible:ring-2 focus-visible:ring-ring text-sm resize-y leading-relaxed" />
+        </div>
+      ) : (
+        <div className="flex items-start gap-3 py-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground"><FileText className="h-5 w-5" /></span>
+          <div className="min-w-0"><p className="text-sm font-medium break-words">{fileName(source)}</p><p className="mt-1 text-xs text-muted-foreground">{source.file_type?.toUpperCase() ?? "DOCUMENT"}</p>{source.ai_summary && <p className="mt-3 text-sm text-muted-foreground line-clamp-3 leading-relaxed">{source.ai_summary}</p>}</div>
         </div>
       )}
     </div>
@@ -580,29 +587,27 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
   if (!questions) {
     return (
       <>
-        <Header title="Créer un quiz" subtitle="Un QCM de 5 à 20 questions avec correction détaillée, généré à partir de ton cours." />
-        <div className="grid grid-cols-[1fr_320px] gap-8">
+        <StudyStudioHeader kind="quiz" title="Quiz" detail="Une nouvelle session de révision" />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_270px] gap-8 xl:gap-12">
           <SourcePicker files={files} source={source} setSource={setSource} text={text} setText={setText} />
-          <div className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
-            <Sparkles className="w-6 h-6 text-primary" />
+          <div className="flex min-w-0 flex-col gap-6 lg:border-l lg:border-border/60 lg:pl-6">
+            <h2 className="text-sm font-semibold">Personnaliser le quiz</h2>
             <div>
               <p className="text-sm font-medium mb-2">Nombre de questions</p>
-              <div className="flex gap-2">{[5, 10, 15, 20].map((n) => <Pill key={n} active={count === n} onClick={() => setCount(n)}>{n}</Pill>)}</div>
+              <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted/60 p-1">{[5, 10, 15, 20].map((n) => <Button variant="ghost" key={n} aria-pressed={count === n} onClick={() => setCount(n)} className={cn("h-10 rounded-lg px-2", count === n && "bg-card shadow-soft text-foreground")}>{n}</Button>)}</div>
             </div>
             <div>
               <p className="text-sm font-medium mb-2">Difficulté</p>
               <div className="flex flex-col gap-2">
                 {([["basic", "Basique", "Compréhension"], ["intermediate", "Intermédiaire", "Application"], ["advanced", "Avancé", "Synthèse"]] as const).map(([v, l, d]) => (
-                  <button key={v} onClick={() => setDifficulty(v)} className={cn("h-11 px-4 rounded-xl text-sm flex justify-between items-center", difficulty === v ? "bg-foreground text-background" : "bg-muted")}>
+                  <Button variant="ghost" key={v} aria-pressed={difficulty === v} onClick={() => setDifficulty(v)} className={cn("h-12 px-4 rounded-xl text-sm flex justify-between items-center", difficulty === v ? "bg-accent text-accent-foreground" : "bg-muted/40")}>
                     <span className="font-medium">{l}</span><span className="opacity-70 text-xs">{d}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">Environ {Math.round(15 + count * 3)} secondes selon la taille du document.</p>
-            <button onClick={generate} disabled={loading} className="mt-auto h-12 rounded-2xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-60">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération…</> : "Générer le quiz"}
-            </button>
+            
+            <StudyGenerateButton loading={loading} onClick={generate} label="Générer le quiz" />
           </div>
         </div>
       </>
@@ -617,15 +622,15 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
           {questions.map((q, i) => {
             const ok = answers[i] === q.correctIndex;
             return (
-              <div key={i} className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+              <div key={i} className="bg-card rounded-3xl p-8 shadow-soft">
                 <div className="flex items-start gap-3">
-                  <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", ok ? "bg-green-500/15 text-green-700" : "bg-destructive/15 text-destructive")}>
+                  <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", ok ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
                     {ok ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                   </span>
                   <div className="space-y-2">
                     <p className="font-semibold">{q.question}</p>
                     <p className="text-sm">Bonne réponse : <span className="font-medium">{q.options[q.correctIndex]}</span></p>
-                    {!ok && answers[i] != null && <p className="text-sm text-destructive">Ta réponse : {q.options[answers[i]!]}</p>}
+                    {!ok && answers[i] != null && <p className="text-sm text-destructive">Ta réponse : {q.options[answers[i] ?? 0]}</p>}
                     <p className="text-sm text-muted-foreground">{q.explanation}</p>
                   </div>
                 </div>
@@ -634,8 +639,8 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
           })}
         </div>
         <div className="flex gap-3 mt-8">
-          <button onClick={() => { setAnswers(answers.map(() => null)); setIdx(0); setSubmitted(false); }} className="h-12 px-6 rounded-2xl bg-muted font-medium flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Recommencer</button>
-          <button onClick={() => setQuestions(null)} className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">Nouveau quiz</button>
+          <Button variant="ghost" onClick={() => { setAnswers(answers.map(() => null)); setIdx(0); setSubmitted(false); }} className="h-12 px-6 rounded-2xl bg-muted font-medium flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Recommencer</Button>
+          <Button variant="ghost" onClick={() => setQuestions(null)} className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">Nouveau quiz</Button>
         </div>
       </>
     );
@@ -644,28 +649,28 @@ function QuizStudio({ files, source, setSource }: { files: VaultFile[]; source: 
   const q = questions[idx];
   return (
     <>
-      <Header title={`Question ${idx + 1}/${questions.length}`} subtitle={source ? fileName(source) : "Texte collé"} />
+      <StudyStudioHeader kind="quiz" title={`Question ${idx + 1} / ${questions.length}`} detail={source ? fileName(source) : "Texte du cours"} />
       <div className="max-w-3xl">
         <div className="h-1.5 rounded-full bg-muted mb-8"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((idx + 1) / questions.length) * 100}%` }} /></div>
-        <div className="bg-card rounded-3xl p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        <div className="bg-card rounded-3xl p-6 sm:p-10 shadow-soft">
           <p className="text-xl font-semibold mb-8">{q.question}</p>
           <div className="space-y-3">
             {q.options.map((o, i) => (
-              <button key={i} onClick={() => setAnswers(answers.map((a, j) => (j === idx ? i : a)))}
-                className={cn("w-full text-left p-4 rounded-2xl text-sm transition-colors flex gap-3",
+              <Button variant="ghost" key={i} onClick={() => setAnswers(answers.map((a, j) => (j === idx ? i : a)))}
+                className={cn("w-full h-auto min-h-14 whitespace-normal justify-start items-start text-left p-4 rounded-2xl text-sm transition-colors flex gap-3",
                   answers[idx] === i ? "bg-primary/15 ring-2 ring-primary" : "bg-muted hover:bg-muted/70")}>
-                <span className="font-semibold">{"ABCD"[i]}</span>{o}
-              </button>
+                <span className="font-semibold shrink-0">{"ABCD"[i]}</span><span className="min-w-0 break-words">{o}</span>
+              </Button>
             ))}
           </div>
         </div>
         <div className="flex justify-between mt-8">
-          <button disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="h-12 px-6 rounded-2xl bg-muted font-medium flex items-center gap-2 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /> Précédent</button>
+          <Button variant="ghost" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="h-12 px-6 rounded-2xl bg-muted font-medium flex items-center gap-2 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /> Précédent</Button>
           {idx < questions.length - 1 ? (
-            <button onClick={() => setIdx(idx + 1)} className="h-12 px-6 rounded-2xl bg-foreground text-background font-medium flex items-center gap-2">Suivant <ChevronRight className="w-4 h-4" /></button>
+            <Button variant="ghost" onClick={() => setIdx(idx + 1)} className="h-12 px-6 rounded-2xl bg-foreground text-background font-medium flex items-center gap-2">Suivant <ChevronRight className="w-4 h-4" /></Button>
           ) : (
-            <button onClick={() => answers.some((a) => a == null) ? toast.error("Réponds à toutes les questions avant de valider.") : setSubmitted(true)}
-              className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">Valider mes réponses</button>
+            <Button variant="ghost" onClick={() => answers.some((a) => a == null) ? toast.error("Réponds à toutes les questions avant de valider.") : setSubmitted(true)}
+              className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground font-medium">Valider mes réponses</Button>
           )}
         </div>
       </div>
@@ -707,6 +712,7 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
   }, [cards, subjects]);
 
   const generate = async () => {
+    if (!user) return;
     const noteContent = source ? source.extracted_text : text.trim();
     if (!noteContent) return toast.error(source ? "Ce document n'a pas encore de texte lu." : "Colle un texte ou choisis un document.");
     setLoading(true);
@@ -715,7 +721,7 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
         body: { noteContent, noteId: source?.id, subjectId: source?.subject_id, generateImages: false },
       });
       if (error) throw error;
-      const rows = (data?.flashcards ?? []).map((c: any) => ({ user_id: user!.id, question: c.question, answer: c.answer, subject_id: source?.subject_id ?? null, mastered: false }));
+      const rows = (data?.flashcards ?? []).map((c: any) => ({ user_id: user.id, question: c.question, answer: c.answer, subject_id: source?.subject_id ?? null, mastered: false }));
       if (!rows.length) throw new Error("empty");
       const { data: saved } = await supabase.from("flashcards").insert(rows).select("id,question,answer,subject_id,mastered");
       toast.success(`${rows.length} fiches créées`);
@@ -763,22 +769,22 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
     const pct = (n: number) => Math.round((n / deck.length) * 100);
     return (
       <>
-        <Header title={`Fiche ${idx + 1}/${deck.length}`} subtitle="Espace pour retourner · flèches pour naviguer · 1, 2, 3 pour noter" />
+        <StudyStudioHeader kind="flashcards" title={`Fiche ${idx + 1} / ${deck.length}`} detail={subjects.find((s) => s.id === c.subject_id)?.name ?? "Sans matière"} />
         <div className="max-w-3xl">
-          <button onClick={() => setFlipped(!flipped)} className="w-full min-h-[320px] bg-card rounded-3xl p-12 shadow-[0_8px_30px_rgb(0,0,0,0.05)] flex flex-col items-center justify-center text-center gap-4">
+          <Button variant="ghost" onClick={() => setFlipped(!flipped)} className="w-full h-auto min-h-[320px] whitespace-normal bg-card hover:bg-card rounded-3xl p-6 sm:p-12 shadow-soft flex flex-col items-center justify-center text-center gap-4">
             <span className="text-xs uppercase tracking-widest text-muted-foreground">{flipped ? "Réponse" : "Question"}</span>
-            <p className="text-2xl font-semibold leading-snug">{flipped ? c.answer : c.question}</p>
-          </button>
-          <div className="grid grid-cols-3 gap-3 mt-6">
-            <button onClick={() => mark("unknown")} className="h-12 rounded-2xl bg-destructive/10 text-destructive font-medium flex items-center justify-center gap-2"><X className="w-4 h-4" /> À revoir</button>
-            <button onClick={() => mark("learning")} className="h-12 rounded-2xl bg-primary/10 text-primary font-medium flex items-center justify-center gap-2"><CircleDashed className="w-4 h-4" /> En cours</button>
-            <button onClick={() => mark("known")} className="h-12 rounded-2xl bg-green-500/10 text-green-700 font-medium flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Connue</button>
+            <p className="w-full min-w-0 text-xl sm:text-2xl font-semibold leading-relaxed break-words">{flipped ? c.answer : c.question}</p>
+          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+            <Button variant="ghost" onClick={() => mark("unknown")} className="h-12 rounded-2xl bg-destructive/10 text-destructive font-medium flex items-center justify-center gap-2"><X className="w-4 h-4" /> À revoir</Button>
+            <Button variant="ghost" onClick={() => mark("learning")} className="h-12 rounded-2xl bg-primary/10 text-primary font-medium flex items-center justify-center gap-2"><CircleDashed className="w-4 h-4" /> En cours</Button>
+            <Button variant="ghost" onClick={() => mark("known")} className="h-12 rounded-2xl bg-success/10 text-success font-medium flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Connue</Button>
           </div>
-          <div className="flex items-center justify-between mt-8 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-4 items-center justify-between mt-8 text-sm text-muted-foreground">
             <span>Connues {pct(count("known"))} % · En cours {pct(count("learning"))} % · À revoir {pct(count("unknown"))} %</span>
             <div className="flex gap-2">
-              <button onClick={() => { setDeck([...deck].sort(() => Math.random() - 0.5)); setIdx(0); setFlipped(false); }} className="h-10 px-4 rounded-xl bg-muted flex items-center gap-2"><Shuffle className="w-4 h-4" /> Mélanger</button>
-              <button onClick={() => setDeck(null)} className="h-10 px-4 rounded-xl bg-muted">Terminer</button>
+              <Button variant="ghost" onClick={() => { setDeck([...deck].sort(() => Math.random() - 0.5)); setIdx(0); setFlipped(false); }} className="h-10 px-4 rounded-xl bg-muted flex items-center gap-2"><Shuffle className="w-4 h-4" /> Mélanger</Button>
+              <Button variant="ghost" onClick={() => setDeck(null)} className="h-10 px-4 rounded-xl bg-muted">Terminer</Button>
             </div>
           </div>
         </div>
@@ -788,28 +794,26 @@ function FlashcardStudio({ files, subjects, source, setSource, subjectId }: {
 
   return (
     <>
-      <Header title="Fiches de révision" subtitle="Crée des fiches à partir d'un cours, puis révise en priorité celles que tu ne connais pas." />
-      <div className="grid grid-cols-[1fr_320px] gap-8 mb-12">
+      <StudyStudioHeader kind="flashcards" title="Fiches" detail={`${cards.length} fiches · ${decks.length} paquets`} />
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_270px] gap-8 xl:gap-12 mb-12">
         <SourcePicker files={files} source={source} setSource={setSource} text={text} setText={setText} />
-        <div className="bg-card rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
-          <Sparkles className="w-6 h-6 text-primary" />
-          <p className="text-sm text-muted-foreground">Les fiches sont enregistrées et retrouvables aussi sur téléphone.</p>
-          <button onClick={generate} disabled={loading} className="mt-auto h-12 rounded-2xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-60">
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération…</> : "Générer les fiches"}
-          </button>
+        <div className="flex min-w-0 flex-col gap-6 lg:border-l lg:border-border/60 lg:pl-6">
+          <div className="flex items-center gap-2 text-sm font-semibold"><Layers className="h-4 w-4 text-primary" /> Nouveau paquet</div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-4 w-4" /> Enregistrement automatique</div>
+          <StudyGenerateButton loading={loading} onClick={generate} label="Générer les fiches" />
         </div>
       </div>
-      <h2 className="text-xl font-semibold mb-6">Mes paquets</h2>
+      <div className="flex items-center gap-3 mb-6"><h2 className="text-xl font-semibold">Mes paquets</h2><span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{decks.length}</span></div>
       {decks.length === 0 ? <p className="text-muted-foreground">Aucune fiche pour l'instant.</p> : (
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-5">
           {decks.map((d) => {
             const known = d.list.filter((c) => marks[c.id] === "known" || c.mastered).length;
             return (
-              <button key={d.key} onClick={() => startDeck(d.list)} className="text-left bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-3">
-                <p className="font-semibold">{d.name}</p>
-                <p className="text-sm text-muted-foreground">{d.list.length} fiches · {known} connues</p>
+              <Button variant="ghost" key={d.key} onClick={() => startDeck(d.list)} className="group h-auto min-h-48 w-full items-stretch whitespace-normal text-left bg-card rounded-2xl p-6 shadow-soft flex-col gap-5 hover:bg-card hover:ring-1 hover:ring-primary/30">
+                <div className="flex items-center justify-between gap-3"><SubjectIcon name={d.name} size="md" /><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" /></div>
+                <div><p className="font-semibold break-words">{d.name}</p><p className="text-xs text-muted-foreground mt-1.5">{d.list.length} fiches · {known} connues</p></div>
                 <div className="h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${(known / d.list.length) * 100}%` }} /></div>
-              </button>
+              </Button>
             );
           })}
         </div>
