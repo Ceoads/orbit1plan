@@ -794,11 +794,11 @@ const AI_ANSWER = "Un contrat est valable s'il réunit le consentement, la capac
 const OrbitAIView = () => {
   const [len, setLen] = useState(0);
   useEffect(() => {
+    let i: ReturnType<typeof setInterval> | undefined;
     const t = setTimeout(() => {
-      const i = setInterval(() => setLen((l) => (l >= AI_ANSWER.length ? l : l + 2)), 30);
-      return () => clearInterval(i);
+      i = setInterval(() => setLen((l) => (l >= AI_ANSWER.length ? l : l + 2)), 30);
     }, 900);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); if (i) clearInterval(i); };
   }, []);
   return (
     <div className="h-full flex flex-col gap-3">
