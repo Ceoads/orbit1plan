@@ -67,7 +67,9 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded, pill = false }:
       let aiSummary: string | null = null;
 
       // OCR for images
-      if (isPhoto || file.type.startsWith("image/")) {
+      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      // Read photos and PDFs right away so Orbit AI, quizzes and flashcards see their content.
+      if (isPhoto || file.type.startsWith("image/") || (isPdf && file.size <= 8 * 1024 * 1024)) {
         try {
           const reader = new FileReader();
           const base64 = await new Promise<string>((resolve, reject) => {
@@ -78,12 +80,13 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded, pill = false }:
 
           const { data: ocrResult, error: ocrError } = await supabase.functions.invoke(
             "process-note",
-            { body: { imageBase64: base64, action: "ocr" } }
+            { body: { imageBase64: base64, action: "ocr", mimeType: isPdf ? "application/pdf" : file.type } }
           );
 
           if (!ocrError && ocrResult) {
-            extractedText = ocrResult.extractedText || ocrResult.text || null;
-            aiSummary = ocrResult.summary || null;
+            extractedText = ocrResult.rawText || ocrResult.extractedText || ocrResult.text || null;
+            aiSummary = ocrResult.aiSummary || ocrResult.summary || null;
+            if (aiSummary === "Unable to parse structured response") aiSummary = null;
           }
         } catch (e) {
           console.error("OCR error:", e);

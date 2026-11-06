@@ -1,3 +1,4 @@
+import { extractFileText } from "@/lib/extractFileText";
 import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { SortDriveCoursesButton } from "@/components/vault/SortDriveCoursesButton";
 import { useState, useEffect, useRef } from "react";
@@ -367,9 +368,12 @@ export const TheVaultPage = () => {
           ? "pdf"
           : "document";
 
+        const read = await extractFileText(file);
         await createFile({
           file_url: urlData?.signedUrl || "",
           subject_id: selectedSubject?.id || null,
+          extracted_text: read.text,
+          ai_summary: read.summary,
           original_filename: file.name,
           file_type: fileType,
           filing_status: selectedSubject ? "confirmed" : "pending",

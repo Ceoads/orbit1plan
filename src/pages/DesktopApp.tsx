@@ -465,7 +465,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         <SubjectIcon name={subj.name} legacyIcon={subj.icon} size="xl" />
         <Header title={subj.name} subtitle={`${files.length} document${files.length > 1 ? "s" : ""}${subj.teacher_name ? ` · ${subj.teacher_name}` : ""}`} />
       </div>
-      <div className="flex gap-2 mb-8 items-center">
+      <div className="flex flex-wrap gap-2 mb-8 items-center">
         <Pill active={tab === "docs"} onClick={() => setTab("docs")}>Documents</Pill>
         <Pill active={tab === "sheet"} onClick={() => setTab("sheet")}>Fiche de cours</Pill>
         <Pill active={tab === "quiz"} onClick={() => setTab("quiz")}>Quiz</Pill>
