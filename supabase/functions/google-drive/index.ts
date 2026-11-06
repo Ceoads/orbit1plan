@@ -47,7 +47,7 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("clearFolder") }),
   z.object({ action: z.literal("syncNow") }),
   z.object({ action: z.literal("syncAll") }),
-  z.object({ action: z.literal("autoFile"), after: z.string().uuid().optional() }),
+  z.object({ action: z.literal("autoFile"), after: z.string().uuid().optional(), all: z.boolean().optional() }),
   z.object({ action: z.literal("hubInfo") }),
   z.object({ action: z.literal("hubLink"), folderId: z.string().regex(/^[A-Za-z0-9_-]{10,200}$/), resourceKey: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/).optional() }),
   z.object({ action: z.literal("hubSync") }),
@@ -351,8 +351,11 @@ Deno.serve(async (req) => {
     if (body.action === "autoFile") {
       const admin = adminClient();
       const c = await loadClassifier(user.id);
-      const { data: rows, error: readError } = await admin.from("vault_files").select("id,subject_id,semester_id,original_filename,created_at,tags,extracted_text,file_url,file_type")
-        .eq("user_id", user.id).or("subject_id.is.null,semester_id.is.null").contains("tags", ["drive"]).order("id").gt("id", body.after ?? "00000000-0000-0000-0000-000000000000").limit(25);
+      let q = admin.from("vault_files").select("id,subject_id,semester_id,original_filename,created_at,tags,extracted_text,file_url,file_type")
+        .eq("user_id", user.id).or("subject_id.is.null,semester_id.is.null");
+      // all=true covers every document (photos, manual uploads), not just Drive imports.
+      if (!body.all) q = q.contains("tags", ["drive"]);
+      const { data: rows, error: readError } = await q.order("id").gt("id", body.after ?? "00000000-0000-0000-0000-000000000000").limit(25);
       if (readError) throw new DriveError("Impossible de lire les documents à ranger.", 503);
       let filed = 0, ambiguous = 0, semestersUpdated = 0;
       for (const r of rows ?? []) {
