@@ -25,13 +25,13 @@ export const SortDriveCoursesButton = ({ onDone, className }: { onDone: () => vo
       }
       onDone();
       const details = [
-        ambiguous ? `${ambiguous} cours encore sans matière · à classer à la main` : "",
+        ambiguous ? `${ambiguous} document${ambiguous > 1 ? "s" : ""} encore sans matière · à classer à la main` : "",
         semestersUpdated ? `${semestersUpdated} semestre${semestersUpdated > 1 ? "s" : ""} mis à jour` : "",
       ].filter(Boolean).join(" · ");
       if (filed > 0) toast.success(`${filed} document rangé${filed > 1 ? "s" : ""} dans une matière`, { description: details || undefined });
       else if (ambiguous > 0) toast.warning("Aucun document rangé dans une matière", { description: details });
       else if (semestersUpdated > 0) toast("Semestres mis à jour", { description: "Aucun nouveau document rangé dans une matière." });
-      else toast("Aucun cours Drive à ranger", { description: "Aucun document Drive importé ne nécessite de classement." });
+      else toast("Tout est déjà rangé", { description: "Aucun document sans matière." });
     } catch (e: any) {
       toast.error(e?.message || "Le rangement a échoué. Réessaie.");
     } finally { setProgress(null); }
