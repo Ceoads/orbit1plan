@@ -50,7 +50,7 @@ const AuthPage = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mt-4" />
+          <Loader2 className="w-8 h-8 mx-auto mt-4" />
           <p className="text-muted-foreground mt-3">{t("auth.welcomeBack")}</p>
         </div>
       </div>

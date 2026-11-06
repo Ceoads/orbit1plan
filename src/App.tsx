@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { ConfirmHost } from "@/components/ConfirmHost";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -32,7 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="min-h-screen mesh-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8" />
       </div>
     );
   }
@@ -51,7 +52,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="min-h-screen mesh-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8" />
       </div>
     );
   }

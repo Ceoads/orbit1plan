@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -183,7 +184,7 @@ export const StudyHubPage = () => {
     return (
       <div className="min-h-screen mesh-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <Loader2 className="w-12 h-12" />
           <p className="text-muted-foreground">Chargement...</p>
         </div>
       </div>

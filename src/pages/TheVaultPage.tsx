@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { SortDriveCoursesButton } from "@/components/vault/SortDriveCoursesButton";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -417,7 +418,7 @@ export const TheVaultPage = () => {
   if (loading || vaultInitialized === null) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8" />
       </div>
     );
   }
