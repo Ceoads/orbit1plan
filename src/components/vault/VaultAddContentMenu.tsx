@@ -23,9 +23,11 @@ import { suggestSubjectFromToday } from "@/lib/todayClassSuggestion";
 interface VaultAddContentMenuProps {
   subjectId: string;
   onContentAdded: () => void;
+  /** Desktop: a single "Ajouter des fichiers" pill (multi-select + drop) that always files into subjectId. */
+  pill?: boolean;
 }
 
-export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddContentMenuProps) => {
+export const VaultAddContentMenu = ({ subjectId, onContentAdded, pill = false }: VaultAddContentMenuProps) => {
   const { user } = useAuth();
   const { createFile } = useVaultData();
   const { subjects, events } = useOrbitData();
@@ -34,14 +36,14 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
     return sug && subjects.some((x) => x.id === sug.subjectId) ? sug : null;
   }, [events, subjects]);
   const [picked, setPicked] = useState<string | null>(null);
-  const target = picked ?? suggestion?.subjectId ?? subjectId;
+  const target = pill ? subjectId : picked ?? suggestion?.subjectId ?? subjectId;
   const reasonLabel = suggestion ? (suggestion.reason === "current" ? `cours en cours (${suggestion.startTime})` : suggestion.reason === "recent" ? `cours de ${suggestion.startTime}` : `prochain cours (${suggestion.startTime})`) : null;
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const uploadAndProcess = async (file: File, isPhoto: boolean) => {
+  const uploadAndProcess = async (file: File, isPhoto: boolean, semesterId: string | null) => {
     if (!user) return { ok: false };
 
     try {
@@ -98,6 +100,7 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
       await createFile({
         file_url: fileUrl,
         subject_id: target,
+        semester_id: semesterId,
         extracted_text: extractedText,
         ai_summary: aiSummary,
         original_filename: file.name,
@@ -134,6 +137,10 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
         : `Import de 0/${accepted.length} fichiers…`
     );
 
+    // New files are created today: file them in the semester covering today (none if ambiguous).
+    const day = new Date().toISOString().slice(0, 10);
+    const { data: sems } = await supabase.from("semesters").select("id").eq("user_id", user.id).lte("start_date", day).gte("end_date", day);
+    const semesterId = sems?.length === 1 ? sems[0].id : null;
     let done = 0;
     let errors = 0;
     const CONCURRENCY = 3;
@@ -142,7 +149,7 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
     const workers = Array.from({ length: Math.min(CONCURRENCY, accepted.length) }, async () => {
       while (cursor < accepted.length) {
         const i = cursor++;
-        const res = await uploadAndProcess(accepted[i], isPhoto);
+        const res = await uploadAndProcess(accepted[i], isPhoto, semesterId);
         if (!res.ok) errors++;
         done++;
         if (accepted.length > 1) {
@@ -210,6 +217,20 @@ export const VaultAddContentMenu = ({ subjectId, onContentAdded }: VaultAddConte
       setIsProcessing(false);
     }
   };
+
+  if (pill) {
+    return (
+      <>
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); const f = Array.from(e.dataTransfer.files); if (f.length) uploadBatch(f, false); }}
+          className="h-10 px-4 rounded-full bg-card text-sm font-medium flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:text-primary disabled:opacity-60">
+          {isProcessing ? <Loader2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />} Ajouter des fichiers
+        </button>
+        <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.ppt,.pptx,.txt" className="hidden" onChange={handleFileSelect} />
+      </>
+    );
+  }
 
   return (
     <>

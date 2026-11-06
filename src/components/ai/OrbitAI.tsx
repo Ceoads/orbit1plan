@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { confirmAction } from "@/components/ConfirmHost";
 import { cn } from "@/lib/utils";
+import { splitOrbitAction } from "@/lib/orbitAction";
+import { OrbitActionCard } from "./OrbitActionCard";
 
 interface Msg {
   role: "user" | "assistant";
@@ -405,16 +407,21 @@ export function OrbitAI({ onConcentration }: { onConcentration?: () => void } = 
               <div className="max-w-full text-foreground leading-relaxed space-y-3 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:my-1 [&_strong]:font-semibold [&_h1]:text-xl [&_h2]:text-lg [&_h3]:font-semibold [&_h1]:font-bold [&_h2]:font-bold [&_code]:bg-muted [&_code]:px-1.5 [&_code]:rounded-md">
                 {m.content && !busy && (
                   <button
-                    onClick={() => (voice.state === "speaking" ? voice.interrupt() : voice.speak(m.content))}
+                    onClick={() => (voice.state === "speaking" ? voice.interrupt() : voice.speak(splitOrbitAction(m.content).text))}
                     aria-label="Écouter"
                     className="float-right ml-2 w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-card"
                   >
                     {voice.state === "speaking" ? <Square className="w-3.5 h-3.5" /> : <Volume2 className="w-4 h-4" />}
                   </button>
                 )}
-                {m.content ? (
-                  <ReactMarkdown>{m.content}</ReactMarkdown>
-                ) : (
+                {m.content ? (() => {
+                  const part = splitOrbitAction(m.content);
+                  // Only the latest reply can carry a live action; older proposals stay read-only.
+                  return <>
+                    <ReactMarkdown>{part.text}</ReactMarkdown>
+                    {part.action && !busy && i === messages.length - 1 && <OrbitActionCard op={part.action} />}
+                  </>;
+                })() : (
                   <span className="inline-flex gap-1 py-2">
                     <span className="w-2 h-2 rounded-full bg-primary animate-bounce" />
                     <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />

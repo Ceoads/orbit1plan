@@ -1,6 +1,7 @@
 import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { StudyStudioHeader, StudyGenerateButton } from "@/components/desktop/StudyStudioUI";
 import { SortIntoSubjectButton } from "@/components/vault/SortIntoSubjectButton";
+import { VaultAddContentMenu } from "@/components/vault/VaultAddContentMenu";
 import { SortDriveCoursesButton } from "@/components/vault/SortDriveCoursesButton";
 import { confirmAction } from "@/components/ConfirmHost";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -470,6 +471,7 @@ function SubjectLibrary({ vault }: { vault: ReturnType<typeof useVaultData> }) {
         <Pill active={tab === "quiz"} onClick={() => setTab("quiz")}>Quiz</Pill>
         <Pill active={tab === "flashcards"} onClick={() => setTab("flashcards")}>Fiches</Pill>
         <SortIntoSubjectButton subjectId={subj.id} subjectName={subj.name} onDone={vault.refetch} className="ml-auto" />
+        <VaultAddContentMenu pill subjectId={subj.id} onContentAdded={vault.refetch} />
         <button onClick={() => setDriveOpen(true)} className="h-10 px-4 rounded-full bg-card text-sm font-medium flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:text-primary">
           <HardDrive className="w-4 h-4" /> Ajouter depuis Drive
         </button>

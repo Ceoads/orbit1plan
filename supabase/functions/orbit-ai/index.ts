@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { aiChat } from "../_shared/ai.ts";
+import { ActionSchema, executeAction, subjectContext, ACTION_PROMPT } from "./actions.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -188,29 +189,37 @@ Deno.serve(async (req) => {
       return json({ usage: data ?? [] });
     }
 
+    if (body.action === "execute") {
+      const parsed = ActionSchema.safeParse(body.op);
+      if (!parsed.success) return json({ error: "Action invalide" }, 400);
+      const r = await executeAction(admin, user.id, parsed.data);
+      if (r.ok && !parsed.data.type.startsWith("undo")) {
+        // Keep a trace so Orbit learns the student's filing habits over time.
+        await admin.from("ai_memories").insert({ user_id: user.id, content: `Action confirmée : ${r.message}`.slice(0, 500) });
+      }
+      console.log(JSON.stringify({ fn: "orbit-ai", user: user.id, execute: parsed.data.type, ok: r.ok }));
+      return json(r, r.ok ? 200 : 404);
+    }
+
     const text = typeof body.message === "string" ? body.message.trim().slice(0, 4000) : "";
     if (!text) return json({ error: "Message vide" }, 400);
     const convId = await activeConversation(admin, user.id);
 
     const today = new Date().toISOString().slice(0, 10);
-    const [hist, subjects, events, tasks, grades, memories] = await Promise.all([
+    const [hist, events, memories, perSubject] = await Promise.all([
       admin.from("ai_chat_messages").select("role,content").eq("conversation_id", convId).order("created_at", { ascending: false }).limit(30),
-      admin.from("subjects").select("id,name").eq("user_id", user.id),
       admin.from("calendar_events").select("title,event_date,start_time,end_time,room_number").eq("user_id", user.id).gte("event_date", today).order("event_date").limit(25),
-      admin.from("tasks").select("title,due_date").eq("user_id", user.id).eq("status", "todo").order("due_date").limit(25),
-      admin.from("grades").select("label,value,max_value,coefficient,subject_id").eq("user_id", user.id).order("grade_date", { ascending: false }).limit(30),
       admin.from("ai_memories").select("content").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20),
+      subjectContext(admin, user.id, today),
     ]);
-    const sName = (id: string | null) => subjects.data?.find((s) => s.id === id)?.name ?? "";
     const context = [
       `Date : ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}`,
-      `Matières : ${(subjects.data ?? []).map((s) => s.name).join(", ") || "aucune"}`,
+      perSubject,
       `Prochains cours :\n${(events.data ?? []).map((e) => `- ${e.event_date} ${e.start_time?.slice(0, 5)}-${e.end_time?.slice(0, 5)} ${e.title}${e.room_number ? ` (${e.room_number})` : ""}`).join("\n") || "aucun"}`,
-      `Tâches à faire :\n${(tasks.data ?? []).map((t) => `- ${t.title}${t.due_date ? ` (échéance ${t.due_date.slice(0, 10)})` : ""}`).join("\n") || "aucune"}`,
-      `Notes :\n${(grades.data ?? []).map((g) => `- ${sName(g.subject_id)} · ${g.label} : ${g.value}/${g.max_value} (coef ${g.coefficient})`).join("\n") || "aucune"}`,
       `Mémoire des conversations passées :\n${(memories.data ?? []).map((m) => m.content).join("\n") || "aucune"}`,
     ].join("\n\n");
-    const system = `Tu es Orbit AI, l'assistant d'études bienveillant d'un étudiant qui a du mal à s'organiser. Ne révèle jamais quel modèle d'IA tu es : tu es simplement Orbit AI. Réponds dans la langue de l'étudiant (français par défaut), de façon claire, concise et encourageante, en Markdown. Découpe les grosses tâches en petites étapes. Utilise ces données de l'étudiant quand c'est utile, sans les inventer :\n\n${context}`;
+    const voice0 = body.voice === true;
+    const system = `Tu es Orbit AI, l'assistant d'études bienveillant d'un étudiant qui a du mal à s'organiser. Ne révèle jamais quel modèle d'IA tu es : tu es simplement Orbit AI. Réponds dans la langue de l'étudiant (français par défaut), de façon claire, concise et encourageante, en Markdown. Découpe les grosses tâches en petites étapes. Utilise ces données de l'étudiant quand c'est utile, sans les inventer. Ne montre jamais les identifiants entre crochets dans ta réponse.\n\n${context}${voice0 ? "" : ACTION_PROMPT}`;
 
     await Promise.all([
       admin.from("ai_chat_messages").insert({ user_id: user.id, conversation_id: convId, role: "user", content: text }),
