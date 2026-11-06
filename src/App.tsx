@@ -1,4 +1,5 @@
 import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
+import { lazy, Suspense } from "react";
 import { ConfirmHost } from "@/components/ConfirmHost";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,24 +8,26 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
-import AuthPage from "./pages/AuthPage";
-import LandingPage from "./pages/LandingPage";
-import SettingsPage from "./pages/SettingsPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import { CourseHubPage } from "./pages/CourseHubPage";
-import { StudyHubPage } from "./pages/StudyHubPage";
-import NotFound from "./pages/NotFound";
-import GoogleDriveReturn from "./pages/GoogleDriveReturn";
-import PrivacyPage from "./pages/PrivacyPage";
-import TermsPage from "./pages/TermsPage";
-import UnsubscribePage from "./pages/UnsubscribePage";
-import OAuthConsent from "./pages/OAuthConsent";
-import DeleteAccountPage from "./pages/DeleteAccountPage";
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const CourseHubPage = lazy(() => import("./pages/CourseHubPage").then((m) => ({ default: m.CourseHubPage })));
+const StudyHubPage = lazy(() => import("./pages/StudyHubPage").then((m) => ({ default: m.StudyHubPage })));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const GoogleDriveReturn = lazy(() => import("./pages/GoogleDriveReturn"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const UnsubscribePage = lazy(() => import("./pages/UnsubscribePage"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 import { CookieConsent } from "./components/CookieConsent";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { safeNext } from "./lib/safeNext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: false, retry: 1 } },
+});
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -68,6 +71,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppRoutes = () => {
   return (
+    <Suspense fallback={<div className="min-h-screen mesh-background flex items-center justify-center"><Loader2 className="w-10 h-10" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
@@ -109,6 +113,7 @@ const AppRoutes = () => {
       } />
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 
