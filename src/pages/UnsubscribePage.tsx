@@ -1,6 +1,6 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type State = "loading" | "valid" | "used" | "invalid" | "done" | "error";

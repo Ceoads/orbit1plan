@@ -1,6 +1,6 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useCallback, useRef, useEffect, RefObject } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { Loader2 } from "lucide-react";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 

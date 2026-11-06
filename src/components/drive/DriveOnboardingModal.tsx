@@ -1,6 +1,7 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Copy, ExternalLink, FolderPlus, Link2, Loader2, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, FolderPlus, Link2, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { parseDriveFolderLink } from "@/lib/driveFolderId";

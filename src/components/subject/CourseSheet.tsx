@@ -1,6 +1,7 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { confirmAction } from "@/components/ConfirmHost";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, NotebookPen, Loader2, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Trash2, NotebookPen, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

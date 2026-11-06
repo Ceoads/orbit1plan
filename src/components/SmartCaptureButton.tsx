@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useRef } from "react";
 import { Camera, Mic, Plus, X, Upload, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -224,7 +225,7 @@ export const SmartCaptureButton = ({ currentSubject, onNoteCreated, generateFlas
         )}
       >
         {isProcessing ? (
-          <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
+          <Loader2 className="w-6 h-6 text-primary-foreground" />
         ) : (
           <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
         )}

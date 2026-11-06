@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -7,7 +8,6 @@ import {
   HardDrive,
   Calendar,
   Check,
-  Loader2,
   ChevronLeft,
   Upload,
   ListTodo,

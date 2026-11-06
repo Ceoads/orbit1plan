@@ -1,8 +1,9 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createCoalescedSaver } from "@/lib/coalescedSaver";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft, BookOpen, Check, ChevronRight, Clock3, Focus, Lightbulb, Loader2, Pause, Play, RotateCcw, Star, Trophy, Volume2, X, ExternalLink, MessageCircle, SkipForward } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ChevronRight, Clock3, Focus, Lightbulb, Pause, Play, RotateCcw, Star, Trophy, Volume2, X, ExternalLink, MessageCircle, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

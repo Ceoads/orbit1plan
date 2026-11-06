@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState } from "react";
 import { GlassCard } from "./GlassCard";
 import { Button } from "./ui/button";
@@ -5,7 +6,7 @@ import { Input } from "./ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { ChevronRight, Sparkles, BookOpen, Calendar, Loader2, Link2, ArrowLeft, QrCode } from "lucide-react";
+import { ChevronRight, Sparkles, BookOpen, Calendar, Link2, ArrowLeft, QrCode } from "lucide-react";
 import { GroupSelector } from "./GroupSelector";
 import { QRCodeScanner } from "./QRCodeScanner";
 import { SubjectIcon } from "./SubjectIcon";

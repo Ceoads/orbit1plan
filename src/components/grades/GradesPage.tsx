@@ -1,5 +1,6 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X, Plus, Loader2 } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

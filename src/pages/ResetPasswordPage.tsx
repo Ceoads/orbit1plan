@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/GlassCard";
 import { toast } from "sonner";
-import { Loader2, Lock, Sparkles, CheckCircle } from "lucide-react";
+import { Lock, Sparkles, CheckCircle } from "lucide-react";
 import { z } from "zod";
 
 const passwordSchema = z.object({

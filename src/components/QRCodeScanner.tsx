@@ -1,8 +1,9 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "./ui/button";
 import { GlassCard } from "./GlassCard";
-import { Camera, X, QrCode, Loader2, CheckCircle2 } from "lucide-react";
+import { Camera, X, QrCode, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface QRCodeScannerProps {

@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BottomNav, NavTab } from "@/components/BottomNav";
@@ -151,7 +152,7 @@ const Index = () => {
   if (loading) {
     return (
       <div className="min-h-screen mesh-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8" />
       </div>
     );
   }

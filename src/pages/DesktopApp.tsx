@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { StudyStudioHeader, StudyGenerateButton } from "@/components/desktop/StudyStudioUI";
 import { SortIntoSubjectButton } from "@/components/vault/SortIntoSubjectButton";
 import { SortDriveCoursesButton } from "@/components/vault/SortDriveCoursesButton";
@@ -6,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   BookOpen, Brain, Layers, HardDrive, Search, FileText, Image as ImageIcon,
-  Loader2, ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home, CalendarClock, GraduationCap, MessageCircle,
+  ChevronLeft, ChevronRight, ChevronDown, RotateCcw, Shuffle, Check, X, CircleDashed, Sparkles, FolderOpen, Home, CalendarClock, GraduationCap, MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

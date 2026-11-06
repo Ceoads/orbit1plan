@@ -1,5 +1,6 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useRef, useEffect } from "react";
-import { Camera, Plus, Upload, Loader2, MapPin, Home } from "lucide-react";
+import { Camera, Plus, Upload, MapPin, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
