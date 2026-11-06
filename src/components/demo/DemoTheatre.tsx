@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { X, Bell, Sparkles, Brain, Calendar, Clock, MapPin, Camera, ChevronRight, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { OrbitCompanion } from "@/components/ai/OrbitCompanion";
+import { FolderSync, Check, Focus, MessageCircle } from "lucide-react";
 
 interface DemoTheatreProps {
   isOpen: boolean;
@@ -19,7 +21,11 @@ const PHASE_C_START = 5;
 const PHASE_C_END = 9;
 const PHASE_D_START = 9;
 const PHASE_D_END = 13;
-const SHOW_CTA = 14;
+const PHASE_E_END = 17; // Drive → Par matière
+const PHASE_F_END = 21; // Orbit AI
+const PHASE_G_END = 25; // Concentration
+const PHASE_H_END = 28; // Quiz
+const SHOW_CTA = 28;
 
 export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
   const navigate = useNavigate();
@@ -27,7 +33,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   
   // Current phase state
-  const [phase, setPhase] = useState<'A' | 'B' | 'C' | 'D' | 'end'>('A');
+  const [phase, setPhase] = useState<'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'end'>('A');
   const [showNotification, setShowNotification] = useState(false);
   const [showPocketSpace, setShowPocketSpace] = useState(false);
   const [showCourseHub, setShowCourseHub] = useState(false);
@@ -66,6 +72,14 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
           setPhase('D');
           if (next >= 10) setShowAINotification(true);
           if (next >= 11.5) setShowFlashcard(true);
+        } else if (next >= PHASE_D_END && next < PHASE_E_END) {
+          setPhase('E');
+        } else if (next >= PHASE_E_END && next < PHASE_F_END) {
+          setPhase('F');
+        } else if (next >= PHASE_F_END && next < PHASE_G_END) {
+          setPhase('G');
+        } else if (next >= PHASE_G_END && next < PHASE_H_END) {
+          setPhase('H');
         } else if (next >= SHOW_CTA) {
           setPhase('end');
           setShowCTA(true);
@@ -223,6 +237,22 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
                             </motion.div>
                           )}
 
+                          {(['E', 'F', 'G', 'H'] as const).map((p) => phase === p && (
+                            <motion.div
+                              key={p}
+                              className="absolute inset-x-4 bottom-8 top-12 overflow-hidden"
+                              initial={{ opacity: 0, x: 40 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -40 }}
+                              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            >
+                              {p === 'E' && <DriveSortView />}
+                              {p === 'F' && <OrbitAIView />}
+                              {p === 'G' && <ConcentrationView />}
+                              {p === 'H' && <QuizView />}
+                            </motion.div>
+                          ))}
+
                           {/* End State */}
                           {phase === 'end' && (
                             <motion.div
@@ -295,7 +325,7 @@ export const DemoTheatre = ({ isOpen, onClose }: DemoTheatreProps) => {
               <motion.div
                 className="h-full bg-gradient-to-r from-primary to-accent"
                 initial={{ width: 0 }}
-                animate={{ width: `${(currentTime / 15) * 100}%` }}
+                animate={{ width: `${(currentTime / SHOW_CTA) * 100}%` }}
               />
             </div>
           </div>
@@ -710,5 +740,171 @@ const AILabView = ({ showNotification, showFlashcard }: { showNotification: bool
     </div>
   );
 };
+
+const DRIVE_COURSES = [
+  { name: "Chapitre 2 — Contrats.pdf", subject: "Droit Civil", color: "bg-purple-500" },
+  { name: "Marketing digital.pdf", subject: "Marketing", color: "bg-green-500" },
+  { name: "Inflation & taux.pdf", subject: "Économie", color: "bg-blue-500" },
+];
+
+const DriveSortView = () => (
+  <div className="h-full flex flex-col gap-3">
+    <div className="flex items-center justify-between">
+      <h2 className="text-sm font-bold text-gray-900">Par matière</h2>
+      <span className="text-[8px] px-2 py-1 bg-white/70 rounded-full text-gray-600">Exemple</span>
+    </div>
+    <motion.div className="flex items-center gap-2 bg-white/80 rounded-xl p-3 shadow-sm"
+      initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: 1, ease: "linear" }}>
+        <FolderSync className="w-4 h-4 text-primary" />
+      </motion.div>
+      <div className="flex-1">
+        <p className="text-[10px] font-semibold text-gray-900">Google Drive</p>
+        <p className="text-[9px] text-gray-600">Synchronisation de 3 cours…</p>
+      </div>
+    </motion.div>
+    <div className="space-y-2">
+      {DRIVE_COURSES.map((c, i) => (
+        <motion.div key={c.name} className="bg-white/60 rounded-xl p-2.5"
+          initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 + i * 0.5, type: "spring", damping: 20 }}>
+          <div className="flex items-center gap-2">
+            <div className={cn("w-1 h-7 rounded-full", c.color)} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-semibold text-gray-900 truncate">{c.subject}</p>
+              <p className="text-[8px] text-gray-600 truncate">{c.name}</p>
+            </div>
+            <motion.span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold"
+              initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1 + i * 0.5 }}>
+              Semestre 1
+            </motion.span>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+    <motion.div className="mt-auto flex items-center gap-2 bg-gray-900/85 rounded-full px-3 py-2 self-center"
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.6 }}>
+      <Check className="w-3 h-3 text-green-400" />
+      <span className="text-[9px] text-white font-medium">3 cours rangés par l'IA</span>
+    </motion.div>
+  </div>
+);
+
+const AI_ANSWER = "Un contrat est valable s'il réunit le consentement, la capacité et un contenu licite. Je te prépare un quiz ?";
+
+const OrbitAIView = () => {
+  const [len, setLen] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const i = setInterval(() => setLen((l) => (l >= AI_ANSWER.length ? l : l + 2)), 30);
+      return () => clearInterval(i);
+    }, 900);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="h-full flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <MessageCircle className="w-4 h-4 text-primary" />
+        <h2 className="text-sm font-bold text-gray-900">Orbit AI</h2>
+      </div>
+      <div className="flex justify-center py-1">
+        <OrbitCompanion state={len > 0 && len < AI_ANSWER.length ? "speaking" : "thinking"} size={64} />
+      </div>
+      <motion.div className="self-end max-w-[80%] bg-gradient-to-r from-primary to-accent rounded-2xl rounded-br-md px-3 py-2"
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <p className="text-[10px] text-white">Explique-moi le chapitre 2</p>
+      </motion.div>
+      {len > 0 && (
+        <div className="self-start max-w-[88%] bg-white/80 rounded-2xl rounded-bl-md px-3 py-2 shadow-sm">
+          <p className="text-[10px] text-gray-900 leading-relaxed">{AI_ANSWER.slice(0, len)}</p>
+        </div>
+      )}
+      <div className="mt-auto flex items-end justify-center gap-1 h-6">
+        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+          <motion.div key={i} className="w-1 rounded-full bg-primary/70"
+            animate={{ height: [6, 18, 8, 22, 6] }} transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.1 }} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ConcentrationView = () => (
+  <div className="h-full flex flex-col gap-3">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-[9px] font-semibold text-primary">Mode Concentration</p>
+        <h2 className="text-sm font-bold text-gray-900">Droit Civil</h2>
+      </div>
+      <Focus className="w-4 h-4 text-primary" />
+    </div>
+    <div className="flex justify-center py-1">
+      <OrbitCompanion concentration state="idle" size={64} />
+    </div>
+    <div className="space-y-2">
+      {[
+        { label: "Section 1 · Les contrats", done: true },
+        { label: "Unité 2 · Conditions de validité", done: true },
+        { label: "Mastery Check", done: false },
+      ].map((s, i) => (
+        <motion.div key={s.label} className="flex items-center gap-2 bg-white/60 rounded-xl p-2.5"
+          initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.4 }}>
+          <div className={cn("w-5 h-5 rounded-full flex items-center justify-center", s.done ? "bg-green-500" : "bg-primary/20")}>
+            {s.done ? <Check className="w-3 h-3 text-white" /> : <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+          </div>
+          <p className="text-[9px] font-semibold text-gray-900">{s.label}</p>
+        </motion.div>
+      ))}
+    </div>
+    <div className="mt-auto bg-white/60 rounded-xl p-3">
+      <div className="flex justify-between mb-1.5">
+        <span className="text-[9px] text-gray-600">Progression du parcours</span>
+        <span className="text-[9px] font-semibold text-primary">72%</span>
+      </div>
+      <div className="h-1.5 bg-primary/15 rounded-full overflow-hidden">
+        <motion.div className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+          initial={{ width: "20%" }} animate={{ width: "72%" }} transition={{ delay: 1.2, duration: 1.6, ease: [0.4, 0, 0.2, 1] }} />
+      </div>
+    </div>
+  </div>
+);
+
+const QuizView = () => (
+  <div className="h-full flex flex-col gap-3">
+    <div className="flex items-center justify-between">
+      <h2 className="text-sm font-bold text-gray-900">Quiz</h2>
+      <span className="text-[9px] px-2 py-1 bg-white/70 rounded-full text-gray-600">Question 3/5</span>
+    </div>
+    <div className="bg-white/80 rounded-2xl p-3 shadow-sm">
+      <p className="text-[10px] font-semibold text-gray-900">Quelle condition rend un contrat valable ?</p>
+    </div>
+    <div className="space-y-2">
+      {["Une signature manuscrite", "Le consentement des parties", "Un notaire présent"].map((a, i) => (
+        <motion.div key={a}
+          className="flex items-center justify-between rounded-xl p-2.5 bg-white/60"
+          animate={i === 1 ? { backgroundColor: ["rgba(255,255,255,0.6)", "rgba(34,197,94,0.25)"] } : {}}
+          transition={{ delay: 1, duration: 0.4 }}>
+          <span className="text-[9px] text-gray-900">{a}</span>
+          {i === 1 && (
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.1, type: "spring" }}
+              className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+              <Check className="w-2.5 h-2.5 text-white" />
+            </motion.div>
+          )}
+        </motion.div>
+      ))}
+    </div>
+    <motion.div className="mt-auto grid grid-cols-2 gap-2"
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }}>
+      <div className="bg-white/60 rounded-xl p-3 text-center">
+        <p className="text-lg font-bold text-primary">4/5</p>
+        <p className="text-[9px] text-gray-600">Score</p>
+      </div>
+      <div className="bg-white/60 rounded-xl p-3 text-center">
+        <p className="text-lg font-bold text-green-500">+12%</p>
+        <p className="text-[9px] text-gray-600">Maîtrise</p>
+      </div>
+    </motion.div>
+  </div>
+);
 
 export default DemoTheatre;
