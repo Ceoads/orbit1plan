@@ -45,7 +45,9 @@ serve(async (req) => {
       });
     }
 
-    const { imageBase64, action } = await req.json();
+    const { imageBase64, action, mimeType } = await req.json();
+    // PDFs added by hand are read the same way as photos (Gemini reads PDF pages natively).
+    const mime = mimeType === 'application/pdf' ? 'application/pdf' : 'image/jpeg';
     const LOVABLE_API_KEY = (Deno.env.get('GEMINI_API_KEY') || Deno.env.get('LOVABLE_API_KEY'));
     
     if (!LOVABLE_API_KEY) {
@@ -103,11 +105,11 @@ Rends les tâches spécifiques, réalisables et progressives. Génère tout en f
       messages.push({
         role: 'user',
         content: [
-          { type: 'text', text: userPrompt },
+          { type: 'text', text: mime === 'application/pdf' ? 'Analyse ce document PDF, extrais tout son texte avec un formatage LaTeX approprié pour toute notation scientifique, et résume les points clés pour l\'étude.' : userPrompt },
           { 
             type: 'image_url', 
             image_url: { 
-              url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}` 
+              url: imageBase64.startsWith('data:') ? imageBase64 : `data:${mime};base64,${imageBase64}` 
             } 
           }
         ]
