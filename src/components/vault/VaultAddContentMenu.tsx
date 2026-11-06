@@ -1,5 +1,6 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useRef, useMemo } from "react";
-import { Plus, FileText, Camera, PenLine, Loader2 } from "lucide-react";
+import { Plus, FileText, Camera, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

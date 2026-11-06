@@ -1,6 +1,7 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { confirmAction } from "@/components/ConfirmHost";
 import { useEffect, useState } from "react";
-import { Search, FileText, Loader2, Check } from "lucide-react";
+import { Search, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";

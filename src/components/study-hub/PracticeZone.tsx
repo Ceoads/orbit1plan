@@ -1,6 +1,7 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, BookOpen, HelpCircle, CheckCircle2, XCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Brain, BookOpen, HelpCircle, CheckCircle2, XCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";

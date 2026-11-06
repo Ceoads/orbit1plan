@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   ArrowLeft, Calendar, RefreshCw, Check,
-  Link2, Clock, Loader2, Trash2, BookOpen, Users, Eye, UserX,
+  Link2, Clock, Trash2, BookOpen, Users, Eye, UserX,
   MapPin, Navigation, QrCode, Play, Sparkles, ChevronsUpDown, X,
   ChevronRight, LogOut, Shield, RotateCcw, HelpCircle, Camera
 } from "lucide-react";

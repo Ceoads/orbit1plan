@@ -1,6 +1,7 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FolderOpen, Sparkles, ClipboardList, Check, Loader2, X, Brain } from "lucide-react";
+import { FolderOpen, Sparkles, ClipboardList, Check, X, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 

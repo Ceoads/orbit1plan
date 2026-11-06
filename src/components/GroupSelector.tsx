@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect, useMemo } from "react";
 import { GlassCard } from "./GlassCard";
 import { Button } from "./ui/button";
@@ -8,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
-  Loader2, Users, Check,
+  Users, Check,
   Calendar, AlertCircle, Eye, Sparkles, CheckCircle2, ChevronsUpDown, X
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";

@@ -1,3 +1,4 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { safeNext } from "@/lib/safeNext";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/GlassCard";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, Sparkles, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Sparkles, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";

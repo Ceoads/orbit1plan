@@ -1,5 +1,6 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 

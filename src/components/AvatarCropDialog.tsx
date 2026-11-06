@@ -1,9 +1,9 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useCallback, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Loader2 } from "lucide-react";
 
 const OUTPUT_SIZE = 512; // px (square)
 const JPEG_QUALITY = 0.85;

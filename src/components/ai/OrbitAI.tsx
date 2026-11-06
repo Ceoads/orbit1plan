@@ -1,6 +1,7 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { ArrowUp, RotateCcw, Loader2, History, X, Mic, MicOff, Volume2, Square, Focus } from "lucide-react";
+import { ArrowUp, RotateCcw, History, X, Mic, MicOff, Volume2, Square, Focus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrbitCompanion, type CompanionHandle } from "./OrbitCompanion";
 import { useOrbitVoice, takeSentences } from "@/hooks/useOrbitVoice";

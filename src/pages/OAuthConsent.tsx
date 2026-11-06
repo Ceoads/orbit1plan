@@ -1,8 +1,8 @@
+import { OrbitSpinner as Loader2 } from "@/components/ui/orbit-spinner";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 
 type OAuthResult = { data: any; error: { message: string } | null };
 type OAuthApi = {
