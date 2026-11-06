@@ -24,7 +24,6 @@ export function OrbitActionCard({ op }: { op: OrbitActionOp }) {
     setBusy(false);
     if (error || !data?.ok) { setState(data?.error ?? "Action impossible."); return; }
     qc.invalidateQueries();
-    window.dispatchEvent(new Event("orbit:data-changed"));
     after(data.message, data.undo);
   };
   const confirm = () => { const { label: _l, ...clean } = op; void run(clean, (m, u) => { settled.set(key, m); setState(m); setUndo(u ?? null); }); };
